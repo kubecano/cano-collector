@@ -38,7 +38,12 @@ lint-local:
 # Build all Go code (local version)
 .PHONY: build-local
 build-local:
-	GODEBUG="tarinsecurepath=0,zipinsecurepath=0" go build -v `go list ./...`
+	go build -v `go list ./...`
+
+# Run all unit tests (local version)
+.PHONY: test-local
+test-local:
+	go test -v `go list ./...
 
 .PHONY: help
 help:
