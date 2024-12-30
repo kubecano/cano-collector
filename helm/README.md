@@ -1,0 +1,1 @@
+# Cano-collector helm chart
