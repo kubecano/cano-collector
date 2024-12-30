@@ -1,0 +1,24 @@
+{
+  "bootstrap-sha": "d00e7fd2c9f4e3fa5b5d100609ce297ab721322a",
+  "release-type": "go",
+  "release-as": "0.0.1",
+  "bump-minor-pre-major": true,
+  "bump-patch-for-minor-pre-major": true,
+  "prerelease": true,
+  "prerelease-type": "alpha",
+  "draft": true,
+  "packages": {
+    ".": {
+      "release-type": "go",
+      "exclude-paths": [
+        "helm"
+      ]
+    },
+    "helm": {
+      "release-type": "helm",
+      "package-name": "cano-collector-helm",
+      "release-as": "0.0.1",
+      "changelog-path": "helm/CHANGES.md"
+    }
+  }
+}
