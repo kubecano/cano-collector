@@ -43,7 +43,7 @@ build-local:
 # Run all unit tests (local version)
 .PHONY: test-local
 test-local:
-	go test -v `go list ./...
+	go test -v `go list ./...`
 
 .PHONY: help
 help:
