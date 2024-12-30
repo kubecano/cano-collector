@@ -1,0 +1,145 @@
+name: Integration tests
+on:
+  push:
+    branches:
+      - 'master'
+  pull_request:
+    branches:
+      - 'master'
+
+env:
+  # Golang version to use across CI steps
+  # renovate: datasource=golang-version packageName=golang
+  GOLANG_VERSION: '1.23.4'
+  GROUP_NAME: 'kubecano'
+  PROJ_NAME: 'cano-collector'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend_any_changed }}
+      frontend: ${{ steps.filter.outputs.frontend_any_changed }}
+      docs: ${{ steps.filter.outputs.docs_any_changed }}
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: tj-actions/changed-files@v45.0.5
+        id: filter
+        with:
+          # Any file which is not under docs/, ui/ or is not a markdown file is counted as a backend file
+          files_yaml: |
+            backend:
+              - '!ui/**'
+              - '!**.md'            
+              - '!**/*.md'
+              - '!docs/**'
+            frontend:
+              - 'ui/**'
+              - Dockerfile
+            docs:
+              - 'docs/**'
+
+  check-go:
+    name: Ensure Go modules synchronicity
+    if: ${{ needs.changes.outputs.backend == 'true' }}
+    runs-on: ubuntu-22.04
+    needs:
+      - changes
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4.2.2
+      - name: Setup Golang
+        uses: actions/setup-go@v5.2.0
+        with:
+          go-version: ${{ env.GOLANG_VERSION }}
+      - name: Download all Go modules
+        run: |
+          go mod download
+      - name: Check for tidiness of go.mod and go.sum
+        run: |
+          go mod tidy
+          git diff --exit-code -- .
+
+  build-go:
+    name: Build & cache Go code
+    if: ${{ needs.changes.outputs.backend == 'true' }}
+    runs-on: ubuntu-22.04
+    needs:
+      - changes
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4.2.2
+      - name: Setup Golang
+        uses: actions/setup-go@v5.2.0
+        with:
+          go-version: ${{ env.GOLANG_VERSION }}
+      - name: Restore go build cache
+        uses: actions/cache@v4.2.0
+        with:
+          path: ~/.cache/go-build
+          key: ${{ runner.os }}-go-build-v1-${{ github.run_id }}
+      - name: Download all Go modules
+        run: |
+          go mod download
+      - name: Compile all packages
+        run: make build-local
+
+  lint-go:
+    permissions:
+      contents: read  # for actions/checkout to fetch code
+      pull-requests: read  # for golangci/golangci-lint-action to fetch pull requests
+    name: Lint Go code
+    if: ${{ needs.changes.outputs.backend == 'true' }}
+    runs-on: ubuntu-22.04
+    needs:
+      - changes
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4.2.2
+      - name: Setup Golang
+        uses: actions/setup-go@v5.2.0
+        with:
+          go-version: ${{ env.GOLANG_VERSION }}
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6.1.1
+        with:
+          # renovate: datasource=go packageName=github.com/golangci/golangci-lint versioning=regex:^v(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)?$
+          version: v1.62.2
+          args: --verbose
+
+  test-go:
+    name: Run unit tests for Go packages
+    if: ${{ needs.changes.outputs.backend == 'true' }}
+    runs-on: ubuntu-22.04
+    needs:
+      - build-go
+      - changes
+    steps:
+      - name: Create checkout directory
+        run: mkdir -p ~/go/src/github.com/${{ env.GROUP_NAME }}
+      - name: Checkout code
+        uses: actions/checkout@v4.2.2
+      - name: Create symlink in GOPATH
+        run: ln -s $(pwd) ~/go/src/github.com/${{ env.GROUP_NAME }}/${{ env.PROJ_NAME }}
+      - name: Setup Golang
+        uses: actions/setup-go@v5.2.0
+        with:
+          go-version: ${{ env.GOLANG_VERSION }}
+      - name: Restore go build cache
+        uses: actions/cache@v4.2.0
+        with:
+          path: ~/.cache/go-build
+          key: ${{ runner.os }}-go-build-v1-${{ github.run_id }}
+      - name: Download and vendor all required packages
+        run: |
+          go mod download
+      - name: Run all unit tests
+        run: make test-local
+
