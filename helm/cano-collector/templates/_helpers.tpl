@@ -49,10 +49,3 @@ Selector labels
 app.kubernetes.io/name: {{ include "cano-collector.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
-
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "cano-collector.serviceAccountName" -}}
-{{- default (include "cano-collector.fullname" .) .Values.serviceAccount.name }}
-{{- end }}

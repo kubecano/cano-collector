@@ -29,7 +29,7 @@ spec:
       {{- if .Values.customServiceAccount }}
       serviceAccountName: {{ .Values.customServiceAccount }}
       {{ else }}
-      serviceAccountName: {{ include "cano-collector.serviceAccountName" . }}
+      serviceAccountName: {{ include "cano-collector.fullname" . }}-service-account
       {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
