@@ -1,5 +1,5 @@
 {
-  "bootstrap-sha": "4fdb30eb0196102df2ce5513010ceaf37caa623c",
+  "bootstrap-sha": "98de931327a2fb17112853e6c54ddd0eba8caee5",
   "release-type": "go",
   "release-as": "0.0.1",
   "bump-minor-pre-major": true,
