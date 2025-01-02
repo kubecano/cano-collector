@@ -6,7 +6,6 @@
   "bump-patch-for-minor-pre-major": true,
   "prerelease": true,
   "prerelease-type": "alpha",
-  "draft": true,
   "packages": {
     ".": {
       "release-type": "go",
@@ -14,7 +13,7 @@
         "helm"
       ]
     },
-    "helm": {
+    "helm/cano-collector": {
       "release-type": "helm",
       "package-name": "cano-collector-helm",
       "release-as": "0.0.1"
