@@ -17,3 +17,5 @@ jobs:
         with:
           configurationFile: .github/renovate-global.json
           token: ${{ secrets.PAT }}
+        env:
+          LOG_LEVEL: 'debug'
