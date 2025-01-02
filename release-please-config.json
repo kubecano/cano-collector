@@ -2,11 +2,13 @@
   "release-type": "go",
   "bump-minor-pre-major": true,
   "bump-patch-for-minor-pre-major": true,
+  "group-pull-request-title-pattern": "chore: release ${version}",
   "prerelease": true,
   "prerelease-type": "alpha",
   "packages": {
     ".": {
       "release-type": "go",
+      "package-name": "cano-collector",
       "exclude-paths": [
         "helm"
       ]
