@@ -1,7 +1,5 @@
 {
-  "bootstrap-sha": "98de931327a2fb17112853e6c54ddd0eba8caee5",
   "release-type": "go",
-  "release-as": "0.0.1",
   "bump-minor-pre-major": true,
   "bump-patch-for-minor-pre-major": true,
   "prerelease": true,
@@ -15,8 +13,7 @@
     },
     "helm/cano-collector": {
       "release-type": "helm",
-      "package-name": "cano-collector-helm",
-      "release-as": "0.0.1"
+      "package-name": "cano-collector-helm"
     }
   }
 }
