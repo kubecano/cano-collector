@@ -17,7 +17,6 @@
       "release-type": "helm",
       "package-name": "cano-collector-helm",
       "release-as": "0.0.1"
-      "changelog-path": "..//CHANGELOG.md"
     }
   }
 }
