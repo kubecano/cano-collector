@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.2](https://github.com/kubecano/cano-collector/compare/cano-collector-0.0.1...cano-collector-v0.0.2) (2025-01-18)
+
+
+### Bug Fixes
+
+* NO-ISSUE - Fix renovate schedule to cost saving ([a54373c](https://github.com/kubecano/cano-collector/commit/a54373c9366b9248a156aba7d15ee36f442cef9a))
+
 ## 0.0.1 (2025-01-02)
 
 
