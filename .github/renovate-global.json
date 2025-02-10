@@ -1,6 +1,18 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "branchPrefix": "github-renovate/",
+  "globalExtends": [
+    "config:best-practices",
+    "group:goOpenapi",
+    "group:kubernetes",
+    "group:opentelemetry-goMonorepo",
+    "group:opentelemetry-go-contribMonorepo",
+    "group:protobufMonorepo"
+  ],
+  "labels": [
+    "dependencies"
+  ],
+  "dependencyDashboard": true,
   "dependencyDashboardTitle": "Dependency Dashboard self-hosted",
   "gitAuthor": "Renovate Bot <bot@renovateapp.com>",
   "onboarding": true,
