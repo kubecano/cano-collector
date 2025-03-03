@@ -208,4 +208,4 @@ jobs:
             -Dsonar.go.coverage.reportPaths=./sast-reports/coverage.out
             -Dsonar.go.govet.reportPaths=./sast-reports/go-vet.out
             -Dsonar.go.golangci-lint.reportPaths=./sast-reports/golangci-lint-report.xml
-            -Dsonar.docker.hadolint.reportPaths=./saas-reports/hadolint-report.out
+            -Dsonar.docker.hadolint.reportPaths=./sast-reports/hadolint-report.out
