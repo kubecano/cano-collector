@@ -1,4 +1,4 @@
-FROM golang:1.23@sha256:927112936d6b496ed95f55f362cc09da6e3e624ef868814c56d55bd7323e0959 as build
+FROM golang:1.23@sha256:adfbe17b774398cb090ad257afd692f2b7e0e7aaa8ef0110a48f0a775e3964f4 as build
 
 WORKDIR /go/src/github.com/kubecano/cano-collector
 
