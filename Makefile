@@ -19,30 +19,34 @@ gogen:
 	export GO111MODULE=off
 	go generate ./...
 
-.PHONY: mod-download-local
-mod-download-local:
+.PHONY: mod-download
+mod-download:
 	go mod download && go mod tidy # go mod download changes go.sum https://github.com/golang/go/issues/42970
 
-.PHONY: mod-vendor-local
-mod-vendor-local: mod-download-local
+.PHONY: mod-vendor
+mod-vendor: mod-download
 	go mod vendor
 
 # Run linter on the code (local version)
-.PHONY: lint-local
-lint-local:
+.PHONY: lint
+lint:
 	golangci-lint --version
 	# NOTE: If you get a "Killed" OOM message, try reducing the value of GOGC
 	# See https://github.com/golangci/golangci-lint#memory-usage-of-golangci-lint
 	GOGC=$(CANO_LINT_GOGC) GOMAXPROCS=2 golangci-lint run --fix --verbose
 
+.PHONY: vet
+vet:
+	go vet -json ./...
+
 # Build all Go code (local version)
-.PHONY: build-local
-build-local:
+.PHONY: build
+build:
 	go build -v `go list ./...`
 
 # Run all unit tests (local version)
-.PHONY: test-local
-test-local:
+.PHONY: test
+test:
 	go test -v `go list ./...`
 
 .PHONY: help
