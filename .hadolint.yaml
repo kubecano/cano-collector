@@ -1,0 +1,4 @@
+label-schema:
+  author: text
+  contact: email
+  license: spdx

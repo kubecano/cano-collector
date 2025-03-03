@@ -28,7 +28,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       backend: ${{ steps.filter.outputs.backend_any_changed }}
-      frontend: ${{ steps.filter.outputs.frontend_any_changed }}
       docs: ${{ steps.filter.outputs.docs_any_changed }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -38,13 +37,9 @@ jobs:
           # Any file which is not under docs/, ui/ or is not a markdown file is counted as a backend file
           files_yaml: |
             backend:
-              - '!ui/**'
               - '!**.md'            
               - '!**/*.md'
               - '!docs/**'
-            frontend:
-              - 'ui/**'
-              - Dockerfile
             docs:
               - 'docs/**'
 
@@ -126,6 +121,26 @@ jobs:
           name: golangci-lint-report
           path: golangci-lint-report.xml
 
+  hadolint-docker:
+    name: Lint Dockerfiles
+    if: ${{ needs.changes.outputs.backend == 'true' }}
+    runs-on: ubuntu-24.04
+    needs:
+      - changes
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          output-file: hadolint-report.out
+          format: json
+      - name: Upload hadolint report
+        uses: actions/upload-artifact@v4.6.1
+        with:
+          name: hadolint-report
+          path: hadolint-report.out
+
   test-go:
     name: Run unit tests for Go packages
     if: ${{ needs.changes.outputs.backend == 'true' }}
@@ -171,6 +186,7 @@ jobs:
     needs:
       - check-go
       - lint-go
+      - hadolint-docker
       - test-go
     steps:
       - uses: actions/checkout@v4
@@ -192,3 +208,4 @@ jobs:
             -Dsonar.go.coverage.reportPaths=./sast-reports/coverage.out
             -Dsonar.go.govet.reportPaths=./sast-reports/go-vet.out
             -Dsonar.go.golangci-lint.reportPaths=./sast-reports/golangci-lint-report.xml
+            -Dsonar.docker.hadolint.reportPaths=./sast-reports/hadolint-report.out
