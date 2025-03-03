@@ -67,7 +67,7 @@ jobs:
         run: |
           go vet -json ./... 2> go-vet.out
       - name: Upload go-vet report
-        uses: actions/upload-artifact@v4.6.1
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
         with:
           name: go-vet-report
           path: go-vet.out
@@ -116,7 +116,7 @@ jobs:
           version: v1.64.6
           args: --verbose --out-format=checkstyle:golangci-lint-report.xml
       - name: Upload golangci-lint report
-        uses: actions/upload-artifact@v4.6.1
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
         with:
           name: golangci-lint-report
           path: golangci-lint-report.xml
@@ -130,13 +130,13 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: hadolint/hadolint-action@v3.1.0
+      - uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf # v3.1.0
         with:
           dockerfile: Dockerfile
           output-file: hadolint-report.out
           format: json
       - name: Upload hadolint report
-        uses: actions/upload-artifact@v4.6.1
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
         with:
           name: hadolint-report
           path: hadolint-report.out
@@ -168,13 +168,13 @@ jobs:
         run: |
           go mod download
       - name: Setup gotestsum
-        uses: autero1/action-gotestsum@v2.0.0
+        uses: autero1/action-gotestsum@7263b9d73912eec65f46337689e59fac865c425f # v2.0.0
         with:
           gotestsum_version: 1.12.0
       - name: Run all unit tests
         run: gotestsum --jsonfile test-report.out -- -coverprofile=coverage.out ./...
       - name: Upload test report
-        uses: actions/upload-artifact@v4.6.1
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
         with:
           name: test-report
           path: |
@@ -189,17 +189,17 @@ jobs:
       - hadolint-docker
       - test-go
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         with:
           # Disabling shallow clones is recommended for improving the relevancy of reporting
           fetch-depth: 0
       - name: Download SAST reports
-        uses: actions/download-artifact@v4.1.9
+        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
         with:
           path: ./sast-reports
           merge-multiple: true
       - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v5.0.0
+        uses: SonarSource/sonarqube-scan-action@0303d6b62e310685c0e34d0b9cde218036885c4d # v5.0.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
