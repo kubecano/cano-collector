@@ -2,7 +2,7 @@ module github.com/kubecano/cano-collector
 
 go 1.23.0
 
-toolchain go1.23.6
+toolchain go1.24.0
 
 require (
 	k8s.io/api v0.32.1
