@@ -1,65 +1,46 @@
 package main
 
 import (
-	"context"
-	"fmt"
 	"log"
-	"os"
-	"os/signal"
-	"syscall"
+	"net/http"
 	"time"
 
-	_ "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
+	"github.com/getsentry/sentry-go"
+	sentrygin "github.com/getsentry/sentry-go/gin"
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	log.Println("Starting cano-server...")
-
-	// Initialize Kubernetes client
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		log.Fatalf("Error creating in-cluster config: %v", err)
+	// To initialize Sentry's handler, you need to initialize Sentry itself beforehand
+	if err := sentry.Init(sentry.ClientOptions{
+		Dsn:           "https://0f9edecd5d163d5167781fccd8fb5400@o4508916121403392.ingest.de.sentry.io/4508916239958096",
+		EnableTracing: true,
+		// Set TracesSampleRate to 1.0 to capture 100%
+		// of transactions for tracing.
+		// We recommend adjusting this value in production,
+		TracesSampleRate: 1.0,
+	}); err != nil {
+		log.Fatalf("Sentry initialization failed: %v", err)
 	}
+	// Flush buffered events before the program terminates.
+	// Set the timeout to the maximum duration the program can afford to wait.
+	defer sentry.Flush(2 * time.Second)
 
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		log.Fatalf("Error creating Kubernetes clientset: %v", err)
-	}
+	// Then create your app
+	app := gin.Default()
 
-	// Create a context that cancels on SIGINT/SIGTERM
-	ctx, cancel := context.WithCancel(context.Background())
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		<-signalChan
-		log.Println("Shutting down cano-server...")
-		cancel()
-	}()
+	// Once it's done, you can attach the handler as one of your middleware
+	app.Use(sentrygin.New(sentrygin.Options{
+		Repanic:         true,
+		WaitForDelivery: false,
+		Timeout:         2 * time.Second,
+	}))
 
-	// Start periodic logging
-	logTicker := time.NewTicker(1 * time.Minute)
-	defer logTicker.Stop()
+	// Set up routes
+	app.GET("/", func(ctx *gin.Context) {
+		ctx.String(http.StatusOK, "Hello world!")
+	})
 
-	for {
-		select {
-		case <-logTicker.C:
-			logMessage := fmt.Sprintf("cano-server is running at %v", time.Now().Format(time.RFC3339))
-			log.Println(logMessage)
-
-			// Example: Interact with Kubernetes API
-			_, err := clientset.CoreV1().Pods("default").List(ctx, metav1.ListOptions{})
-			if err != nil {
-				log.Printf("Error listing pods: %v", err)
-			} else {
-				log.Println("Successfully interacted with Kubernetes API.")
-			}
-
-		case <-ctx.Done():
-			log.Println("Exiting cano-server...")
-			return
-		}
-	}
+	// And run it
+	app.Run(":3000")
 }
