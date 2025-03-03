@@ -186,6 +186,7 @@ jobs:
     needs:
       - check-go
       - lint-go
+      - hadolint-docker
       - test-go
     steps:
       - uses: actions/checkout@v4
