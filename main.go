@@ -42,5 +42,7 @@ func main() {
 	})
 
 	// And run it
-	app.Run(":3000")
+	if err := app.Run(":3000"); err != nil {
+		log.Fatalf("Failed to run server: %v", err)
+	}
 }
