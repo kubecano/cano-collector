@@ -11,7 +11,9 @@ import (
 )
 
 func main() {
-	initSentry()
+	if err := initSentry(); err != nil {
+		log.Fatalf("Sentry initialization failed: %v", err)
+	}
 	// Flush buffered events before the program terminates.
 	// Set the timeout to the maximum duration the program can afford to wait.
 	defer sentry.Flush(2 * time.Second)
@@ -24,10 +26,15 @@ func main() {
 		Timeout:         2 * time.Second,
 	}))
 
-	// And run it
-	if err := r.Run(":3000"); err != nil {
-		log.Fatalf("Failed to run server: %v", err)
-	}
+	StartServer(r)
+}
+
+func initSentry() error {
+	return sentry.Init(sentry.ClientOptions{
+		Dsn:              "https://0f9edecd5d163d5167781fccd8fb5400@o4508916121403392.ingest.de.sentry.io/4508916239958096",
+		EnableTracing:    true,
+		TracesSampleRate: 1.0,
+	})
 }
 
 func setupRouter() *gin.Engine {
@@ -42,12 +49,10 @@ func setupRouter() *gin.Engine {
 	return r
 }
 
-func initSentry() {
-	if err := sentry.Init(sentry.ClientOptions{
-		Dsn:              "https://0f9edecd5d163d5167781fccd8fb5400@o4508916121403392.ingest.de.sentry.io/4508916239958096",
-		EnableTracing:    true,
-		TracesSampleRate: 1.0,
-	}); err != nil {
-		log.Fatalf("Sentry initialization failed: %v", err)
+func StartServer(r *gin.Engine) {
+	if gin.Mode() != gin.TestMode {
+		if err := r.Run(":3000"); err != nil {
+			log.Fatalf("Failed to run server: %v", err)
+		}
 	}
 }
