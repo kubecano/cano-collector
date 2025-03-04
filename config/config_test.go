@@ -9,6 +9,7 @@ func TestLoadConfig(t *testing.T) {
 	_ = os.Setenv("APP_NAME", "test-app")
 	_ = os.Setenv("LOG_LEVEL", "debug")
 	_ = os.Setenv("SENTRY_DSN", "https://example@sentry.io/123")
+	_ = os.Setenv("ENABLE_TELEMETRY", "true")
 
 	LoadConfig()
 
@@ -23,15 +24,5 @@ func TestLoadConfig(t *testing.T) {
 	}
 	if !GlobalConfig.SentryEnabled {
 		t.Errorf("Expected SENTRY_ENABLED to be true, got false")
-	}
-}
-
-func TestLoadConfig_EmptySentryDSN(t *testing.T) {
-	_ = os.Unsetenv("SENTRY_DSN")
-
-	LoadConfig()
-
-	if GlobalConfig.SentryEnabled {
-		t.Errorf("Expected SENTRY_ENABLED to be false, got true")
 	}
 }

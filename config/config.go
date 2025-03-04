@@ -3,6 +3,7 @@ package config
 import (
 	"log"
 	"os"
+	"strconv"
 )
 
 type Config struct {
@@ -15,22 +16,32 @@ type Config struct {
 var GlobalConfig Config
 
 func LoadConfig() {
-	sentryDSN := getEnv("SENTRY_DSN", "")
-
 	GlobalConfig = Config{
-		AppName:       getEnv("APP_NAME", "cano-collector"),
-		LogLevel:      getEnv("LOG_LEVEL", "info"),
-		SentryDSN:     sentryDSN,
-		SentryEnabled: sentryDSN != "",
+		AppName:       getEnvString("APP_NAME", "cano-collector"),
+		LogLevel:      getEnvString("LOG_LEVEL", "info"),
+		SentryDSN:     getEnvString("SENTRY_DSN", ""),
+		SentryEnabled: getEnvBool("ENABLE_TELEMETRY", true),
 	}
 
 	log.Printf("Configuration loaded: %+v", GlobalConfig)
 }
 
-func getEnv(key, defaultValue string) string {
+func getEnvString(key, defaultValue string) string {
 	value, exists := os.LookupEnv(key)
 	if !exists {
 		return defaultValue
 	}
 	return value
+}
+
+func getEnvBool(key string, defaultValue bool) bool {
+	value, exists := os.LookupEnv(key)
+	if !exists {
+		return defaultValue
+	}
+	parsedValue, err := strconv.ParseBool(value)
+	if err != nil {
+		return defaultValue
+	}
+	return parsedValue
 }
