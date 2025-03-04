@@ -13,6 +13,8 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: "latest@sha256:21756612fde85c9eb19fed85d88c07acc033c39106c81aff55fbf5802d6f2866"
 
+sentry_dsn: https://4f1a66f025c60830fec303a094dcdf94@o1120648.ingest.sentry.io/6156573
+
 # This is for the secretes for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
 imagePullSecrets: [ ]
 # This is to override the chart name.

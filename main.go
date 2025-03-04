@@ -5,15 +5,22 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/kubecano/cano-collector/config"
+
 	"github.com/getsentry/sentry-go"
 	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	if err := initSentry(); err != nil {
-		log.Fatalf("Sentry initialization failed: %v", err)
+	config.LoadConfig()
+
+	if config.GlobalConfig.SentryEnabled {
+		if err := initSentry(config.GlobalConfig.SentryDSN); err != nil {
+			log.Fatalf("Sentry initialization failed: %v", err)
+		}
 	}
+
 	// Flush buffered events before the program terminates.
 	// Set the timeout to the maximum duration the program can afford to wait.
 	defer sentry.Flush(2 * time.Second)
@@ -31,9 +38,9 @@ func main() {
 	}
 }
 
-func initSentry() error {
+func initSentry(sentryDSN string) error {
 	return sentry.Init(sentry.ClientOptions{
-		Dsn:              "https://0f9edecd5d163d5167781fccd8fb5400@o4508916121403392.ingest.de.sentry.io/4508916239958096",
+		Dsn:              sentryDSN,
 		EnableTracing:    true,
 		TracesSampleRate: 1.0,
 	})

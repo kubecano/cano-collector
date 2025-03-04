@@ -33,12 +33,17 @@ spec:
       {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          envFrom:
+            - secretRef:
+                name: {{ include "cano-collector.fullname" . }}-secret
+                optional: true
           {{- with .Values.volumeMounts }}
           volumeMounts:
             {{- toYaml . | nindent 12 }}
@@ -59,3 +64,15 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+
+{{ if .Values.sentry_dsn }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "cano-collector.fullname" . }}-secret
+  namespace: {{ .Release.Namespace }}
+type: Opaque
+stringData:
+  SENTRY_DSN: {{ .Values.sentry_dsn | quote }}
+{{ end }}

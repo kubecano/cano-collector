@@ -13,7 +13,7 @@ import (
 )
 
 func TestInitSentry(t *testing.T) {
-	err := initSentry()
+	err := initSentry("https://xxx@yyy.example.com/111")
 	assert.NoError(t, err)
 }
 
@@ -27,6 +27,8 @@ func TestInitSentry_Fail(t *testing.T) {
 func TestHelloWorld(t *testing.T) {
 	router := setupRouter()
 
+	gin.SetMode(gin.TestMode)
+
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/", nil)
 	router.ServeHTTP(w, req)
@@ -37,6 +39,8 @@ func TestHelloWorld(t *testing.T) {
 
 func TestPingRoute(t *testing.T) {
 	router := setupRouter()
+
+	gin.SetMode(gin.TestMode)
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/ping", nil)
