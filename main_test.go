@@ -5,6 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/getsentry/sentry-go"
 
 	"github.com/stretchr/testify/assert"
@@ -42,4 +44,13 @@ func TestPingRoute(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, "pong", w.Body.String())
+}
+
+func TestStartServer(t *testing.T) {
+	router := setupRouter()
+
+	gin.SetMode(gin.TestMode)
+
+	err := StartServer(router)
+	assert.NoError(t, err)
 }

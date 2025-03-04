@@ -26,7 +26,9 @@ func main() {
 		Timeout:         2 * time.Second,
 	}))
 
-	StartServer(r)
+	if err := StartServer(r); err != nil {
+		log.Fatalf("Failed to run server: %v", err)
+	}
 }
 
 func initSentry() error {
@@ -49,10 +51,12 @@ func setupRouter() *gin.Engine {
 	return r
 }
 
-func StartServer(r *gin.Engine) {
+func StartServer(r *gin.Engine) error {
+	var err error
+
 	if gin.Mode() != gin.TestMode {
-		if err := r.Run(":3000"); err != nil {
-			log.Fatalf("Failed to run server: %v", err)
-		}
+		err = r.Run(":3000")
 	}
+
+	return err
 }
