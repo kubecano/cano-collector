@@ -1,10 +1,11 @@
 package main
 
 import (
-	"github.com/getsentry/sentry-go"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/getsentry/sentry-go"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -15,7 +16,7 @@ func TestInitSentry(t *testing.T) {
 }
 
 func TestInitSentry_Fail(t *testing.T) {
-	sentryDsn := sentry.ClientOptions{Dsn: ""}
+	sentryDsn := sentry.ClientOptions{Dsn: "foo"}
 	err := sentry.Init(sentryDsn)
 
 	assert.Error(t, err, "Expected an error when DSN is empty")
