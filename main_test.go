@@ -21,7 +21,7 @@ func TestInitSentry_Fail(t *testing.T) {
 	sentryDsn := sentry.ClientOptions{Dsn: "foo"}
 	err := sentry.Init(sentryDsn)
 
-	assert.Error(t, err, "Expected an error when DSN is empty")
+	assert.Error(t, err, "Expected an error when DSN is invalid")
 }
 
 func TestHelloWorld(t *testing.T) {
