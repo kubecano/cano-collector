@@ -1,10 +1,11 @@
 package main
 
 import (
-	sentrygin "github.com/getsentry/sentry-go/gin"
 	"log"
 	"net/http"
 	"time"
+
+	sentrygin "github.com/getsentry/sentry-go/gin"
 
 	"github.com/kubecano/cano-collector/config"
 
