@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/getsentry/sentry-go"
@@ -29,9 +31,8 @@ func TestInitSentry_Fail(t *testing.T) {
 }
 
 func TestHelloWorld(t *testing.T) {
-	router := setupRouter()
-
 	gin.SetMode(gin.TestMode)
+	router := setupRouter()
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/", nil)
@@ -42,6 +43,7 @@ func TestHelloWorld(t *testing.T) {
 }
 
 func TestStartServer(t *testing.T) {
+	prometheus.DefaultRegisterer = prometheus.NewRegistry()
 	router := setupRouter()
 
 	srv := &http.Server{
@@ -123,4 +125,17 @@ func TestStartServer(t *testing.T) {
 			t.Fatalf("Server shutdown failed: %v", err)
 		}
 	}
+}
+
+func TestMetricsEndpoint(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	prometheus.DefaultRegisterer = prometheus.NewRegistry()
+	router := setupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/metrics", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "http_requests_total")
 }

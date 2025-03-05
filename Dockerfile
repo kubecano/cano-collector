@@ -7,6 +7,7 @@ RUN go mod download
 
 COPY main.go .
 COPY config/ ./config/
+COPY pkg/ ./pkg/
 
 RUN CGO_ENABLED=0 go build -o /go/bin/cano-collector
 
