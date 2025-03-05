@@ -68,12 +68,16 @@ func TestStartServer(t *testing.T) {
 	var serverReady bool
 	for {
 		resp, err := http.Get("http://127.0.0.1:8080/")
-		if err == nil && resp.StatusCode == http.StatusOK {
-			if err := resp.Body.Close(); err != nil {
-				t.Logf("Failed to close response body: %v", err)
+		if err == nil {
+			func() {
+				if err := resp.Body.Close(); err != nil {
+					t.Logf("Failed to close response body: %v", err)
+				}
+			}()
+			if resp.StatusCode == http.StatusOK {
+				serverReady = true
+				break
 			}
-			serverReady = true
-			break
 		}
 		if ctx.Err() != nil {
 			t.Fatal("Server did not start in time")
