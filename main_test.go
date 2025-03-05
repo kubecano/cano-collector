@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -44,6 +43,7 @@ func TestHelloWorld(t *testing.T) {
 }
 
 func TestStartServer(t *testing.T) {
+	prometheus.DefaultRegisterer = prometheus.NewRegistry()
 	router := setupRouter()
 
 	srv := &http.Server{
