@@ -1,8 +1,11 @@
 package main
 
 import (
+	"errors"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"time"
 
 	sentrygin "github.com/getsentry/sentry-go/gin"
@@ -28,9 +31,7 @@ func main() {
 
 	r := setupRouter()
 
-	if err := StartServer(r); err != nil {
-		log.Fatalf("Failed to run server: %v", err)
-	}
+	StartServer(r)
 }
 
 func initSentry(sentryDSN string) error {
@@ -80,12 +81,30 @@ func setupRouter() *gin.Engine {
 	return r
 }
 
-func StartServer(r *gin.Engine) error {
-	var err error
-
-	if gin.Mode() != gin.TestMode {
-		err = r.Run(":3000")
+func StartServer(router *gin.Engine) {
+	server := &http.Server{
+		Addr:    ":8080",
+		Handler: router,
 	}
 
-	return err
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt)
+
+	go func() {
+		<-quit
+		log.Println("receive interrupt signal")
+		if err := server.Close(); err != nil {
+			log.Fatal("Server Close:", err)
+		}
+	}()
+
+	if err := server.ListenAndServe(); err != nil {
+		if errors.Is(err, http.ErrServerClosed) {
+			log.Println("Server closed under request")
+		} else {
+			log.Fatal("Server closed unexpect")
+		}
+	}
+
+	log.Println("Server exiting")
 }

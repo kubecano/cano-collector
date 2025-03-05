@@ -18,7 +18,7 @@ LABEL license="Apache-2.0"
 LABEL org.opencontainers.image.title="cano-collector"
 LABEL org.opencontainers.image.source="https://github.com/kubecano/cano-collector"
 
-EXPOSE 3000
+EXPOSE 8080
 
 COPY --from=build /go/bin/cano-collector /
 CMD ["/cano-collector"]

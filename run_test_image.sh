@@ -2,6 +2,6 @@
 
 docker run --rm -it \
   --env-file .env \
-  -p 3000:3000 \
+  -p 8080:8080 \
   --name cano-collector \
   kubecano/cano-collector:"${1:-latest}"
