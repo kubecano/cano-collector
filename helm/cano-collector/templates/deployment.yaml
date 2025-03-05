@@ -45,6 +45,8 @@ spec:
               value: {{ .Values.logLevel | quote }}
             - name: "ENABLE_TELEMETRY"
               value: {{ .Values.enableTelemetry | quote }}
+            - name: "GIN_MODE"
+              value: {{ .Values.ginMode | quote }}
           envFrom:
             - secretRef:
                 name: {{ include "cano-collector.fullname" . }}-secret
