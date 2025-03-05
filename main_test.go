@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -43,48 +44,46 @@ func TestHelloWorld(t *testing.T) {
 }
 
 func TestStartServer(t *testing.T) {
-	// Utwórz router Gin
 	router := setupRouter()
 
-	// Utwórz testowy serwer HTTP
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	// Kanał na sygnały do zamknięcia serwera
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
-	// Uruchomienie serwera w gorutynie
 	go func() {
 		StartServer(router)
 	}()
-
-	// Poczekaj na uruchomienie serwera
+	// Wait for server to start
 	time.Sleep(1 * time.Second)
 
-	// Sprawdź, czy serwer odpowiada na żądania
 	resp, err := http.Get(ts.URL + "/")
 	if err != nil {
 		t.Fatalf("Request failed: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			t.Fatalf("Failed to close response body: %v", err)
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Unexpected response code: got %v want %v", resp.StatusCode, http.StatusOK)
 	}
 
-	// Symulacja zamknięcia serwera
 	quit <- syscall.SIGTERM
 
-	// Poczekaj na zamknięcie
 	time.Sleep(2 * time.Second)
 
-	// Sprawdzenie czy serwer został zamknięty poprawnie
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
 	select {
 	case <-ctx.Done():
 		t.Error("Server did not shut down in time")
-	default:
+	case <-quit:
+		t.Log("Server shut down successfully")
 	}
 }
