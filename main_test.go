@@ -29,9 +29,8 @@ func TestInitSentry_Fail(t *testing.T) {
 }
 
 func TestHelloWorld(t *testing.T) {
-	router := setupRouter()
-
 	gin.SetMode(gin.TestMode)
+	router := setupRouter()
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/", nil)

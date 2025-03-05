@@ -9,12 +9,13 @@ import (
 	"syscall"
 	"time"
 
-	sentrygin "github.com/getsentry/sentry-go/gin"
-
 	"github.com/kubecano/cano-collector/config"
+	"github.com/kubecano/cano-collector/pkg/metrics"
 
 	"github.com/getsentry/sentry-go"
+	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -26,8 +27,6 @@ func main() {
 		}
 	}
 
-	// Flush buffered events before the program terminates.
-	// Set the timeout to the maximum duration the program can afford to wait.
 	defer sentry.Flush(2 * time.Second)
 
 	r := setupRouter()
@@ -60,9 +59,15 @@ func setupRouter() *gin.Engine {
 	})
 
 	// Set up routes
+	metrics.RegisterMetrics()
+	r.Use(metrics.PrometheusMiddleware())
+
 	r.GET("/", func(ctx *gin.Context) {
 		ctx.String(http.StatusOK, "Hello world!")
 	})
+
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+
 	return r
 }
 
