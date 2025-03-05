@@ -3,6 +3,7 @@
   "bump-minor-pre-major": true,
   "bump-patch-for-minor-pre-major": true,
   "group-pull-request-title-pattern": "chore: release ${version}",
+  "include-component-in-release-notes": false,
   "prerelease": true,
   "prerelease-type": "alpha",
   "packages": {
@@ -11,6 +12,13 @@
       "package-name": "cano-collector",
       "exclude-paths": [
         "helm"
+      ],
+      "extra-files": [
+        {
+          "type": "yaml",
+          "path": "helm/cano-collector/Chart.yaml",
+          "jsonpath": "$.appVersion"
+        }
       ]
     },
     "helm/cano-collector": {

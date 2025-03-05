@@ -53,7 +53,8 @@ func setupRouter() *gin.Engine {
 	}))
 	r.Use(func(ctx *gin.Context) {
 		if hub := sentrygin.GetHubFromContext(ctx); hub != nil {
-			hub.Scope().SetTag("someRandomTag", "maybeYouNeedIt")
+			hub.Scope().SetTag("endpoint", ctx.FullPath())
+			hub.Scope().SetTag("version", config.GlobalConfig.AppVersion)
 		}
 		ctx.Next()
 	})
