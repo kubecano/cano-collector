@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -16,7 +17,12 @@ var httpRequestsTotal = prometheus.NewCounterVec(
 )
 
 func RegisterMetrics() {
-	prometheus.MustRegister(httpRequestsTotal)
+	if err := prometheus.Register(httpRequestsTotal); err != nil {
+		var are prometheus.AlreadyRegisteredError
+		if errors.As(err, &are) {
+			httpRequestsTotal = are.ExistingCollector.(*prometheus.CounterVec)
+		}
+	}
 }
 
 func PrometheusMiddleware() gin.HandlerFunc {
