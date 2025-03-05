@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 
-	"github.com/prometheus/client_golang/prometheus"
-
 	"net/http"
 	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/gin-gonic/gin"
 
