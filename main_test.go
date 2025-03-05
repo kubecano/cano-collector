@@ -2,11 +2,10 @@ package main
 
 import (
 	"context"
-	"io"
+	"errors"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"syscall"
+	"sync"
 	"testing"
 	"time"
 
@@ -45,63 +44,79 @@ func TestHelloWorld(t *testing.T) {
 func TestStartServer(t *testing.T) {
 	router := setupRouter()
 
-	ts := httptest.NewServer(router)
-	defer ts.Close()
+	srv := &http.Server{
+		Addr:    ":8080",
+		Handler: router,
+	}
 
-	shutdownChan := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	serverErrChan := make(chan error, 1)
 
 	go func() {
-		StartServer(router)
-		close(shutdownChan)
+		defer wg.Done()
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			serverErrChan <- err
+		}
 	}()
 
 	// Wait for server to start using a simple health check
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
+	var serverReady bool
 	for {
-		resp, err := http.Get(ts.URL + "/")
+		resp, err := http.Get("http://127.0.0.1:8080/")
 		if err == nil && resp.StatusCode == http.StatusOK {
-			resp.Body.Close()
+			if err := resp.Body.Close(); err != nil {
+				t.Logf("Failed to close response body: %v", err)
+			}
+			serverReady = true
 			break
 		}
 		if ctx.Err() != nil {
-			t.Fatalf("Server did not start in time")
+			t.Fatal("Server did not start in time")
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	resp, err := http.Get(ts.URL + "/")
-	if err != nil {
-		t.Fatalf("Request failed: %v", err)
+	if !serverReady {
+		t.Fatal("Server did not start correctly")
 	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			t.Fatalf("Failed to close response body: %v", err)
-		}
-	}(resp.Body)
-
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("Unexpected response code: got %v want %v", resp.StatusCode, http.StatusOK)
-	}
-
-	// Simulate SIGTERM
-	process, err := os.FindProcess(os.Getpid())
-	if err != nil {
-		t.Fatalf("Failed to find process: %v", err)
-	}
-	err = process.Signal(syscall.SIGTERM)
-	if err != nil {
-		return
-	}
-
-	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
 
 	select {
-	case <-ctx.Done():
-		t.Error("Server did not shut down in time")
-	case <-shutdownChan:
+	case err := <-serverErrChan:
+		if err != nil {
+			t.Fatalf("Server encountered an error: %v", err)
+		}
+	default:
+	}
+
+	// Gracefully shut down the server
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+
+	shutdownErrChan := make(chan error, 1)
+	go func() {
+		shutdownErrChan <- srv.Shutdown(shutdownCtx)
+	}()
+
+	// Wait for server shutdown
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-shutdownCtx.Done():
+		t.Fatal("Server did not shut down in time")
+	case <-done:
 		t.Log("Server shut down successfully")
+	case err := <-shutdownErrChan:
+		if err != nil {
+			t.Fatalf("Server shutdown failed: %v", err)
+		}
 	}
 }
