@@ -3,6 +3,9 @@ package main
 import (
 	"context"
 	"errors"
+
+	"github.com/prometheus/client_golang/prometheus"
+
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -122,4 +125,17 @@ func TestStartServer(t *testing.T) {
 			t.Fatalf("Server shutdown failed: %v", err)
 		}
 	}
+}
+
+func TestMetricsEndpoint(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	prometheus.DefaultRegisterer = prometheus.NewRegistry()
+	router := setupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/metrics", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "http_requests_total")
 }
