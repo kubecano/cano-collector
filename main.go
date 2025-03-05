@@ -68,7 +68,7 @@ func setupRouter() *gin.Engine {
 func StartServer(router *gin.Engine) {
 	srv := &http.Server{
 		Addr:    ":8080",
-		Handler: router.Handler(),
+		Handler: router,
 	}
 
 	go func() {
