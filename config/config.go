@@ -1,7 +1,6 @@
 package config
 
 import (
-	"log"
 	"os"
 	"strconv"
 )
@@ -24,8 +23,6 @@ func LoadConfig() {
 		SentryDSN:     getEnvString("SENTRY_DSN", ""),
 		SentryEnabled: getEnvBool("ENABLE_TELEMETRY", true),
 	}
-
-	log.Printf("Configuration loaded: %+v", GlobalConfig)
 }
 
 func getEnvString(key, defaultValue string) string {
