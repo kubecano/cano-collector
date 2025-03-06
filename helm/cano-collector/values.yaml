@@ -52,17 +52,43 @@ securityContext: { }
 service:
   annotations: { }
 
-resources: { }
 
-# This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+resources:
+  ## Example:
+  ## limits:
+  ##    cpu: 200m
+  ##    memory: 256Mi
+  limits: { }
+  ## Examples:
+  ## requests:
+  ##    cpu: 100m
+  ##    memory: 10Mi
+  requests: { }
+
+startupProbe:
+  enabled: true
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 1
+  failureThreshold: 3
+  successThreshold: 1
 livenessProbe:
-  httpGet:
-    path: /
-    port: http
+  enabled: true
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 1
+  failureThreshold: 3
+  successThreshold: 1
 readinessProbe:
-  httpGet:
-    path: /
-    port: http
+  enabled: true
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 1
+  failureThreshold: 3
+  successThreshold: 1
+customStartupProbe: { }
+customLivenessProbe: { }
+customReadinessProbe: { }
 
 volumes: [ ]
 volumeMounts: [ ]
