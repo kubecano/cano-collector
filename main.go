@@ -7,6 +7,8 @@ import (
 
 	"github.com/kubecano/cano-collector/pkg/logger"
 
+	"github.com/kubecano/cano-collector/pkg/health"
+
 	"github.com/getsentry/sentry-go"
 
 	"github.com/kubecano/cano-collector/config"
@@ -26,7 +28,9 @@ func main() {
 
 	defer sentry.Flush(2 * time.Second)
 
-	r := router.SetupRouter()
+	h := health.RegisterHealthChecks()
+
+	r := router.SetupRouter(h)
 
 	router.StartServer(logg, r)
 }

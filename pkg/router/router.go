@@ -9,6 +9,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hellofresh/health-go/v5"
+
 	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -18,7 +20,7 @@ import (
 	"github.com/kubecano/cano-collector/pkg/metrics"
 )
 
-func SetupRouter() *gin.Engine {
+func SetupRouter(health *health.Health) *gin.Engine {
 	r := gin.Default()
 
 	r.Use(sentrygin.New(sentrygin.Options{
@@ -43,6 +45,12 @@ func SetupRouter() *gin.Engine {
 	})
 
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+
+	r.GET("/livez", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+	r.GET("/readyz", gin.WrapH(health.Handler()))
+	r.GET("/healthz", gin.WrapH(health.Handler()))
 
 	return r
 }
