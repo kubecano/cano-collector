@@ -2,12 +2,16 @@ package main
 
 import (
 	"context"
-	"log"
+	"errors"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"go.uber.org/zap"
+
+	"github.com/kubecano/cano-collector/pkg/logger"
 
 	"github.com/kubecano/cano-collector/config"
 	"github.com/kubecano/cano-collector/pkg/metrics"
@@ -21,9 +25,12 @@ import (
 func main() {
 	config.LoadConfig()
 
+	logger.InitLogger(config.GlobalConfig.LogLevel)
+	logg := logger.GetLogger()
+
 	if config.GlobalConfig.SentryEnabled {
 		if err := initSentry(config.GlobalConfig.SentryDSN); err != nil {
-			log.Fatalf("Sentry initialization failed: %v", err)
+			logg.Fatalf("Sentry initialization failed: %v", err)
 		}
 	}
 
@@ -31,7 +38,7 @@ func main() {
 
 	r := setupRouter()
 
-	StartServer(r)
+	StartServer(logg, r)
 }
 
 func initSentry(sentryDSN string) error {
@@ -71,7 +78,7 @@ func setupRouter() *gin.Engine {
 	return r
 }
 
-func StartServer(router *gin.Engine) {
+func StartServer(logg *zap.SugaredLogger, router *gin.Engine) {
 	srv := &http.Server{
 		Addr:    ":8080",
 		Handler: router,
@@ -79,8 +86,8 @@ func StartServer(router *gin.Engine) {
 
 	go func() {
 		// service connections
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen: %s\n", err)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logg.Fatalf("listen: %s\n", err)
 		}
 	}()
 
@@ -92,15 +99,15 @@ func StartServer(router *gin.Engine) {
 	// kill -9 is syscall.SIGKILL but can't be caught, so don't need add it
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	log.Println("Shutdown Server ...")
+	logg.Info("Shutdown Server ...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatal("Server Shutdown:", err)
+		logg.Fatal("Server Shutdown:", err)
 	}
 	// catching ctx.Done(). timeout of 5 seconds.
 	<-ctx.Done()
-	log.Println("timeout of 5 seconds.")
-	log.Println("Server exiting")
+	logg.Info("timeout of 5 seconds.")
+	logg.Info("Server exiting")
 }
