@@ -2,6 +2,7 @@ package health
 
 import (
 	"github.com/hellofresh/health-go/v5"
+
 	"github.com/kubecano/cano-collector/config"
 	"github.com/kubecano/cano-collector/pkg/logger"
 )

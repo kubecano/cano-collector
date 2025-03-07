@@ -2,8 +2,9 @@ package metrics
 
 import (
 	"errors"
-	"github.com/kubecano/cano-collector/pkg/logger"
 	"net/http"
+
+	"github.com/kubecano/cano-collector/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"

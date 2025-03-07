@@ -29,7 +29,7 @@ func main() {
 
 	h := health.RegisterHealthChecks()
 
-	r := router.SetupRouter(h)
+	r := router.SetupRouter(logger.GetLogger(), h)
 
 	router.StartServer(r)
 }
