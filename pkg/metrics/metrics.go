@@ -19,12 +19,17 @@ var httpRequestsTotal = prometheus.NewCounterVec(
 )
 
 func RegisterMetrics() {
+	logger.Debug("Registering Prometheus metrics")
 	if err := prometheus.Register(httpRequestsTotal); err != nil {
 		var are prometheus.AlreadyRegisteredError
 		if errors.As(err, &are) {
-			logger.Errorf("Prometheus collector already registered: %v", are)
+			logger.Warnf("Prometheus collector already registered: %v", are)
 			httpRequestsTotal = are.ExistingCollector.(*prometheus.CounterVec)
+		} else {
+			logger.Errorf("Failed to register Prometheus collector: %v", err)
 		}
+	} else {
+		logger.Debug("Prometheus metrics registered successfully")
 	}
 }
 
@@ -33,5 +38,6 @@ func PrometheusMiddleware() gin.HandlerFunc {
 		c.Next()
 		status := c.Writer.Status()
 		httpRequestsTotal.WithLabelValues(c.Request.Method, c.FullPath(), http.StatusText(status)).Inc()
+		logger.Debugf("Incremented Prometheus counter for %s %s with status %d", c.Request.Method, c.FullPath(), status)
 	}
 }

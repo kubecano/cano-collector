@@ -9,8 +9,6 @@ import (
 	"syscall"
 	"time"
 
-	"go.uber.org/zap"
-
 	"github.com/kubecano/cano-collector/pkg/logger"
 
 	"github.com/hellofresh/health-go/v5"
@@ -24,8 +22,10 @@ import (
 	"github.com/kubecano/cano-collector/pkg/metrics"
 )
 
-func SetupRouter(logger *zap.Logger, health *health.Health) *gin.Engine {
+func SetupRouter(health *health.Health) *gin.Engine {
 	r := gin.Default()
+
+	logger.Debug("Setting up router")
 
 	r.Use(sentrygin.New(sentrygin.Options{
 		Repanic:         true,
@@ -44,11 +44,11 @@ func SetupRouter(logger *zap.Logger, health *health.Health) *gin.Engine {
 	//   - Logs all requests, like a combined access and error log.
 	//   - Logs to stdout.
 	//   - RFC3339 with UTC time format.
-	r.Use(ginzap.Ginzap(logger, time.RFC3339, true))
+	r.Use(ginzap.Ginzap(logger.GetLogger(), time.RFC3339, true))
 
 	// Logs all panic to error log
 	//   - stack means whether output the stack info.
-	r.Use(ginzap.RecoveryWithZap(logger, true))
+	r.Use(ginzap.RecoveryWithZap(logger.GetLogger(), true))
 
 	// Set up routes
 	metrics.RegisterMetrics()
@@ -66,6 +66,7 @@ func SetupRouter(logger *zap.Logger, health *health.Health) *gin.Engine {
 	r.GET("/readyz", gin.WrapH(health.Handler()))
 	r.GET("/healthz", gin.WrapH(health.Handler()))
 
+	logger.Debug("Router setup complete")
 	return r
 }
 

@@ -5,6 +5,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"go.uber.org/zap"
+
+	"github.com/kubecano/cano-collector/pkg/logger"
+
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -13,6 +17,8 @@ import (
 )
 
 func TestRegisterMetrics(t *testing.T) {
+	l, _ := zap.NewDevelopment()
+	logger.SetLogger(l)
 	assert.NotPanics(t, func() {
 		RegisterMetrics()
 	})
@@ -20,6 +26,8 @@ func TestRegisterMetrics(t *testing.T) {
 
 func TestPrometheusMiddleware(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	l, _ := zap.NewDevelopment()
+	logger.SetLogger(l)
 	router := gin.New()
 
 	// Reset the default Prometheus registry

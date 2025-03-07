@@ -8,6 +8,7 @@ import (
 type Config struct {
 	AppName       string
 	AppVersion    string
+	AppEnv        string
 	LogLevel      string
 	SentryDSN     string
 	SentryEnabled bool
@@ -19,6 +20,7 @@ func LoadConfig() {
 	GlobalConfig = Config{
 		AppName:       getEnvString("APP_NAME", "cano-collector"),
 		AppVersion:    getEnvString("APP_VERSION", "dev"),
+		AppEnv:        getEnvString("APP_ENV", "production"),
 		LogLevel:      getEnvString("LOG_LEVEL", "info"),
 		SentryDSN:     getEnvString("SENTRY_DSN", ""),
 		SentryEnabled: getEnvBool("ENABLE_TELEMETRY", true),

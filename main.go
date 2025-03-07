@@ -18,11 +18,15 @@ func main() {
 	config.LoadConfig()
 
 	logger.InitLogger(config.GlobalConfig.LogLevel)
+	logger.Debug("Logger initialized")
 
 	if config.GlobalConfig.SentryEnabled {
 		if err := initSentry(config.GlobalConfig.SentryDSN); err != nil {
 			logger.Fatalf("Sentry initialization failed: %v", err)
 		}
+		logger.Debug("Sentry initialized")
+	} else {
+		logger.Debug("Sentry is disabled")
 	}
 
 	defer sentry.Flush(2 * time.Second)
@@ -31,8 +35,10 @@ func main() {
 	if err != nil {
 		logger.PanicF("Failed to register health checks: %v", err)
 	}
+	logger.Debug("Health checks registered")
 
-	r := router.SetupRouter(logger.GetLogger(), h)
+	r := router.SetupRouter(h)
+	logger.Debug("Router setup complete")
 
 	router.StartServer(r)
 }

@@ -4,6 +4,10 @@ import (
 	"context"
 	"testing"
 
+	"go.uber.org/zap"
+
+	"github.com/kubecano/cano-collector/pkg/logger"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/hellofresh/health-go/v5"
@@ -14,6 +18,8 @@ import (
 )
 
 func TestRegisterHealthChecks(t *testing.T) {
+	l, _ := zap.NewDevelopment()
+	logger.SetLogger(l)
 	config.GlobalConfig = config.Config{
 		AppName:    "cano-collector",
 		AppVersion: "1.0.0",

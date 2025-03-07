@@ -8,6 +8,8 @@ import (
 )
 
 func RegisterHealthChecks() (*health.Health, error) {
+	logger.Debug("Starting health check registration")
+
 	h, err := health.New(health.WithComponent(
 		health.Component{
 			Name:    config.GlobalConfig.AppName,
@@ -19,5 +21,6 @@ func RegisterHealthChecks() (*health.Health, error) {
 		return nil, err
 	}
 
+	logger.Info("Health check registration completed successfully")
 	return h, nil
 }
