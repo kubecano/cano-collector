@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/hellofresh/health-go/v5"
 
 	"github.com/kubecano/cano-collector/config"
@@ -17,8 +19,8 @@ func TestRegisterHealthChecks(t *testing.T) {
 		AppVersion: "1.0.0",
 	}
 
-	h := RegisterHealthChecks()
-
+	h, err := RegisterHealthChecks()
+	require.NoError(t, err, "RegisterHealthChecks should not return an error")
 	assert.NotNil(t, h, "Healthcheck instance should not be nil")
 
 	ctx := context.Background()

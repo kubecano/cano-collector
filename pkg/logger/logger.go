@@ -65,3 +65,7 @@ func Fatalf(template string, args ...interface{}) {
 func Fatal(args ...interface{}) {
 	logger.Sugar().Fatal(args...)
 }
+
+func PanicF(template string, args ...interface{}) {
+	logger.Sugar().Panicf(template, args...)
+}

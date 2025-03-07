@@ -27,7 +27,10 @@ func main() {
 
 	defer sentry.Flush(2 * time.Second)
 
-	h := health.RegisterHealthChecks()
+	h, err := health.RegisterHealthChecks()
+	if err != nil {
+		logger.PanicF("Failed to register health checks: %v", err)
+	}
 
 	r := router.SetupRouter(logger.GetLogger(), h)
 

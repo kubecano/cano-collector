@@ -7,7 +7,7 @@ import (
 	"github.com/kubecano/cano-collector/pkg/logger"
 )
 
-func RegisterHealthChecks() *health.Health {
+func RegisterHealthChecks() (*health.Health, error) {
 	h, err := health.New(health.WithComponent(
 		health.Component{
 			Name:    config.GlobalConfig.AppName,
@@ -16,7 +16,8 @@ func RegisterHealthChecks() *health.Health {
 	)
 	if err != nil {
 		logger.Errorf("Failed to create health check: %v", err)
+		return nil, err
 	}
 
-	return h
+	return h, nil
 }
