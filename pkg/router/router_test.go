@@ -16,7 +16,7 @@ import (
 
 func TestHelloWorld(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	router := SetupRouter(nil)
+	router := SetupRouter(nil, nil)
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/", nil)
@@ -28,7 +28,7 @@ func TestHelloWorld(t *testing.T) {
 
 func TestStartServer(t *testing.T) {
 	prometheus.DefaultRegisterer = prometheus.NewRegistry()
-	router := SetupRouter(nil)
+	router := SetupRouter(nil, nil)
 
 	srv := &http.Server{
 		Addr:    ":8080",
@@ -114,7 +114,7 @@ func TestStartServer(t *testing.T) {
 func TestMetricsEndpoint(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	prometheus.DefaultRegisterer = prometheus.NewRegistry()
-	router := SetupRouter(nil)
+	router := SetupRouter(nil, nil)
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/metrics", nil)

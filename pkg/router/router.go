@@ -3,6 +3,7 @@ package router
 import (
 	"context"
 	"errors"
+	"github.com/kubecano/cano-collector/pkg/logger"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,9 +13,9 @@ import (
 	"github.com/hellofresh/health-go/v5"
 
 	sentrygin "github.com/getsentry/sentry-go/gin"
+	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"go.uber.org/zap"
 
 	"github.com/kubecano/cano-collector/config"
 	"github.com/kubecano/cano-collector/pkg/metrics"
@@ -36,6 +37,16 @@ func SetupRouter(health *health.Health) *gin.Engine {
 		ctx.Next()
 	})
 
+	// Add a ginzap middleware, which:
+	//   - Logs all requests, like a combined access and error log.
+	//   - Logs to stdout.
+	//   - RFC3339 with UTC time format.
+	r.Use(ginzap.Ginzap(logger.GetLogger(), time.RFC3339, true))
+
+	// Logs all panic to error log
+	//   - stack means whether output the stack info.
+	r.Use(ginzap.RecoveryWithZap(logger.GetLogger(), true))
+
 	// Set up routes
 	metrics.RegisterMetrics()
 	r.Use(metrics.PrometheusMiddleware())
@@ -55,7 +66,8 @@ func SetupRouter(health *health.Health) *gin.Engine {
 	return r
 }
 
-func StartServer(logg *zap.SugaredLogger, router *gin.Engine) {
+func StartServer(router *gin.Engine) {
+	logger.Info("Cano-collector server starting...")
 	srv := &http.Server{
 		Addr:    ":8080",
 		Handler: router,
@@ -64,7 +76,7 @@ func StartServer(logg *zap.SugaredLogger, router *gin.Engine) {
 	go func() {
 		// service connections
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			logg.Fatalf("listen: %s\n", err)
+			logger.Fatalf("listen: %s\n", err)
 		}
 	}()
 
@@ -76,15 +88,14 @@ func StartServer(logg *zap.SugaredLogger, router *gin.Engine) {
 	// kill -9 is syscall.SIGKILL but can't be caught, so don't need add it
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	logg.Info("Shutdown Server ...")
+	logger.Info("Cano-collector shutdown server ...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
-		logg.Fatal("Server Shutdown:", err)
+		logger.Fatal("Cano-collector server shutdown:", err)
 	}
 	// catching ctx.Done(). timeout of 5 seconds.
 	<-ctx.Done()
-	logg.Info("timeout of 5 seconds.")
-	logg.Info("Server exiting")
+	logger.Info("Cano-collector server exiting")
 }

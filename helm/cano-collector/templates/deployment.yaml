@@ -41,6 +41,8 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           {{- if .Values.startupProbe.enabled }}
+          ports:
+            - containerPort: 8080
           startupProbe:
             httpGet:
               path: /healthz

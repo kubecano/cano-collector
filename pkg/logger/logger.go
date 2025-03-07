@@ -5,7 +5,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-var Logger *zap.SugaredLogger
+var logger *zap.Logger
 
 func InitLogger(level string) {
 	var logLevel zapcore.Level
@@ -39,13 +39,29 @@ func InitLogger(level string) {
 		},
 	}
 
-	l, err := config.Build()
+	var err error
+	logger, err = config.Build()
 	if err != nil {
 		panic("failed to initialize logger: " + err.Error())
 	}
-	Logger = l.Sugar()
 }
 
-func GetLogger() *zap.SugaredLogger {
-	return Logger
+func GetLogger() *zap.Logger {
+	return logger
+}
+
+func Info(args ...interface{}) {
+	logger.Sugar().Info(args...)
+}
+
+func Errorf(template string, args ...interface{}) {
+	logger.Sugar().Errorf(template, args...)
+}
+
+func Fatalf(template string, args ...interface{}) {
+	logger.Sugar().Fatalf(template, args...)
+}
+
+func Fatal(args ...interface{}) {
+	logger.Sugar().Fatal(args...)
 }

@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"errors"
+	"github.com/kubecano/cano-collector/pkg/logger"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -20,6 +21,7 @@ func RegisterMetrics() {
 	if err := prometheus.Register(httpRequestsTotal); err != nil {
 		var are prometheus.AlreadyRegisteredError
 		if errors.As(err, &are) {
+			logger.Errorf("Prometheus collector already registered: %v", are)
 			httpRequestsTotal = are.ExistingCollector.(*prometheus.CounterVec)
 		}
 	}

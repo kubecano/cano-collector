@@ -18,11 +18,10 @@ func main() {
 	config.LoadConfig()
 
 	logger.InitLogger(config.GlobalConfig.LogLevel)
-	logg := logger.GetLogger()
 
 	if config.GlobalConfig.SentryEnabled {
 		if err := initSentry(config.GlobalConfig.SentryDSN); err != nil {
-			logg.Fatalf("Sentry initialization failed: %v", err)
+			logger.Fatalf("Sentry initialization failed: %v", err)
 		}
 	}
 
@@ -32,7 +31,7 @@ func main() {
 
 	r := router.SetupRouter(h)
 
-	router.StartServer(logg, r)
+	router.StartServer(r)
 }
 
 func initSentry(sentryDSN string) error {

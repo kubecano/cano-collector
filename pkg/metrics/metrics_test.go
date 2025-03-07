@@ -14,7 +14,7 @@ import (
 
 func TestRegisterMetrics(t *testing.T) {
 	assert.NotPanics(t, func() {
-		RegisterMetrics()
+		RegisterMetrics(nil)
 	})
 }
 
@@ -24,7 +24,7 @@ func TestPrometheusMiddleware(t *testing.T) {
 
 	// Reset the default Prometheus registry
 	prometheus.DefaultRegisterer = prometheus.NewRegistry()
-	RegisterMetrics()
+	RegisterMetrics(nil)
 
 	router.Use(PrometheusMiddleware())
 
