@@ -12,11 +12,11 @@ import (
 func TestInitLogger(t *testing.T) {
 	InitLogger("debug")
 
-	if Logger == nil {
+	if logger == nil {
 		t.Fatal("Logger should not be nil after initialization")
 	}
 
-	logLevel := Logger.Desugar().Core().Enabled(zap.DebugLevel)
+	logLevel := logger.Core().Enabled(zap.DebugLevel)
 	if !logLevel {
 		t.Error("Expected logger to be initialized with debug level")
 	}
@@ -77,7 +77,7 @@ func TestLogLevels(t *testing.T) {
 
 	for _, tt := range tests {
 		InitLogger(tt.level)
-		logger := GetLogger().Desugar()
+		logger := GetLogger()
 
 		if !logger.Core().Enabled(tt.expectedMin) {
 			t.Errorf("Logger with level %s should allow %v level", tt.level, tt.expectedMin)
