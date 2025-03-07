@@ -20,7 +20,7 @@ func LoadConfig() {
 	GlobalConfig = Config{
 		AppName:       getEnvString("APP_NAME", "cano-collector"),
 		AppVersion:    getEnvString("APP_VERSION", "dev"),
-		AppEnv:        getEnvString("APP_ENV", "development"),
+		AppEnv:        getEnvString("APP_ENV", "production"),
 		LogLevel:      getEnvString("LOG_LEVEL", "info"),
 		SentryDSN:     getEnvString("SENTRY_DSN", ""),
 		SentryEnabled: getEnvBool("ENABLE_TELEMETRY", true),

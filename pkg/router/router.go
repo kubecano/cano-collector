@@ -27,6 +27,8 @@ import (
 func SetupRouter(logger *zap.Logger, health *health.Health) *gin.Engine {
 	r := gin.Default()
 
+	logger.Debug("Setting up router")
+
 	r.Use(sentrygin.New(sentrygin.Options{
 		Repanic:         true,
 		WaitForDelivery: false,
@@ -66,6 +68,7 @@ func SetupRouter(logger *zap.Logger, health *health.Health) *gin.Engine {
 	r.GET("/readyz", gin.WrapH(health.Handler()))
 	r.GET("/healthz", gin.WrapH(health.Handler()))
 
+	logger.Debug("Router setup complete")
 	return r
 }
 
