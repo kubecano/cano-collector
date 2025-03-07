@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"github.com/kubecano/cano-collector/config"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -23,8 +24,9 @@ func InitLogger(level string) {
 		logLevel = zap.InfoLevel
 	}
 
-	config := zap.Config{
+	zapConfig := zap.Config{
 		Encoding:         "json",
+		Development:      config.GlobalConfig.AppEnv != "production",
 		Level:            zap.NewAtomicLevelAt(logLevel),
 		OutputPaths:      []string{"stdout"},
 		ErrorOutputPaths: []string{"stderr"},
@@ -40,7 +42,7 @@ func InitLogger(level string) {
 	}
 
 	var err error
-	logger, err = config.Build()
+	logger, err = zapConfig.Build()
 	if err != nil {
 		panic("failed to initialize logger: " + err.Error())
 	}
