@@ -11,6 +11,8 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/kubecano/cano-collector/pkg/logger"
+
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
@@ -19,7 +21,8 @@ import (
 func TestHelloWorld(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	l, _ := zap.NewDevelopment()
-	router := SetupRouter(l, nil)
+	logger.SetLogger(l)
+	router := SetupRouter(nil)
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/", nil)
@@ -32,7 +35,8 @@ func TestHelloWorld(t *testing.T) {
 func TestStartServer(t *testing.T) {
 	prometheus.DefaultRegisterer = prometheus.NewRegistry()
 	l, _ := zap.NewDevelopment()
-	router := SetupRouter(l, nil)
+	logger.SetLogger(l)
+	router := SetupRouter(nil)
 
 	srv := &http.Server{
 		Addr:    ":8080",
@@ -119,7 +123,8 @@ func TestMetricsEndpoint(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	prometheus.DefaultRegisterer = prometheus.NewRegistry()
 	l, _ := zap.NewDevelopment()
-	router := SetupRouter(l, nil)
+	logger.SetLogger(l)
+	router := SetupRouter(nil)
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/metrics", nil)

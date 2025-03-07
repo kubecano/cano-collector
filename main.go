@@ -37,7 +37,7 @@ func main() {
 	}
 	logger.Debug("Health checks registered")
 
-	r := router.SetupRouter(logger.GetLogger(), h)
+	r := router.SetupRouter(h)
 	logger.Debug("Router setup complete")
 
 	router.StartServer(r)
