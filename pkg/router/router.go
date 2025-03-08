@@ -3,6 +3,8 @@ package router
 import (
 	"context"
 	"errors"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
+	"go.opentelemetry.io/otel"
 	"net/http"
 	"os"
 	"os/signal"
@@ -32,6 +34,7 @@ func SetupRouter(health *health.Health) *gin.Engine {
 		WaitForDelivery: false,
 		Timeout:         2 * time.Second,
 	}))
+
 	r.Use(func(ctx *gin.Context) {
 		if hub := sentrygin.GetHubFromContext(ctx); hub != nil {
 			hub.Scope().SetTag("endpoint", ctx.FullPath())
@@ -39,6 +42,8 @@ func SetupRouter(health *health.Health) *gin.Engine {
 		}
 		ctx.Next()
 	})
+
+	r.Use(otelgin.Middleware(config.GlobalConfig.AppName))
 
 	// Add a ginzap middleware, which:
 	//   - Logs all requests, like a combined access and error log.
@@ -54,14 +59,17 @@ func SetupRouter(health *health.Health) *gin.Engine {
 	metrics.RegisterMetrics()
 	r.Use(metrics.PrometheusMiddleware())
 
-	r.GET("/", func(ctx *gin.Context) {
-		ctx.String(http.StatusOK, "Hello world!")
+	r.GET("/", func(c *gin.Context) {
+		tr := otel.Tracer(config.GlobalConfig.AppName)
+		_, span := tr.Start(c.Request.Context(), "root-handler")
+		defer span.End()
+		c.String(http.StatusOK, "Hello world!")
 	})
 
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
-	r.GET("/livez", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	r.GET("/livez", func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 	r.GET("/readyz", gin.WrapH(health.Handler()))
 	r.GET("/healthz", gin.WrapH(health.Handler()))

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"time"
 
 	"github.com/kubecano/cano-collector/pkg/router"
@@ -8,6 +9,8 @@ import (
 	"github.com/kubecano/cano-collector/pkg/logger"
 
 	"github.com/kubecano/cano-collector/pkg/health"
+
+	"github.com/kubecano/cano-collector/pkg/tracer"
 
 	"github.com/getsentry/sentry-go"
 
@@ -36,6 +39,13 @@ func main() {
 		logger.PanicF("Failed to register health checks: %v", err)
 	}
 	logger.Debug("Health checks registered")
+
+	ctx := context.Background()
+	tp, err := tracer.InitTracer(ctx)
+	if err != nil {
+		logger.Fatalf("Failed to initialize tracing: %v", err)
+	}
+	defer func() { _ = tp.Shutdown(ctx) }()
 
 	r := router.SetupRouter(h)
 	logger.Debug("Router setup complete")

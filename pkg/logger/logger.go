@@ -97,6 +97,11 @@ func Errorf(template string, args ...interface{}) {
 	GetLogger().Sugar().Errorf(template, args...)
 }
 
+// Error logs a message at ErrorLevel. The message includes any fields passed at the log site.
+func Error(args ...interface{}) {
+	GetLogger().Sugar().Error(args...)
+}
+
 // Fatalf logs a message at FatalLevel and calls os.Exit. The message includes any fields passed at the log site.
 func Fatalf(template string, args ...interface{}) {
 	GetLogger().Sugar().Fatalf(template, args...)
