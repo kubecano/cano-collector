@@ -1,7 +1,10 @@
 package logger
 
 import (
+	"context"
 	"sync"
+
+	"go.opentelemetry.io/otel/trace"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -54,6 +57,21 @@ func InitLogger(level string) {
 			panic("failed to initialize logger: " + err.Error())
 		}
 	})
+}
+
+// WithContext
+func _(ctx context.Context) *zap.Logger {
+	span := trace.SpanFromContext(ctx)
+	spanCtx := span.SpanContext()
+
+	if spanCtx.HasTraceID() {
+		return logger.With(
+			zap.String("trace_id", spanCtx.TraceID().String()),
+			zap.String("span_id", spanCtx.SpanID().String()),
+		)
+	}
+
+	return logger
 }
 
 func SetLogger(customLogger *zap.Logger) {

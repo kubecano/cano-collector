@@ -3,13 +3,19 @@ package router
 import (
 	"context"
 	"errors"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
-	"go.opentelemetry.io/otel"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+
+	"github.com/kubecano/cano-collector/pkg/tracer"
+
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
+	"go.opentelemetry.io/otel"
 
 	"github.com/kubecano/cano-collector/pkg/logger"
 
@@ -45,11 +51,24 @@ func SetupRouter(health *health.Health) *gin.Engine {
 
 	r.Use(otelgin.Middleware(config.GlobalConfig.AppName))
 
-	// Add a ginzap middleware, which:
-	//   - Logs all requests, like a combined access and error log.
-	//   - Logs to stdout.
-	//   - RFC3339 with UTC time format.
-	r.Use(ginzap.Ginzap(logger.GetLogger(), time.RFC3339, true))
+	r.Use(tracer.TraceLoggerMiddleware())
+
+	r.Use(ginzap.GinzapWithConfig(logger.GetLogger(), &ginzap.Config{
+		TimeFormat: time.RFC3339,
+		UTC:        true,
+		Context: func(c *gin.Context) []zapcore.Field {
+			var fields []zapcore.Field
+
+			if traceID, exists := c.Get("trace_id"); exists {
+				fields = append(fields, zap.String("trace_id", traceID.(string)))
+			}
+			if spanID, exists := c.Get("span_id"); exists {
+				fields = append(fields, zap.String("span_id", spanID.(string)))
+			}
+
+			return fields
+		},
+	}))
 
 	// Logs all panic to error log
 	//   - stack means whether output the stack info.
@@ -63,6 +82,7 @@ func SetupRouter(health *health.Health) *gin.Engine {
 		tr := otel.Tracer(config.GlobalConfig.AppName)
 		_, span := tr.Start(c.Request.Context(), "root-handler")
 		defer span.End()
+
 		c.String(http.StatusOK, "Hello world!")
 	})
 

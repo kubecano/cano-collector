@@ -70,6 +70,10 @@ spec:
               value: {{ .Values.appEnv | quote }}
             - name: "LOG_LEVEL"
               value: {{ .Values.logLevel | quote }}
+            - name: "TRACING_ENABLED"
+              value: {{ .Values.tracing.enabled | quote }}
+            - name: "TRACING_ENDPOINT"
+              value: {{ .Values.tracing.endpoint | quote }}
             - name: "ENABLE_TELEMETRY"
               value: {{ .Values.enableTelemetry | quote }}
             - name: "GIN_MODE"

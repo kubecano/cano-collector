@@ -17,6 +17,9 @@ sentry_dsn: https://4f1a66f025c60830fec303a094dcdf94@o1120648.ingest.sentry.io/6
 enableTelemetry: true
 appEnv: production
 logLevel: info
+tracing:
+  enabled: false
+  endpoint: http://localhost:4317
 ginMode: release
 
 # This is for the secretes for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
