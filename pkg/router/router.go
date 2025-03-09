@@ -31,7 +31,7 @@ import (
 )
 
 func SetupRouter(health *health.Health) *gin.Engine {
-	r := gin.Default()
+	r := gin.New()
 
 	logger.Debug("Setting up router")
 
