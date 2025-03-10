@@ -19,7 +19,22 @@ import (
 func InitTracer(ctx context.Context) (*sdktrace.TracerProvider, error) {
 	var tp *sdktrace.TracerProvider
 
-	if config.GlobalConfig.TracingEnabled {
+	switch config.GlobalConfig.TracingMode {
+	case "disabled":
+		tp = sdktrace.NewTracerProvider(
+			sdktrace.WithSampler(sdktrace.NeverSample()),
+		)
+
+	case "local":
+		tp = sdktrace.NewTracerProvider(
+			sdktrace.WithSampler(sdktrace.AlwaysSample()),
+			sdktrace.WithResource(sdkresource.NewWithAttributes(
+				semconv.SchemaURL,
+				semconv.ServiceNameKey.String(config.GlobalConfig.AppName),
+			)),
+		)
+
+	case "remote":
 		endpoint := config.GlobalConfig.TracingEndpoint
 		exporter, err := otlptracegrpc.New(
 			ctx,
@@ -32,18 +47,16 @@ func InitTracer(ctx context.Context) (*sdktrace.TracerProvider, error) {
 
 		tp = sdktrace.NewTracerProvider(
 			sdktrace.WithBatcher(exporter),
+			sdktrace.WithSampler(sdktrace.AlwaysSample()), // Tutaj próbkujemy, bo eksportujemy
 			sdktrace.WithResource(sdkresource.NewWithAttributes(
 				semconv.SchemaURL,
 				semconv.ServiceNameKey.String(config.GlobalConfig.AppName),
 			)),
 		)
-	} else {
-		tp = sdktrace.NewTracerProvider(
-			sdktrace.WithResource(sdkresource.NewWithAttributes(
-				semconv.SchemaURL,
-				semconv.ServiceNameKey.String(config.GlobalConfig.AppName),
-			)),
-		)
+	}
+
+	if tp == nil {
+		tp = sdktrace.NewTracerProvider()
 	}
 
 	otel.SetTracerProvider(tp)

@@ -10,7 +10,7 @@ type Config struct {
 	AppVersion      string
 	AppEnv          string
 	LogLevel        string
-	TracingEnabled  bool
+	TracingMode     string
 	TracingEndpoint string
 	SentryDSN       string
 	SentryEnabled   bool
@@ -23,8 +23,8 @@ func LoadConfig() {
 		AppName:         getEnvString("APP_NAME", "cano-collector"),
 		AppVersion:      getEnvString("APP_VERSION", "dev"),
 		AppEnv:          getEnvString("APP_ENV", "production"),
-		LogLevel:        getEnvString("LOG_LEVEL", "info"),
-		TracingEnabled:  getEnvBool("TRACING_ENABLED", true),
+		LogLevel:        getEnvEnum("LOG_LEVEL", []string{"debug", "info", "warn", "error"}, "info"),
+		TracingMode:     getEnvEnum("TRACING_MODE", []string{"disabled", "local", "remote"}, "disabled"),
 		TracingEndpoint: getEnvString("TRACING_ENDPOINT", "http://localhost:4317"),
 		SentryDSN:       getEnvString("SENTRY_DSN", ""),
 		SentryEnabled:   getEnvBool("ENABLE_TELEMETRY", true),
@@ -49,4 +49,14 @@ func getEnvBool(key string, defaultValue bool) bool {
 		return defaultValue
 	}
 	return parsedValue
+}
+
+func getEnvEnum(key string, allowedValues []string, defaultValue string) string {
+	value := getEnvString(key, defaultValue)
+	for _, allowed := range allowedValues {
+		if value == allowed {
+			return value
+		}
+	}
+	return defaultValue
 }

@@ -18,8 +18,8 @@ enableTelemetry: true
 appEnv: production
 logLevel: info
 tracing:
-  enabled: false
-  endpoint: http://localhost:4317
+  mode: "off" # off | local | remote
+#  endpoint: "http://alloy:4317"
 ginMode: release
 
 # This is for the secretes for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
