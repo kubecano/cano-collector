@@ -2,6 +2,16 @@ apiVersion: v1
 entries:
   cano-collector:
   - apiVersion: v2
+    appVersion: 0.0.2
+    created: "2025-03-10T12:57:48.368283981Z"
+    description: Cano-collector Helm chart for Kubernetes
+    digest: bcf0e639e1a86aba2758ebfdfe8adbf2cb9c2fd74383589fd8ed282f595fb0d3
+    name: cano-collector
+    type: application
+    urls:
+    - cano-collector-0.0.2.tgz
+    version: 0.0.2
+  - apiVersion: v2
     appVersion: 0.0.1
     created: "2025-01-02T18:16:05.618185609Z"
     description: Cano-collector Helm chart for Kubernetes
@@ -11,4 +21,4 @@ entries:
     urls:
     - cano-collector-0.0.1.tgz
     version: 0.0.1
-generated: "2025-01-02T18:16:05.618192312Z"
+generated: "2025-03-10T12:57:48.368291024Z"
