@@ -2,6 +2,12 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+fullnameOverride: ""
+
+# Install the kube-prometheus-stack chart with Kubecano
+enablePrometheusStack: false
+
+#===============================================
 # This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
 replicaCount: 1
 
@@ -10,8 +16,6 @@ image:
   repository: ghcr.io/kubecano/cano-collector
   # This sets the pull policy for images.
   pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart appVersion.
-  tag: "0.0.2"
 
 sentry_dsn: https://4f1a66f025c60830fec303a094dcdf94@o1120648.ingest.sentry.io/6156573
 enableTelemetry: true
@@ -26,7 +30,7 @@ ginMode: release
 imagePullSecrets: [ ]
 # This is to override the chart name.
 nameOverride: ""
-fullnameOverride: ""
+
 
 customServiceAccount: ""
 
@@ -55,7 +59,6 @@ securityContext: { }
 
 service:
   annotations: { }
-
 
 resources:
   ## Example:
