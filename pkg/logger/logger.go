@@ -100,6 +100,11 @@ func Info(args ...interface{}) {
 	GetLogger().Sugar().Info(args...)
 }
 
+// Infof logs a formatted message at InfoLevel. The message includes any fields passed at the log site.
+func Infof(template string, args ...interface{}) {
+	GetLogger().Sugar().Infof(template, args...)
+}
+
 // Warn logs a message at WarnLevel. The message includes any fields passed at the log site.
 func Warn(args ...interface{}) {
 	GetLogger().Sugar().Warn(args...)

@@ -6,6 +6,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.uber.org/zap"
+
+	"github.com/kubecano/cano-collector/pkg/logger"
+
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace"
@@ -17,6 +22,11 @@ import (
 )
 
 func TestInitTracer_Disabled(t *testing.T) {
+	l, _ := zap.NewDevelopment()
+	logger.SetLogger(l)
+
+	otel.SetTracerProvider(sdktrace.NewTracerProvider(sdktrace.WithSampler(sdktrace.NeverSample())))
+
 	config.GlobalConfig.TracingMode = "disabled"
 
 	tp, err := InitTracer(context.Background())
@@ -24,7 +34,7 @@ func TestInitTracer_Disabled(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, tp, "TraceProvider should not be nil")
 
-	assert.Equal(t, tp, otel.GetTracerProvider())
+	assert.Equal(t, tp, otel.GetTracerProvider(), "TracerProvider should be globally set")
 
 	tracer := otel.Tracer("test-tracer")
 	assert.NotNil(t, tracer, "Tracer should not be nil")
@@ -32,6 +42,7 @@ func TestInitTracer_Disabled(t *testing.T) {
 	_, span := tracer.Start(context.Background(), "test-span")
 	defer span.End()
 
+	assert.False(t, span.IsRecording(), "Span should not be recording for mode=disabled")
 	assert.Equal(t, trace.TraceFlags(0x0), span.SpanContext().TraceFlags(), "TraceFlags should be 0x0 for mode=disabled")
 }
 

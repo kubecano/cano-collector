@@ -9,10 +9,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/kubecano/cano-collector/pkg/tracer"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-
-	"github.com/kubecano/cano-collector/pkg/tracer"
 
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.opentelemetry.io/otel"
@@ -49,9 +49,12 @@ func SetupRouter(health *health.Health) *gin.Engine {
 		ctx.Next()
 	})
 
-	r.Use(otelgin.Middleware(config.GlobalConfig.AppName))
-
-	r.Use(tracer.TraceLoggerMiddleware())
+	if config.GlobalConfig.TracingMode != "disabled" {
+		r.Use(otelgin.Middleware(config.GlobalConfig.AppName))
+		r.Use(tracer.TraceLoggerMiddleware())
+	} else {
+		logger.Debug("otelgin middleware is disabled to prevent trace generation.")
+	}
 
 	r.Use(ginzap.GinzapWithConfig(logger.GetLogger(), &ginzap.Config{
 		TimeFormat: time.RFC3339,
@@ -108,7 +111,7 @@ func StartServer(router *gin.Engine) {
 	go func() {
 		// service connections
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			logger.Fatalf("listen: %s\n", err)
+			logger.Fatalf("Failed to start server: %v", err)
 		}
 	}()
 
@@ -125,7 +128,7 @@ func StartServer(router *gin.Engine) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
-		logger.Fatal("Cano-collector server shutdown:", err)
+		logger.Fatalf("Cano-collector server shutdown: %v", err)
 	}
 	// catching ctx.Done(). timeout of 5 seconds.
 	<-ctx.Done()
