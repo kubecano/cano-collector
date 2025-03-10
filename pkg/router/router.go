@@ -9,6 +9,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/kubecano/cano-collector/pkg/tracer"
+
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
+	"go.opentelemetry.io/otel"
+
 	"github.com/kubecano/cano-collector/pkg/logger"
 
 	"github.com/hellofresh/health-go/v5"
@@ -23,7 +31,7 @@ import (
 )
 
 func SetupRouter(health *health.Health) *gin.Engine {
-	r := gin.Default()
+	r := gin.New()
 
 	logger.Debug("Setting up router")
 
@@ -32,6 +40,7 @@ func SetupRouter(health *health.Health) *gin.Engine {
 		WaitForDelivery: false,
 		Timeout:         2 * time.Second,
 	}))
+
 	r.Use(func(ctx *gin.Context) {
 		if hub := sentrygin.GetHubFromContext(ctx); hub != nil {
 			hub.Scope().SetTag("endpoint", ctx.FullPath())
@@ -40,11 +49,29 @@ func SetupRouter(health *health.Health) *gin.Engine {
 		ctx.Next()
 	})
 
-	// Add a ginzap middleware, which:
-	//   - Logs all requests, like a combined access and error log.
-	//   - Logs to stdout.
-	//   - RFC3339 with UTC time format.
-	r.Use(ginzap.Ginzap(logger.GetLogger(), time.RFC3339, true))
+	if config.GlobalConfig.TracingMode != "disabled" {
+		r.Use(otelgin.Middleware(config.GlobalConfig.AppName))
+		r.Use(tracer.TraceLoggerMiddleware())
+	} else {
+		logger.Debug("otelgin middleware is disabled to prevent trace generation.")
+	}
+
+	r.Use(ginzap.GinzapWithConfig(logger.GetLogger(), &ginzap.Config{
+		TimeFormat: time.RFC3339,
+		UTC:        true,
+		Context: func(c *gin.Context) []zapcore.Field {
+			var fields []zapcore.Field
+
+			if traceID, exists := c.Get("trace_id"); exists {
+				fields = append(fields, zap.String("trace_id", traceID.(string)))
+			}
+			if spanID, exists := c.Get("span_id"); exists {
+				fields = append(fields, zap.String("span_id", spanID.(string)))
+			}
+
+			return fields
+		},
+	}))
 
 	// Logs all panic to error log
 	//   - stack means whether output the stack info.
@@ -54,14 +81,18 @@ func SetupRouter(health *health.Health) *gin.Engine {
 	metrics.RegisterMetrics()
 	r.Use(metrics.PrometheusMiddleware())
 
-	r.GET("/", func(ctx *gin.Context) {
-		ctx.String(http.StatusOK, "Hello world!")
+	r.GET("/", func(c *gin.Context) {
+		tr := otel.Tracer(config.GlobalConfig.AppName)
+		_, span := tr.Start(c.Request.Context(), "root-handler")
+		defer span.End()
+
+		c.String(http.StatusOK, "Hello world!")
 	})
 
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
-	r.GET("/livez", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	r.GET("/livez", func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 	r.GET("/readyz", gin.WrapH(health.Handler()))
 	r.GET("/healthz", gin.WrapH(health.Handler()))
@@ -80,7 +111,7 @@ func StartServer(router *gin.Engine) {
 	go func() {
 		// service connections
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			logger.Fatalf("listen: %s\n", err)
+			logger.Fatalf("Failed to start server: %v", err)
 		}
 	}()
 
@@ -97,7 +128,7 @@ func StartServer(router *gin.Engine) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
-		logger.Fatal("Cano-collector server shutdown:", err)
+		logger.Fatalf("Cano-collector server shutdown: %v", err)
 	}
 	// catching ctx.Done(). timeout of 5 seconds.
 	<-ctx.Done()
