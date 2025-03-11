@@ -6,6 +6,8 @@ fullnameOverride: ""
 
 # Install the kube-prometheus-stack chart with Kubecano
 enablePrometheusStack: false
+enabledManagedConfiguration: false
+monitorHelmReleases: true
 
 #===============================================
 # This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
