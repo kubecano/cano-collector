@@ -1,0 +1,130 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cano-collector.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "cano-collector.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "cano-collector.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.collector.annotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "cano-collector.labels" . | nindent 8 }}
+        {{- with .Values.collector.labels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- if .Values.collector.customServiceAccount }}
+      serviceAccountName: {{ .Values.collector.customServiceAccount }}
+      {{ else }}
+      serviceAccountName: {{ include "cano-collector.fullname" . }}-service-account
+      {{- end }}
+      automountServiceAccountToken: {{ .Values.automountServiceAccountToken }}
+      {{- with .Values.collector.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.collector.securityContext.pod | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          {{- if .Values.collector.image.imageOverride }}
+          image: {{ .Values.collector.image.imageOverride }}
+          {{ else }}
+          image: "{{ .Values.image.registry }}/{{ .Values.collector.image.name }}:{{ .Values.collector.image.tag | default .Chart.AppVersion }}"
+          {{- end }}
+          imagePullPolicy: {{ .Values.collector.image.pullPolicy }}
+          {{- with .Values.collector.securityContext.container }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - containerPort: 8080
+          lifecycle:
+            preStop:
+              exec:
+                command: [ "bash", "-c", "kill -SIGINT 1" ]
+          {{- if .Values.collector.startupProbe.enabled }}
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            {{- omit .Values.collector.startupProbe "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          {{- if .Values.collector.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: 8080
+            {{- omit .Values.collector.livenessProbe "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          {{- if .Values.collector.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8080
+            {{- omit .Values.collector.readinessProbe "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          resources:
+            requests:
+              cpu: {{ .Values.collector.resources.requests.cpu | quote }}
+              memory: {{ if .Values.isSmallCluster }}"512Mi"{{ else }}{{ .Values.collector.resources.requests.memory | quote }}{{ end }}
+            limits:
+              memory: {{ if .Values.isSmallCluster }}"512Mi"{{ else if .Values.collector.resources.limits.memory }}{{ .Values.collector.resources.limits.memory | quote }}{{ else }}{{ .Values.collector.resources.requests.memory | quote }}{{ end }}
+              {{- if .Values.collector.resources.limits.cpu }}
+              cpu: {{ .Values.collector.resources.limits.cpu | quote }}
+              {{- end }}
+          env:
+            - name: "APP_VERSION"
+              value: {{ .Chart.AppVersion | quote }}
+            - name: "APP_ENV"
+              value: {{ .Values.collector.appEnv | quote }}
+            - name: "LOG_LEVEL"
+              value: {{ .Values.collector.logLevel | quote }}
+            - name: "TRACING_MODE"
+              value: {{ .Values.collector.tracing.mode | quote }}
+            - name: "TRACING_ENDPOINT"
+              value: {{ .Values.collector.tracing.endpoint | quote }}
+            - name: "ENABLE_TELEMETRY"
+              value: {{ .Values.collector.enableTelemetry | quote }}
+            - name: "GIN_MODE"
+              value: {{ .Values.collector.ginMode | quote }}
+            - name: PROMETHEUS_ENABLED
+              value: {{ .Values.enablePrometheusStack | quote }}
+            - name: MANAGED_CONFIGURATION_ENABLED
+              value: {{ .Values.enabledManagedConfiguration | quote }}
+            - name: INSTALLATION_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            {{- if not .Values.monitorHelmReleases }}
+            - name: DISABLE_HELM_MONITORING
+              value: "True"
+            {{- end }}
+          envFrom:
+            - secretRef:
+                name: {{ include "cano-collector.fullname" . }}-secret
+                optional: true
+      {{- with .Values.collector.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.collector.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.collector.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.collector.priorityClassName }}
+      priorityClassName: {{ .Values.collector.priorityClassName }}
+      {{- end }}

@@ -7,100 +7,86 @@ fullnameOverride: ""
 # Install the kube-prometheus-stack chart with Kubecano
 enablePrometheusStack: false
 enabledManagedConfiguration: false
+enableServiceMonitors: true
 monitorHelmReleases: true
 
-#===============================================
-# This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
-replicaCount: 1
+isSmallCluster: false
 
-# This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
+automountServiceAccountToken: true
+
 image:
-  repository: ghcr.io/kubecano/cano-collector
-  # This sets the pull policy for images.
-  pullPolicy: IfNotPresent
+  registry: ghcr.io/kubecano
 
-sentry_dsn: https://4f1a66f025c60830fec303a094dcdf94@o1120648.ingest.sentry.io/6156573
-enableTelemetry: true
-appEnv: production
-logLevel: info
-tracing:
-  mode: "disabled" # disabled | local | remote
-#  endpoint: "http://alloy:4317"
-ginMode: release
+collector:
+  image:
+    name: cano-collector
+    imageOverride: ~
+    tag: ~
+    pullPolicy: IfNotPresent
+  enableTelemetry: true
+  sentry_dsn: https://4f1a66f025c60830fec303a094dcdf94@o1120648.ingest.sentry.io/6156573
+  appEnv: production
+  logLevel: info
+  tracing:
+    mode: "disabled" # disabled | local | remote
+    endpoint: ""
+  ginMode: release
+  annotations: { }
+  labels: { }
+  customServiceAccount: ""
+  imagePullSecrets: [ ]
+  startupProbe:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 1
+    failureThreshold: 3
+    successThreshold: 1
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 1
+    failureThreshold: 3
+    successThreshold: 1
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 1
+    failureThreshold: 3
+    successThreshold: 1
+  resources:
+    limits:
+      cpu: ~
+      memory: ~
+    requests:
+      cpu: 250m
+      memory: 1024Mi
+  service:
+    annotations: { }
+  serviceMonitor:
+    additionalLabels: { }
+    path: /metrics
+    interval:
+    scrapeTimeout:
+    relabelings: [ ]
+    metricRelabelings: [ ]
+    honorLabels: false
+  securityContext:
+    container:
+      allowPrivilegeEscalation: false
+      capabilities: { }
+      privileged: false
+      readOnlyRootFilesystem: false
+    pod: { }
+  nodeSelector: { }
+  tolerations: [ ]
+  affinity: { }
+  priorityClassName: ""
 
-# This is for the secretes for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
-imagePullSecrets: [ ]
-# This is to override the chart name.
-nameOverride: ""
-
-
-customServiceAccount: ""
-
-serviceAccount:
+collectorServiceAccount:
   # image pull secrets added to the service account. Any pod using the service account will get those
   imagePullSecrets: [ ]
   annotations: { }
 
-# This is for setting Kubernetes Annotations to a Pod.
-# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
-podAnnotations: { }
-# This is for setting Kubernetes Labels to a Pod.
-# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
-podLabels: { }
-
-podSecurityContext: { }
-# fsGroup: 2000
-
-securityContext: { }
-#  capabilities:
-#  drop:
-#    - ALL
-#  readOnlyRootFilesystem: true
-#  runAsNonRoot: true
-#  runAsUser: 1000
-
-service:
-  annotations: { }
-
-resources:
-  ## Example:
-  ## limits:
-  ##    cpu: 200m
-  ##    memory: 256Mi
-  limits: { }
-  ## Examples:
-  ## requests:
-  ##    cpu: 100m
-  ##    memory: 10Mi
-  requests: { }
-
-startupProbe:
-  enabled: true
-  initialDelaySeconds: 10
-  periodSeconds: 10
-  timeoutSeconds: 1
-  failureThreshold: 3
-  successThreshold: 1
-livenessProbe:
-  enabled: true
-  initialDelaySeconds: 10
-  periodSeconds: 10
-  timeoutSeconds: 1
-  failureThreshold: 3
-  successThreshold: 1
-readinessProbe:
-  enabled: true
-  initialDelaySeconds: 10
-  periodSeconds: 10
-  timeoutSeconds: 1
-  failureThreshold: 3
-  successThreshold: 1
-customStartupProbe: { }
-customLivenessProbe: { }
-customReadinessProbe: { }
-
-volumes: [ ]
-volumeMounts: [ ]
-nodeSelector: { }
-tolerations: [ ]
-affinity: { }

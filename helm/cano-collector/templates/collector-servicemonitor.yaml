@@ -1,0 +1,37 @@
+{{ if and (.Values.enableServiceMonitors) (or (.Values.enablePrometheusStack) (.Capabilities.APIVersions.Has "monitoring.coreos.com/v1/ServiceMonitor") ) }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "cano-collector.fullname" . }}-service-monitor
+  labels:
+    # this label is how the Prometheus installed with Kubecano finds ServiceMonitors
+    release: {{ include "cano-collector.fullname" . }}
+    {{- with .Values.collector.serviceMonitor.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  endpoints:
+    - path: {{ .Values.collector.serviceMonitor.path }}
+      port: http
+      {{- if .Values.collector.serviceMonitor.interval }}
+      interval: {{ .Values.collector.serviceMonitor.interval }}
+      {{- end }}
+      {{- if .Values.collector.serviceMonitor.scrapeTimeout }}
+      scrapeTimeout: {{ .Values.collector.serviceMonitor.scrapeTimeout }}
+      {{- end }}
+      {{- if .Values.collector.serviceMonitor.relabelings }}
+      relabelings: {{- tpl (toYaml .Values.collector.serviceMonitor.relabelings) . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.collector.serviceMonitor.metricRelabelings }}
+      metricRelabelings: {{- tpl (toYaml .Values.collector.serviceMonitor.metricRelabelings) . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.collector.serviceMonitor.honorLabels }}
+      honorLabels: {{ .Values.collector.serviceMonitor.honorLabels }}
+      {{- end }}
+  selector:
+    matchLabels:
+      app: {{ include "cano-collector.fullname" . }}
+  targetLabels:
+    - target
+{{ end }}
