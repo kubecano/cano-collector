@@ -78,6 +78,7 @@ spec:
               cpu: {{ .Values.collector.resources.requests.cpu | quote }}
               memory: {{ if .Values.isSmallCluster }}"512Mi"{{ else }}{{ .Values.collector.resources.requests.memory | quote }}{{ end }}
             limits:
+              ephemeral-storage: {{ .Values.collector.resources.limits.ephemeralStorage | quote }}
               memory: {{ if .Values.isSmallCluster }}"512Mi"{{ else if .Values.collector.resources.limits.memory }}{{ .Values.collector.resources.limits.memory | quote }}{{ else }}{{ .Values.collector.resources.requests.memory | quote }}{{ end }}
               {{- if .Values.collector.resources.limits.cpu }}
               cpu: {{ .Values.collector.resources.limits.cpu | quote }}
