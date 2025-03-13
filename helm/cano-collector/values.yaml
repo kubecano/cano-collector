@@ -2,100 +2,188 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-# This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
-replicaCount: 1
-
-# This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
-image:
-  repository: ghcr.io/kubecano/cano-collector
-  # This sets the pull policy for images.
-  pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart appVersion.
-  tag: "0.0.2"
-
-sentry_dsn: https://4f1a66f025c60830fec303a094dcdf94@o1120648.ingest.sentry.io/6156573
-enableTelemetry: true
-appEnv: production
-logLevel: info
-tracing:
-  mode: "disabled" # disabled | local | remote
-#  endpoint: "http://alloy:4317"
-ginMode: release
-
-# This is for the secretes for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
-imagePullSecrets: [ ]
-# This is to override the chart name.
-nameOverride: ""
 fullnameOverride: ""
 
-customServiceAccount: ""
+global:
+  clusterDomain: "cluster.local"
 
-serviceAccount:
-  # image pull secrets added to the service account. Any pod using the service account will get those
+# Install the kube-prometheus-stack chart with Kubecano
+enablePrometheusStack: false
+enabledManagedConfiguration: false
+enableServiceMonitors: true
+monitorHelmReleases: true
+
+isSmallCluster: false
+
+automountServiceAccountToken: true
+
+image:
+  registry: ghcr.io/kubecano
+
+collector:
+  image:
+    name: cano-collector
+    imageOverride: ~
+    tag: ~
+    pullPolicy: IfNotPresent
+  enableTelemetry: true
+  sentry_dsn: https://4f1a66f025c60830fec303a094dcdf94@o1120648.ingest.sentry.io/6156573
+  appEnv: production
+  logLevel: info
+  tracing:
+    mode: "disabled" # disabled | local | remote
+    endpoint: ""
+  ginMode: release
+  annotations: { }
+  labels: { }
+  customServiceAccount: ""
   imagePullSecrets: [ ]
-  annotations: { }
+  startupProbe:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 1
+    failureThreshold: 3
+    successThreshold: 1
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 1
+    failureThreshold: 3
+    successThreshold: 1
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 1
+    failureThreshold: 3
+    successThreshold: 1
+  resources:
+    limits:
+      cpu: ~
+      memory: ~
+      ephemeralStorage: 1Gi
+    requests:
+      cpu: 250m
+      memory: 1024Mi
+  service:
+    annotations: { }
+  serviceAccount:
+    # image pull secrets added to the service account. Any pod using the service account will get those
+    imagePullSecrets: [ ]
+    annotations: { }
+  serviceMonitor:
+    additionalLabels: { }
+    path: /metrics
+    interval:
+    scrapeTimeout:
+    relabelings: [ ]
+    metricRelabelings: [ ]
+    honorLabels: false
+  securityContext:
+    container:
+      allowPrivilegeEscalation: false
+      capabilities: { }
+      privileged: false
+      readOnlyRootFilesystem: false
+    pod: { }
+  nodeSelector: { }
+  tolerations: [ ]
+  affinity: { }
+  priorityClassName: ""
 
-# This is for setting Kubernetes Annotations to a Pod.
-# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
-podAnnotations: { }
-# This is for setting Kubernetes Labels to a Pod.
-# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
-podLabels: { }
+kube-prometheus-stack:
+  alertmanager:
+    tplConfig: true
+    config:
+      global:
+        resolve_timeout: 5m
+      route:
+        group_by: [ '...' ]
+        group_wait: 1s
+        group_interval: 1s
+        repeat_interval: 4h
+        receiver: 'kubecano'
+        routes:
+          - match:
+              alertname: Watchdog
+            receiver: 'null'
+      receivers:
+        - name: 'null'
+        - name: 'kubecano'
+          webhook_configs:
+            - url: 'http://cano-collector.{{ .Release.Namespace }}.svc.{{ .Values.global.clusterDomain }}/api/alerts'
+              send_resolved: true
+    alertmanagerSpec:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          memory: 128Mi
+      storage:
+        volumeClaimTemplate:
+          spec:
+            accessModes: [ "ReadWriteOnce" ]
+            resources:
+              requests:
+                storage: 10Gi
+  kubeProxy:
+    enabled: false
+  prometheus:
+    prometheusSpec:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 2Gi
+        limits:
+          memory: 2Gi
+      retention: 15d
+      # we set a value slightly lower than the 100Gi below
+      # the retentionSize uses the suffix GB but it is really Gi units
+      # that is, the retentionSize is measured in base2 units just like Gi, Mi, etc
+      retentionSize: "99GB"
 
-podSecurityContext: { }
-# fsGroup: 2000
-
-securityContext: { }
-#  capabilities:
-#  drop:
-#    - ALL
-#  readOnlyRootFilesystem: true
-#  runAsNonRoot: true
-#  runAsUser: 1000
-
-service:
-  annotations: { }
-
-
-resources:
-  ## Example:
-  ## limits:
-  ##    cpu: 200m
-  ##    memory: 256Mi
-  limits: { }
-  ## Examples:
-  ## requests:
-  ##    cpu: 100m
-  ##    memory: 10Mi
-  requests: { }
-
-startupProbe:
-  enabled: true
-  initialDelaySeconds: 10
-  periodSeconds: 10
-  timeoutSeconds: 1
-  failureThreshold: 3
-  successThreshold: 1
-livenessProbe:
-  enabled: true
-  initialDelaySeconds: 10
-  periodSeconds: 10
-  timeoutSeconds: 1
-  failureThreshold: 3
-  successThreshold: 1
-readinessProbe:
-  enabled: true
-  initialDelaySeconds: 10
-  periodSeconds: 10
-  timeoutSeconds: 1
-  failureThreshold: 3
-  successThreshold: 1
-customStartupProbe: { }
-customLivenessProbe: { }
-customReadinessProbe: { }
-
-volumes: [ ]
-volumeMounts: [ ]
-nodeSelector: { }
-tolerations: [ ]
-affinity: { }
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            accessModes: [ "ReadWriteOnce" ]
+            resources:
+              requests:
+                storage: 100Gi
+  prometheus-node-exporter:
+    service:
+      port: 9104
+      targetPort: 9104
+    resources:
+      requests:
+        cpu: 50m
+        memory: 50Mi
+      limits:
+        memory: 50Mi
+    # disable node-exporter on fargate because fargate doesn't allow daemonsets
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: eks.amazonaws.com/compute-type
+                  operator: NotIn
+                  values:
+                    - fargate
+  prometheusOperator:
+    resources:
+      requests:
+        cpu: 100m
+    prometheusConfigReloader:
+      resources:
+        limits:
+          cpu: 0
+  kube-state-metrics:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 256Mi
+      limits:
+        memory: 256Mi

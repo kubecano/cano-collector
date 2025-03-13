@@ -5,16 +5,15 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "cano-collector.labels" . | nindent 4 }}
-{{- if .Values.service.annotations }}
+{{- if .Values.collector.service.annotations }}
   annotations:
-{{ toYaml .Values.service.annotations | indent 4 }}
+{{ toYaml .Values.collector.service.annotations | indent 4 }}
 {{- end }}
 spec:
-  type: ClusterIP
+  selector:
+    {{- include "cano-collector.selectorLabels" . | nindent 4 }}
   ports:
     - name: http
       protocol: TCP
       port: 80
-      targetPort: http
-  selector:
-    {{- include "cano-collector.selectorLabels" . | nindent 4 }}
+      targetPort: 8080
