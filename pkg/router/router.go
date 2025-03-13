@@ -97,6 +97,13 @@ func SetupRouter(health *health.Health) *gin.Engine {
 	r.GET("/readyz", gin.WrapH(health.Handler()))
 	r.GET("/healthz", gin.WrapH(health.Handler()))
 
+	api := r.Group("/api")
+	{
+		api.POST("/alerts", func(ctx *gin.Context) {
+			ctx.JSON(http.StatusOK, gin.H{"status": "ok"})
+		})
+	}
+
 	logger.Debug("Router setup complete")
 	return r
 }

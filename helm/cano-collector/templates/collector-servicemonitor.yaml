@@ -31,7 +31,7 @@ spec:
       {{- end }}
   selector:
     matchLabels:
-      app: {{ include "cano-collector.fullname" . }}
+      app.kubernetes.io/name: {{ include "cano-collector.fullname" . }}
   targetLabels:
     - target
 {{ end }}
