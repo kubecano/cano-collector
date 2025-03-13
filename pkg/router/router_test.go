@@ -3,6 +3,7 @@ package router
 import (
 	"context"
 	"errors"
+	"github.com/hellofresh/health-go/v5"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -17,20 +18,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 )
-
-func TestHelloWorld(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	l, _ := zap.NewDevelopment()
-	logger.SetLogger(l)
-	router := SetupRouter(nil)
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/", nil)
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "Hello world!", w.Body.String())
-}
 
 func TestStartServer(t *testing.T) {
 	prometheus.DefaultRegisterer = prometheus.NewRegistry()
@@ -119,17 +106,76 @@ func TestStartServer(t *testing.T) {
 	}
 }
 
-func TestMetricsEndpoint(t *testing.T) {
+func setupTestRouter() *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	prometheus.DefaultRegisterer = prometheus.NewRegistry()
 	l, _ := zap.NewDevelopment()
 	logger.SetLogger(l)
-	router := SetupRouter(nil)
+
+	h, _ := health.New(health.WithChecks())
+	return SetupRouter(h)
+}
+
+func TestHelloWorld(t *testing.T) {
+	router := setupTestRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "Hello world!", w.Body.String())
+}
+
+func TestLivezEndpoint(t *testing.T) {
+	router := setupTestRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/livez", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.JSONEq(t, `{"status": "ok"}`, w.Body.String())
+}
+
+func TestReadyzEndpoint(t *testing.T) {
+	router := setupTestRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/readyz", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestHealthzEndpoint(t *testing.T) {
+	router := setupTestRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/healthz", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestApiAlertsEndpoint(t *testing.T) {
+	router := setupTestRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodPost, "/api/alerts", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.JSONEq(t, `{"status": "ok"}`, w.Body.String())
+}
+
+func TestMetricsEndpoint(t *testing.T) {
+	router := setupTestRouter()
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/metrics", nil)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Body.String(), "http_requests_total")
+	assert.Contains(t, w.Body.String(), "go_goroutines")
 }

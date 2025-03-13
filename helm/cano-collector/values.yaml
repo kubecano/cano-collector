@@ -69,6 +69,10 @@ collector:
       memory: 1024Mi
   service:
     annotations: { }
+  serviceAccount:
+    # image pull secrets added to the service account. Any pod using the service account will get those
+    imagePullSecrets: [ ]
+    annotations: { }
   serviceMonitor:
     additionalLabels: { }
     path: /metrics
@@ -88,11 +92,6 @@ collector:
   tolerations: [ ]
   affinity: { }
   priorityClassName: ""
-
-collectorServiceAccount:
-  # image pull secrets added to the service account. Any pod using the service account will get those
-  imagePullSecrets: [ ]
-  annotations: { }
 
 kube-prometheus-stack:
   alertmanager:

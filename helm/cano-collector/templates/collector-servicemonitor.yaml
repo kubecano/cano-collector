@@ -33,5 +33,7 @@ spec:
     matchLabels:
       app.kubernetes.io/name: {{ include "cano-collector.fullname" . }}
   targetLabels:
-    - target
+    - app.kubernetes.io/instance
+    - app.kubernetes.io/version
+    - app.kubernetes.io/component
 {{ end }}
