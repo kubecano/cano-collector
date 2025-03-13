@@ -3,12 +3,13 @@ package router
 import (
 	"context"
 	"errors"
-	"github.com/hellofresh/health-go/v5"
 	"net/http"
 	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/hellofresh/health-go/v5"
 
 	"go.uber.org/zap"
 
