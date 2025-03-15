@@ -36,6 +36,8 @@ func registerCollector(collector prometheus.Collector, name string) {
 				*v = *are.ExistingCollector.(*prometheus.CounterVec)
 			case *prometheus.GaugeVec:
 				*v = *are.ExistingCollector.(*prometheus.GaugeVec)
+			default:
+				logger.Warnf("Unknown collector type for %s: %T", name, v)
 			}
 		} else {
 			logger.Errorf("Failed to register %s collector: %v", name, err)
