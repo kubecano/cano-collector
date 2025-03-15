@@ -2,13 +2,15 @@ package alerts
 
 import (
 	"bytes"
-	"github.com/gin-gonic/gin"
-	"github.com/kubecano/cano-collector/pkg/logger"
-	"github.com/kubecano/cano-collector/pkg/metrics"
-	"github.com/prometheus/alertmanager/template"
-	"go.uber.org/zap"
 	"io"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/prometheus/alertmanager/template"
+	"go.uber.org/zap"
+
+	"github.com/kubecano/cano-collector/pkg/logger"
+	"github.com/kubecano/cano-collector/pkg/metrics"
 )
 
 // AlertHandler handles incoming alerts from Alertmanager

@@ -3,12 +3,14 @@ package alerts
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/kubecano/cano-collector/pkg/logger"
-	"go.uber.org/zap"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"go.uber.org/zap"
+
+	"github.com/kubecano/cano-collector/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/alertmanager/template"

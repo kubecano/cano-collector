@@ -3,12 +3,13 @@ package router
 import (
 	"context"
 	"errors"
-	"github.com/kubecano/cano-collector/pkg/alerts"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/kubecano/cano-collector/pkg/alerts"
 
 	"github.com/kubecano/cano-collector/pkg/tracer"
 

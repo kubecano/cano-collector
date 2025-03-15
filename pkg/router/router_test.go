@@ -5,12 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/prometheus/alertmanager/template"
 	"net/http"
 	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/prometheus/alertmanager/template"
 
 	"github.com/hellofresh/health-go/v5"
 
