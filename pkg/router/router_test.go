@@ -1,13 +1,17 @@
 package router
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/prometheus/alertmanager/template"
 
 	"github.com/hellofresh/health-go/v5"
 
@@ -163,11 +167,31 @@ func TestApiAlertsEndpoint(t *testing.T) {
 	router := setupTestRouter()
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodPost, "/api/alerts", nil)
+	alert := template.Data{
+		Receiver: "test-receiver",
+		Status:   "firing",
+		Alerts: []template.Alert{
+			{
+				Status: "firing",
+				Labels: map[string]string{
+					"alertname": "HighCPUUsage",
+					"severity":  "critical",
+				},
+				Annotations: map[string]string{
+					"summary":     "High CPU usage detected",
+					"description": "The CPU usage has exceeded the threshold",
+				},
+				StartsAt: time.Now(),
+			},
+		},
+	}
+
+	jsonAlert, _ := json.Marshal(alert)
+	req, _ := http.NewRequest(http.MethodPost, "/api/alerts", bytes.NewBuffer(jsonAlert))
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.JSONEq(t, `{"status": "ok"}`, w.Body.String())
+	assert.JSONEq(t, `{"status": "alert received"}`, w.Body.String())
 }
 
 func TestMetricsEndpoint(t *testing.T) {
