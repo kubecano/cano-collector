@@ -17,9 +17,15 @@ import (
 func AlertHandler(c *gin.Context) {
 	// Check if the request body is empty
 	body, err := io.ReadAll(c.Request.Body)
-	if err != nil || len(bytes.TrimSpace(body)) == 0 {
-		logger.Error("Empty or invalid request body", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "empty or invalid JSON body"})
+	if err != nil {
+		logger.Error("Failed to read request body", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read request body"})
+		return
+	}
+
+	if len(bytes.TrimSpace(body)) == 0 {
+		logger.Error("Empty request body")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "empty JSON body"})
 		return
 	}
 

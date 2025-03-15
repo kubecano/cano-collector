@@ -96,7 +96,7 @@ func TestAlertHandler_EmptyBody(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), "empty or invalid JSON body")
+	assert.Contains(t, w.Body.String(), "empty JSON body")
 }
 
 func TestAlertHandler_AdditionalFields(t *testing.T) {
