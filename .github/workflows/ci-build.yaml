@@ -26,29 +26,8 @@ permissions:
   pull-requests: read
   checks: write
 
-jobs:
-  changes:
-    runs-on: ubuntu-latest
-    outputs:
-      backend: ${{ steps.filter.outputs.backend_any_changed }}
-      docs: ${{ steps.filter.outputs.docs_any_changed }}
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: tj-actions/changed-files@dcc7a0cba800f454d79fff4b993e8c3555bcc0a8 # v45.0.7
-        id: filter
-        with:
-          # Any file which is not under docs/, ui/ or is not a markdown file is counted as a backend file
-          files_yaml: |
-            backend:
-              - '!**.md'            
-              - '!**/*.md'
-              - '!docs/**'
-            docs:
-              - 'docs/**'
-
   check-go:
     name: Ensure Go modules synchronicity
-    if: ${{ needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-24.04
     needs:
       - changes
@@ -77,7 +56,6 @@ jobs:
   
   build-go:
     name: Build & cache Go code
-    if: ${{ needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-24.04
     needs:
       - changes
@@ -101,7 +79,6 @@ jobs:
 
   lint-go:
     name: Lint Go code
-    if: ${{ needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-24.04
     needs:
       - changes
@@ -125,7 +102,6 @@ jobs:
 
   hadolint-docker:
     name: Lint Dockerfiles
-    if: ${{ needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-24.04
     needs:
       - changes
@@ -145,7 +121,6 @@ jobs:
 
   test-go:
     name: Run unit tests for Go packages
-    if: ${{ needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-24.04
     needs:
       - build-go
