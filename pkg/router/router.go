@@ -3,6 +3,7 @@ package router
 import (
 	"context"
 	"errors"
+	"github.com/kubecano/cano-collector/pkg/alerts"
 	"net/http"
 	"os"
 	"os/signal"
@@ -99,9 +100,7 @@ func SetupRouter(health *health.Health) *gin.Engine {
 
 	api := r.Group("/api")
 	{
-		api.POST("/alerts", func(ctx *gin.Context) {
-			ctx.JSON(http.StatusOK, gin.H{"status": "ok"})
-		})
+		api.POST("/alerts", alerts.AlertHandler)
 	}
 
 	logger.Debug("Router setup complete")

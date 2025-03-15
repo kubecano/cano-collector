@@ -18,19 +18,37 @@ var httpRequestsTotal = prometheus.NewCounterVec(
 	[]string{"method", "path", "status"},
 )
 
-func RegisterMetrics() {
-	logger.Debug("Registering Prometheus metrics")
-	if err := prometheus.Register(httpRequestsTotal); err != nil {
+var alertManagerAlertsTotal = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "alertmanager_alerts_total",
+		Help: "Total number of alerts received from AlertManager",
+	},
+	[]string{"receiver", "status"},
+)
+
+func registerCollector(collector prometheus.Collector, name string) {
+	if err := prometheus.Register(collector); err != nil {
 		var are prometheus.AlreadyRegisteredError
 		if errors.As(err, &are) {
-			logger.Warnf("Prometheus collector already registered: %v", are)
-			httpRequestsTotal = are.ExistingCollector.(*prometheus.CounterVec)
+			logger.Warnf("%s collector already registered: %v", name, are)
+			switch v := collector.(type) {
+			case *prometheus.CounterVec:
+				*v = *are.ExistingCollector.(*prometheus.CounterVec)
+			case *prometheus.GaugeVec:
+				*v = *are.ExistingCollector.(*prometheus.GaugeVec)
+			}
 		} else {
-			logger.Errorf("Failed to register Prometheus collector: %v", err)
+			logger.Errorf("Failed to register %s collector: %v", name, err)
 		}
 	} else {
-		logger.Debug("Prometheus metrics registered successfully")
+		logger.Debugf("%s collector registered successfully", name)
 	}
+}
+
+func RegisterMetrics() {
+	logger.Debug("Registering Prometheus metrics")
+	registerCollector(httpRequestsTotal, "httpRequestsTotal")
+	registerCollector(alertManagerAlertsTotal, "alertManagerAlertsTotal")
 }
 
 func PrometheusMiddleware() gin.HandlerFunc {
@@ -40,4 +58,9 @@ func PrometheusMiddleware() gin.HandlerFunc {
 		httpRequestsTotal.WithLabelValues(c.Request.Method, c.FullPath(), http.StatusText(status)).Inc()
 		logger.Debugf("Incremented Prometheus counter for %s %s with status %d", c.Request.Method, c.FullPath(), status)
 	}
+}
+
+func ObserveAlert(receiver string, status string) {
+	alertManagerAlertsTotal.WithLabelValues(receiver, status).Inc()
+	logger.Debugf("Incremented AlertManager alert counter for receiver: %s, status: %s", receiver, status)
 }
