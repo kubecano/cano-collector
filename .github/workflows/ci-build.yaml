@@ -29,8 +29,6 @@ permissions:
   check-go:
     name: Ensure Go modules synchronicity
     runs-on: ubuntu-24.04
-    needs:
-      - changes
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -57,8 +55,6 @@ permissions:
   build-go:
     name: Build & cache Go code
     runs-on: ubuntu-24.04
-    needs:
-      - changes
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -80,8 +76,6 @@ permissions:
   lint-go:
     name: Lint Go code
     runs-on: ubuntu-24.04
-    needs:
-      - changes
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -103,8 +97,6 @@ permissions:
   hadolint-docker:
     name: Lint Dockerfiles
     runs-on: ubuntu-24.04
-    needs:
-      - changes
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -124,7 +116,6 @@ permissions:
     runs-on: ubuntu-24.04
     needs:
       - build-go
-      - changes
     steps:
       - name: Create checkout directory
         run: mkdir -p ~/go/src/github.com/${{ env.GROUP_NAME }}
