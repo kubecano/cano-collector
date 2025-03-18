@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"github.com/kubecano/cano-collector/pkg/alerts"
+	"github.com/kubecano/cano-collector/pkg/metrics"
 	"time"
 
 	"github.com/kubecano/cano-collector/pkg/router"
@@ -18,39 +20,47 @@ import (
 )
 
 func main() {
-	config.LoadConfig()
+	cfg := config.LoadConfig()
 
-	logger.InitLogger(config.GlobalConfig.LogLevel)
-	logger.Debug("Logger initialized")
+	log, err := logger.NewLogger(cfg.LogLevel, cfg.AppEnv)
+	if err != nil {
+		panic("Failed to initialize logger: " + err.Error())
+	}
+	log.Debug("Logger initialized")
 
-	if config.GlobalConfig.SentryEnabled {
-		if err := initSentry(config.GlobalConfig.SentryDSN); err != nil {
-			logger.Fatalf("Sentry initialization failed: %v", err)
+	if cfg.SentryEnabled {
+		if err := initSentry(cfg.SentryDSN); err != nil {
+			log.Fatalf("Sentry initialization failed: %v", err)
 		}
-		logger.Debug("Sentry initialized")
+		log.Debug("Sentry initialized")
 	} else {
-		logger.Debug("Sentry is disabled")
+		log.Debug("Sentry is disabled")
 	}
 
 	defer sentry.Flush(2 * time.Second)
 
-	h, err := health.RegisterHealthChecks()
+	healthChecker := health.NewHealthChecker(cfg, log)
+	h, err := healthChecker.RegisterHealthChecks()
 	if err != nil {
-		logger.PanicF("Failed to register health checks: %v", err)
+		log.PanicF("Failed to register health checks: %v", err)
 	}
-	logger.Debug("Health checks registered")
+	log.Debug("Health checks registered")
 
 	ctx := context.Background()
-	tp, err := tracer.InitTracer(ctx)
+	tracerManager := tracer.NewTracerManager(cfg, log)
+	tp, err := tracerManager.InitTracer(ctx)
 	if err != nil {
-		logger.Fatalf("Failed to initialize tracing: %v", err)
+		log.Fatalf("Failed to initialize tracing: %v", err)
 	}
 	defer func() { _ = tp.Shutdown(ctx) }()
 
-	r := router.SetupRouter(h)
-	logger.Debug("Router setup complete")
+	metricsCollector := metrics.NewMetricsCollector(log)
 
-	router.StartServer(r)
+	alertHandler := alerts.NewAlertHandler(log, metricsCollector)
+	routerManager := router.NewRouterManager(cfg, log, tracerManager, metricsCollector, h, alertHandler)
+	r := routerManager.SetupRouter()
+	log.Debug("Router setup complete")
+	routerManager.StartServer(r)
 }
 
 func initSentry(sentryDSN string) error {

@@ -14,17 +14,28 @@ import (
 )
 
 // AlertHandler handles incoming alerts from Alertmanager
-func AlertHandler(c *gin.Context) {
+type AlertHandler struct {
+	logger  *logger.Logger
+	metrics *metrics.MetricsCollector
+}
+
+// NewAlertHandler creates a new handler with dependencies
+func NewAlertHandler(logger *logger.Logger, metrics *metrics.MetricsCollector) *AlertHandler {
+	return &AlertHandler{logger: logger, metrics: metrics}
+}
+
+// HandleAlert processes alerts
+func (h *AlertHandler) HandleAlert(c *gin.Context) {
 	// Check if the request body is empty
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		logger.Error("Failed to read request body", zap.Error(err))
+		h.logger.Error("Failed to read request body", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read request body"})
 		return
 	}
 
 	if len(bytes.TrimSpace(body)) == 0 {
-		logger.Error("Empty request body")
+		h.logger.Error("Empty request body")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "empty JSON body"})
 		return
 	}
@@ -34,20 +45,20 @@ func AlertHandler(c *gin.Context) {
 
 	var alert template.Data
 	if err := c.ShouldBindJSON(&alert); err != nil {
-		logger.Error("Failed to parse alert", zap.Error(err))
+		h.logger.Error("Failed to parse alert", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid alert format"})
 		return
 	}
 
 	// Validate the parsed alert
 	if alert.Receiver == "" || alert.Status == "" || len(alert.Alerts) == 0 {
-		logger.Error("Invalid alert structure: missing required fields", zap.Any("alert", alert))
+		h.logger.Error("Invalid alert structure: missing required fields", zap.Any("alert", alert))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid alert format: missing required fields"})
 		return
 	}
 
 	// Register received alert metric
-	metrics.ObserveAlert(alert.Receiver, alert.Status)
+	h.metrics.ObserveAlert(alert.Receiver, alert.Status)
 
 	// Wrap the alert in EnrichedAlert for future extension
 	enrichedAlert := EnrichedAlert{Original: alert}
@@ -55,6 +66,6 @@ func AlertHandler(c *gin.Context) {
 	// TODO: Dispatch alert using different strategies (e.g., Slack, Teams, OpsGenie)
 	//  This will be implemented in the next tasks
 
-	logger.Info("Received alert: ", zap.Any("alert", enrichedAlert))
+	h.logger.Info("Received alert: ", zap.Any("alert", enrichedAlert))
 	c.JSON(http.StatusOK, gin.H{"status": "alert received"})
 }

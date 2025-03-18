@@ -16,10 +16,8 @@ type Config struct {
 	SentryEnabled   bool
 }
 
-var GlobalConfig Config
-
-func LoadConfig() {
-	GlobalConfig = Config{
+func LoadConfig() Config {
+	return Config{
 		AppName:         getEnvString("APP_NAME", "cano-collector"),
 		AppVersion:      getEnvString("APP_VERSION", "dev"),
 		AppEnv:          getEnvString("APP_ENV", "production"),

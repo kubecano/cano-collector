@@ -32,10 +32,30 @@ import (
 	"github.com/kubecano/cano-collector/pkg/metrics"
 )
 
-func SetupRouter(health *health.Health) *gin.Engine {
+type RouterManager struct {
+	cfg     config.Config
+	logger  *logger.Logger
+	tracer  *tracer.TracerManager
+	metrics *metrics.MetricsCollector
+	health  *health.Health
+	alerts  *alerts.AlertHandler
+}
+
+func NewRouterManager(cfg config.Config, log *logger.Logger, tracer *tracer.TracerManager, metrics *metrics.MetricsCollector, health *health.Health, alerts *alerts.AlertHandler) *RouterManager {
+	return &RouterManager{
+		cfg:     cfg,
+		logger:  log,
+		tracer:  tracer,
+		metrics: metrics,
+		health:  health,
+		alerts:  alerts,
+	}
+}
+
+func (rm *RouterManager) SetupRouter() *gin.Engine {
 	r := gin.New()
 
-	logger.Debug("Setting up router")
+	rm.logger.Debug("Setting up router")
 
 	r.Use(sentrygin.New(sentrygin.Options{
 		Repanic:         true,
@@ -46,19 +66,19 @@ func SetupRouter(health *health.Health) *gin.Engine {
 	r.Use(func(ctx *gin.Context) {
 		if hub := sentrygin.GetHubFromContext(ctx); hub != nil {
 			hub.Scope().SetTag("endpoint", ctx.FullPath())
-			hub.Scope().SetTag("version", config.GlobalConfig.AppVersion)
+			hub.Scope().SetTag("version", rm.cfg.AppVersion)
 		}
 		ctx.Next()
 	})
 
-	if config.GlobalConfig.TracingMode != "disabled" {
-		r.Use(otelgin.Middleware(config.GlobalConfig.AppName))
-		r.Use(tracer.TraceLoggerMiddleware())
+	if rm.cfg.TracingMode != "disabled" {
+		r.Use(otelgin.Middleware(rm.cfg.AppName))
+		r.Use(rm.tracer.TraceLoggerMiddleware())
 	} else {
-		logger.Debug("otelgin middleware is disabled to prevent trace generation.")
+		rm.logger.Debug("otelgin middleware is disabled to prevent trace generation.")
 	}
 
-	r.Use(ginzap.GinzapWithConfig(logger.GetLogger(), &ginzap.Config{
+	r.Use(ginzap.GinzapWithConfig(rm.logger.GetLogger(), &ginzap.Config{
 		TimeFormat: time.RFC3339,
 		UTC:        true,
 		Context: func(c *gin.Context) []zapcore.Field {
@@ -77,39 +97,38 @@ func SetupRouter(health *health.Health) *gin.Engine {
 
 	// Logs all panic to error log
 	//   - stack means whether output the stack info.
-	r.Use(ginzap.RecoveryWithZap(logger.GetLogger(), true))
+	r.Use(ginzap.RecoveryWithZap(rm.logger.GetLogger(), true))
 
 	// Set up routes
-	metrics.RegisterMetrics()
-	r.Use(metrics.PrometheusMiddleware())
+	r.Use(rm.metrics.PrometheusMiddleware())
 
-	r.GET("/", func(c *gin.Context) {
-		tr := otel.Tracer(config.GlobalConfig.AppName)
-		_, span := tr.Start(c.Request.Context(), "root-handler")
-		defer span.End()
-
-		c.String(http.StatusOK, "Hello world!")
-	})
-
+	r.GET("/", rm.rootHandler)
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	r.GET("/livez", func(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
-	r.GET("/readyz", gin.WrapH(health.Handler()))
-	r.GET("/healthz", gin.WrapH(health.Handler()))
+	r.GET("/readyz", gin.WrapH(rm.health.Handler()))
+	r.GET("/healthz", gin.WrapH(rm.health.Handler()))
 
 	api := r.Group("/api")
 	{
-		api.POST("/alerts", alerts.AlertHandler)
+		api.POST("/alerts", rm.alerts.HandleAlert)
 	}
 
-	logger.Debug("Router setup complete")
+	rm.logger.Debug("Router setup complete")
 	return r
 }
 
-func StartServer(router *gin.Engine) {
-	logger.Info("Cano-collector server starting...")
+func (rm *RouterManager) rootHandler(c *gin.Context) {
+	tr := otel.Tracer(rm.cfg.AppName)
+	_, span := tr.Start(c.Request.Context(), "root-handler")
+	defer span.End()
+	c.String(http.StatusOK, "Hello world!")
+}
+
+func (rm *RouterManager) StartServer(router *gin.Engine) {
+	rm.logger.Info("Cano-collector server starting...")
 	srv := &http.Server{
 		Addr:    ":8080",
 		Handler: router,
@@ -118,7 +137,7 @@ func StartServer(router *gin.Engine) {
 	go func() {
 		// service connections
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			logger.Fatalf("Failed to start server: %v", err)
+			rm.logger.Fatalf("Failed to start server: %v", err)
 		}
 	}()
 
@@ -130,14 +149,14 @@ func StartServer(router *gin.Engine) {
 	// kill -9 is syscall.SIGKILL but can't be caught, so don't need add it
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	logger.Info("Cano-collector shutdown server ...")
+	rm.logger.Info("Cano-collector shutdown server ...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
-		logger.Fatalf("Cano-collector server shutdown: %v", err)
+		rm.logger.Fatalf("Cano-collector server shutdown: %v", err)
 	}
 	// catching ctx.Done(). timeout of 5 seconds.
 	<-ctx.Done()
-	logger.Info("Cano-collector server exiting")
+	rm.logger.Info("Cano-collector server exiting")
 }
