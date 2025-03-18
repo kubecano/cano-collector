@@ -13,14 +13,18 @@ import (
 	"github.com/kubecano/cano-collector/pkg/metrics"
 )
 
+type AlertHandlerInterface interface {
+	HandleAlert(c *gin.Context)
+}
+
 // AlertHandler handles incoming alerts from Alertmanager
 type AlertHandler struct {
-	logger  *logger.Logger
-	metrics *metrics.MetricsCollector
+	logger  logger.LoggerInterface
+	metrics metrics.MetricsInterface
 }
 
 // NewAlertHandler creates a new handler with dependencies
-func NewAlertHandler(logger *logger.Logger, metrics *metrics.MetricsCollector) *AlertHandler {
+func NewAlertHandler(logger logger.LoggerInterface, metrics metrics.MetricsInterface) *AlertHandler {
 	return &AlertHandler{logger: logger, metrics: metrics}
 }
 

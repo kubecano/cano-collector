@@ -10,13 +10,18 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+type MetricsInterface interface {
+	PrometheusMiddleware() gin.HandlerFunc
+	ObserveAlert(receiver string, status string)
+}
+
 type MetricsCollector struct {
 	httpRequestsTotal       *prometheus.CounterVec
 	alertManagerAlertsTotal *prometheus.CounterVec
-	logger                  *logger.Logger
+	logger                  logger.LoggerInterface
 }
 
-func NewMetricsCollector(log *logger.Logger) *MetricsCollector {
+func NewMetricsCollector(log logger.LoggerInterface) *MetricsCollector {
 	mc := &MetricsCollector{
 		logger: log,
 	}

@@ -8,11 +8,28 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+type LoggerInterface interface {
+	Debug(args ...interface{})
+	Debugf(template string, args ...interface{})
+	Info(args ...interface{})
+	Infof(template string, args ...interface{})
+	Warn(args ...interface{})
+	Warnf(template string, args ...interface{})
+	Error(args ...interface{})
+	Errorf(template string, args ...interface{})
+	Fatal(args ...interface{})
+	Fatalf(template string, args ...interface{})
+	Panic(args ...interface{})
+	Panicf(template string, args ...interface{})
+	WithContextLogger(ctx context.Context) *zap.Logger
+	GetLogger() *zap.Logger
+}
+
 type Logger struct {
 	zapLogger *zap.Logger
 }
 
-func NewLogger(level, env string) (*Logger, error) {
+func NewLogger(level, env string) *Logger {
 	var logLevel zapcore.Level
 
 	switch level {
@@ -47,10 +64,10 @@ func NewLogger(level, env string) (*Logger, error) {
 
 	zapLogger, err := zapConfig.Build()
 	if err != nil {
-		return nil, err
+		panic("Failed to initialize logger: " + err.Error())
 	}
 
-	return &Logger{zapLogger: zapLogger}, nil
+	return &Logger{zapLogger: zapLogger}
 }
 
 func (l *Logger) GetLogger() *zap.Logger {
@@ -100,19 +117,14 @@ func (l *Logger) Warnf(template string, args ...interface{}) {
 	l.zapLogger.Sugar().Warnf(template, args...)
 }
 
-// Errorf logs a message at ErrorLevel. The message includes any fields passed at the log site.
-func (l *Logger) Errorf(template string, args ...interface{}) {
-	l.zapLogger.Sugar().Errorf(template, args...)
-}
-
 // Error logs a message at ErrorLevel. The message includes any fields passed at the log site.
 func (l *Logger) Error(args ...interface{}) {
 	l.zapLogger.Sugar().Error(args...)
 }
 
-// Fatalf logs a message at FatalLevel and calls os.Exit. The message includes any fields passed at the log site.
-func (l *Logger) Fatalf(template string, args ...interface{}) {
-	l.zapLogger.Sugar().Fatalf(template, args...)
+// Errorf logs a message at ErrorLevel. The message includes any fields passed at the log site.
+func (l *Logger) Errorf(template string, args ...interface{}) {
+	l.zapLogger.Sugar().Errorf(template, args...)
 }
 
 // Fatal logs a message at FatalLevel and calls os.Exit. The message includes any fields passed at the log site.
@@ -120,7 +132,17 @@ func (l *Logger) Fatal(args ...interface{}) {
 	l.zapLogger.Sugar().Fatal(args...)
 }
 
-// PanicF logs a message at PanicLevel and panics. The message includes any fields passed at the log site.
-func (l *Logger) PanicF(template string, args ...interface{}) {
+// Fatalf logs a message at FatalLevel and calls os.Exit. The message includes any fields passed at the log site.
+func (l *Logger) Fatalf(template string, args ...interface{}) {
+	l.zapLogger.Sugar().Fatalf(template, args...)
+}
+
+// Panic logs a message at PanicLevel and panics. The message includes any fields passed at the log site.
+func (l *Logger) Panic(args ...interface{}) {
+	l.zapLogger.Sugar().Panic(args...)
+}
+
+// Panicf logs a message at PanicLevel and panics. The message includes any fields passed at the log site.
+func (l *Logger) Panicf(template string, args ...interface{}) {
 	l.zapLogger.Sugar().Panicf(template, args...)
 }

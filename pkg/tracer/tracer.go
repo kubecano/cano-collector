@@ -17,12 +17,17 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-type TracerManager struct {
-	cfg    config.Config
-	logger *logger.Logger
+type TracerInterface interface {
+	InitTracer(ctx context.Context) (*sdktrace.TracerProvider, error)
+	TraceLoggerMiddleware() gin.HandlerFunc
 }
 
-func NewTracerManager(cfg config.Config, logger *logger.Logger) *TracerManager {
+type TracerManager struct {
+	cfg    config.Config
+	logger logger.LoggerInterface
+}
+
+func NewTracerManager(cfg config.Config, logger logger.LoggerInterface) *TracerManager {
 	return &TracerManager{cfg: cfg, logger: logger}
 }
 

@@ -7,12 +7,16 @@ import (
 	"github.com/kubecano/cano-collector/pkg/logger"
 )
 
-type HealthChecker struct {
-	cfg    config.Config
-	logger *logger.Logger
+type HealthInterface interface {
+	RegisterHealthChecks() (*health.Health, error)
 }
 
-func NewHealthChecker(cfg config.Config, logger *logger.Logger) *HealthChecker {
+type HealthChecker struct {
+	cfg    config.Config
+	logger logger.LoggerInterface
+}
+
+func NewHealthChecker(cfg config.Config, logger logger.LoggerInterface) *HealthChecker {
 	return &HealthChecker{cfg: cfg, logger: logger}
 }
 

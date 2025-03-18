@@ -32,16 +32,28 @@ import (
 	"github.com/kubecano/cano-collector/pkg/metrics"
 )
 
-type RouterManager struct {
-	cfg     config.Config
-	logger  *logger.Logger
-	tracer  *tracer.TracerManager
-	metrics *metrics.MetricsCollector
-	health  *health.Health
-	alerts  *alerts.AlertHandler
+type RouterInterface interface {
+	SetupRouter() *gin.Engine
+	StartServer(router *gin.Engine)
 }
 
-func NewRouterManager(cfg config.Config, log *logger.Logger, tracer *tracer.TracerManager, metrics *metrics.MetricsCollector, health *health.Health, alerts *alerts.AlertHandler) *RouterManager {
+type RouterManager struct {
+	cfg     config.Config
+	logger  logger.LoggerInterface
+	tracer  tracer.TracerInterface
+	metrics metrics.MetricsInterface
+	health  *health.Health
+	alerts  alerts.AlertHandlerInterface
+}
+
+func NewRouterManager(
+	cfg config.Config,
+	log logger.LoggerInterface,
+	tracer tracer.TracerInterface,
+	metrics metrics.MetricsInterface,
+	health *health.Health,
+	alerts alerts.AlertHandlerInterface,
+) *RouterManager {
 	return &RouterManager{
 		cfg:     cfg,
 		logger:  log,

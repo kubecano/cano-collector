@@ -22,11 +22,20 @@ import (
 func main() {
 	cfg := config.LoadConfig()
 
-	log, err := logger.NewLogger(cfg.LogLevel, cfg.AppEnv)
-	if err != nil {
-		panic("Failed to initialize logger: " + err.Error())
-	}
+	var log logger.LoggerInterface = logger.NewLogger(cfg.LogLevel, cfg.AppEnv)
 	log.Debug("Logger initialized")
+
+	var healthChecker health.HealthInterface = health.NewHealthChecker(cfg, log)
+	h, err := healthChecker.RegisterHealthChecks()
+	if err != nil {
+		log.Panicf("Failed to register health checks: %v", err)
+	}
+	log.Debug("Health checks registered")
+
+	var tracerManager tracer.TracerInterface = tracer.NewTracerManager(cfg, log)
+	var metricsCollector metrics.MetricsInterface = metrics.NewMetricsCollector(log)
+	var alertHandler alerts.AlertHandlerInterface = alerts.NewAlertHandler(log, metricsCollector)
+	var routerManager router.RouterInterface = router.NewRouterManager(cfg, log, tracerManager, metricsCollector, h, alertHandler)
 
 	if cfg.SentryEnabled {
 		if err := initSentry(cfg.SentryDSN); err != nil {
@@ -39,25 +48,13 @@ func main() {
 
 	defer sentry.Flush(2 * time.Second)
 
-	healthChecker := health.NewHealthChecker(cfg, log)
-	h, err := healthChecker.RegisterHealthChecks()
-	if err != nil {
-		log.PanicF("Failed to register health checks: %v", err)
-	}
-	log.Debug("Health checks registered")
-
 	ctx := context.Background()
-	tracerManager := tracer.NewTracerManager(cfg, log)
 	tp, err := tracerManager.InitTracer(ctx)
 	if err != nil {
 		log.Fatalf("Failed to initialize tracing: %v", err)
 	}
 	defer func() { _ = tp.Shutdown(ctx) }()
 
-	metricsCollector := metrics.NewMetricsCollector(log)
-
-	alertHandler := alerts.NewAlertHandler(log, metricsCollector)
-	routerManager := router.NewRouterManager(cfg, log, tracerManager, metricsCollector, h, alertHandler)
 	r := routerManager.SetupRouter()
 	log.Debug("Router setup complete")
 	routerManager.StartServer(r)
