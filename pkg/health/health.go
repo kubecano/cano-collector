@@ -7,20 +7,33 @@ import (
 	"github.com/kubecano/cano-collector/pkg/logger"
 )
 
-func RegisterHealthChecks() (*health.Health, error) {
-	logger.Debug("Starting health check registration")
+type HealthInterface interface {
+	RegisterHealthChecks() (*health.Health, error)
+}
+
+type HealthChecker struct {
+	cfg    config.Config
+	logger logger.LoggerInterface
+}
+
+func NewHealthChecker(cfg config.Config, logger logger.LoggerInterface) *HealthChecker {
+	return &HealthChecker{cfg: cfg, logger: logger}
+}
+
+func (hc *HealthChecker) RegisterHealthChecks() (*health.Health, error) {
+	hc.logger.Debug("Starting health check registration")
 
 	h, err := health.New(health.WithComponent(
 		health.Component{
-			Name:    config.GlobalConfig.AppName,
-			Version: config.GlobalConfig.AppVersion,
+			Name:    hc.cfg.AppName,
+			Version: hc.cfg.AppVersion,
 		}),
 	)
 	if err != nil {
-		logger.Errorf("Failed to create health check: %v", err)
+		hc.logger.Errorf("Failed to create health check: %v", err)
 		return nil, err
 	}
 
-	logger.Info("Health check registration completed successfully")
+	hc.logger.Info("Health check registration completed successfully")
 	return h, nil
 }

@@ -4,33 +4,29 @@ import (
 	"context"
 	"testing"
 
-	"go.uber.org/zap"
-
-	"github.com/kubecano/cano-collector/pkg/logger"
-
+	"github.com/hellofresh/health-go/v5"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hellofresh/health-go/v5"
-
 	"github.com/kubecano/cano-collector/config"
-
-	"github.com/stretchr/testify/assert"
+	"github.com/kubecano/cano-collector/pkg/logger"
 )
 
 func TestRegisterHealthChecks(t *testing.T) {
-	l, _ := zap.NewDevelopment()
-	logger.SetLogger(l)
-	config.GlobalConfig = config.Config{
+	mockLogger := logger.NewMockLogger()
+
+	cfg := config.Config{
 		AppName:    "cano-collector",
 		AppVersion: "1.0.0",
 	}
 
-	h, err := RegisterHealthChecks()
+	healthChecker := NewHealthChecker(cfg, mockLogger)
+	h, err := healthChecker.RegisterHealthChecks()
+
 	require.NoError(t, err, "RegisterHealthChecks should not return an error")
 	assert.NotNil(t, h, "Healthcheck instance should not be nil")
 
 	ctx := context.Background()
-
 	healthStatus := h.Measure(ctx)
 
 	assert.Equal(t, "cano-collector", healthStatus.Component.Name, "AppName should be set correctly")

@@ -10,59 +10,73 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-var httpRequestsTotal = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "http_requests_total",
-		Help: "Total number of HTTP requests",
-	},
-	[]string{"method", "path", "status"},
-)
+type MetricsInterface interface {
+	PrometheusMiddleware() gin.HandlerFunc
+	ObserveAlert(receiver string, status string)
+	ClearMetrics()
+}
 
-var alertManagerAlertsTotal = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "alertmanager_alerts_total",
-		Help: "Total number of alerts received from AlertManager",
-	},
-	[]string{"receiver", "status"},
-)
+type MetricsCollector struct {
+	httpRequestsTotal       *prometheus.CounterVec
+	alertManagerAlertsTotal *prometheus.CounterVec
+	logger                  logger.LoggerInterface
+}
 
-func registerCollector(collector prometheus.Collector, name string) {
+func NewMetricsCollector(log logger.LoggerInterface) *MetricsCollector {
+	mc := &MetricsCollector{
+		logger: log,
+	}
+
+	mc.logger.Debug("Registering Prometheus metrics")
+	mc.httpRequestsTotal = mc.registerCollector(prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "http_requests_total",
+			Help: "Total number of HTTP requests",
+		},
+		[]string{"method", "path", "status"},
+	), "httpRequestsTotal").(*prometheus.CounterVec)
+
+	mc.alertManagerAlertsTotal = mc.registerCollector(prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "alertmanager_alerts_total",
+			Help: "Total number of alerts received from AlertManager",
+		},
+		[]string{"receiver", "status"},
+	), "alertManagerAlertsTotal").(*prometheus.CounterVec)
+
+	return mc
+}
+
+func (mc *MetricsCollector) ClearMetrics() {
+	prometheus.DefaultRegisterer = prometheus.NewRegistry()
+	prometheus.DefaultGatherer = prometheus.NewRegistry()
+}
+
+func (mc *MetricsCollector) registerCollector(collector prometheus.Collector, name string) prometheus.Collector {
 	if err := prometheus.Register(collector); err != nil {
 		var are prometheus.AlreadyRegisteredError
 		if errors.As(err, &are) {
-			logger.Warnf("%s collector already registered: %v", name, are)
-			switch v := collector.(type) {
-			case *prometheus.CounterVec:
-				*v = *are.ExistingCollector.(*prometheus.CounterVec)
-			case *prometheus.GaugeVec:
-				*v = *are.ExistingCollector.(*prometheus.GaugeVec)
-			default:
-				logger.Warnf("Unknown collector type for %s: %T", name, v)
-			}
+			mc.logger.Warnf("%s collector already registered: %v", name, are)
+			return are.ExistingCollector
 		} else {
-			logger.Errorf("Failed to register %s collector: %v", name, err)
+			mc.logger.Errorf("Failed to register %s collector: %v", name, err)
+			return nil
 		}
-	} else {
-		logger.Debugf("%s collector registered successfully", name)
 	}
+	mc.logger.Debugf("%s collector registered successfully", name)
+	return collector
 }
 
-func RegisterMetrics() {
-	logger.Debug("Registering Prometheus metrics")
-	registerCollector(httpRequestsTotal, "httpRequestsTotal")
-	registerCollector(alertManagerAlertsTotal, "alertManagerAlertsTotal")
-}
-
-func PrometheusMiddleware() gin.HandlerFunc {
+func (mc *MetricsCollector) PrometheusMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next()
 		status := c.Writer.Status()
-		httpRequestsTotal.WithLabelValues(c.Request.Method, c.FullPath(), http.StatusText(status)).Inc()
-		logger.Debugf("Incremented Prometheus counter for %s %s with status %d", c.Request.Method, c.FullPath(), status)
+		mc.httpRequestsTotal.WithLabelValues(c.Request.Method, c.FullPath(), http.StatusText(status)).Inc()
+		mc.logger.Debugf("Incremented Prometheus counter for %s %s with status %d", c.Request.Method, c.FullPath(), status)
 	}
 }
 
-func ObserveAlert(receiver string, status string) {
-	alertManagerAlertsTotal.WithLabelValues(receiver, status).Inc()
-	logger.Debugf("Incremented AlertManager alert counter for receiver: %s, status: %s", receiver, status)
+func (mc *MetricsCollector) ObserveAlert(receiver string, status string) {
+	mc.alertManagerAlertsTotal.WithLabelValues(receiver, status).Inc()
+	mc.logger.Debugf("Incremented AlertManager alert counter for receiver: %s, status: %s", receiver, status)
 }

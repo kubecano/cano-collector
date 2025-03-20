@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"go.uber.org/zap"
 
 	"github.com/kubecano/cano-collector/pkg/logger"
 
@@ -21,20 +20,29 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
+func setupTestTracerProvider(t *testing.T) func() {
+	t.Helper()
+	originalProvider := otel.GetTracerProvider()
+	otel.SetTracerProvider(sdktrace.NewTracerProvider())
+
+	return func() {
+		otel.SetTracerProvider(originalProvider)
+	}
+}
+
 func TestInitTracer_Disabled(t *testing.T) {
-	l, _ := zap.NewDevelopment()
-	logger.SetLogger(l)
+	defer setupTestTracerProvider(t)()
 
-	otel.SetTracerProvider(sdktrace.NewTracerProvider(sdktrace.WithSampler(sdktrace.NeverSample())))
+	mockLogger := logger.NewMockLogger()
+	cfg := config.Config{TracingMode: "disabled"}
 
-	config.GlobalConfig.TracingMode = "disabled"
-
-	tp, err := InitTracer(context.Background())
+	tm := NewTracerManager(cfg, mockLogger)
+	tp, err := tm.InitTracer(context.Background())
 
 	require.NoError(t, err)
 	assert.NotNil(t, tp, "TraceProvider should not be nil")
 
-	assert.Equal(t, tp, otel.GetTracerProvider(), "TracerProvider should be globally set")
+	assert.Equal(t, tp, otel.GetTracerProvider(), "TracerProvider should be global")
 
 	tracer := otel.Tracer("test-tracer")
 	assert.NotNil(t, tracer, "Tracer should not be nil")
@@ -47,9 +55,13 @@ func TestInitTracer_Disabled(t *testing.T) {
 }
 
 func TestInitTracer_Local(t *testing.T) {
-	config.GlobalConfig.TracingMode = "local"
+	defer setupTestTracerProvider(t)()
 
-	tp, err := InitTracer(context.Background())
+	mockLogger := logger.NewMockLogger()
+	cfg := config.Config{TracingMode: "local", AppName: "cano-collector"}
+
+	tm := NewTracerManager(cfg, mockLogger)
+	tp, err := tm.InitTracer(context.Background())
 
 	require.NoError(t, err)
 	assert.NotNil(t, tp)
@@ -65,10 +77,17 @@ func TestInitTracer_Local(t *testing.T) {
 }
 
 func TestInitTracer_Remote(t *testing.T) {
-	config.GlobalConfig.TracingMode = "remote"
-	config.GlobalConfig.TracingEndpoint = "localhost:4317"
+	defer setupTestTracerProvider(t)()
 
-	tp, err := InitTracer(context.Background())
+	mockLogger := logger.NewMockLogger()
+	cfg := config.Config{
+		TracingMode:     "remote",
+		TracingEndpoint: "localhost:4317",
+		AppName:         "cano-collector",
+	}
+
+	tm := NewTracerManager(cfg, mockLogger)
+	tp, err := tm.InitTracer(context.Background())
 
 	require.NoError(t, err)
 	assert.NotNil(t, tp)
@@ -83,11 +102,34 @@ func TestInitTracer_Remote(t *testing.T) {
 	assert.True(t, span.SpanContext().HasSpanID(), "SpanID should be generated for mode=remote")
 }
 
+func TestInitTracer_InvalidEndpoint(t *testing.T) {
+	defer setupTestTracerProvider(t)()
+
+	mockLogger := logger.NewMockLogger()
+	cfg := config.Config{
+		TracingMode:     "remote",
+		TracingEndpoint: "invalid-endpoint",
+	}
+
+	tm := NewTracerManager(cfg, mockLogger)
+	tp, err := tm.InitTracer(context.Background())
+
+	require.Error(t, err, "Expected error for invalid tracing endpoint")
+	assert.Nil(t, tp, "TracerProvider should be nil on failure")
+}
+
 func TestTraceLoggerMiddleware(t *testing.T) {
+	defer setupTestTracerProvider(t)()
+
 	gin.SetMode(gin.TestMode)
 
+	mockLogger := logger.NewMockLogger()
+	cfg := config.Config{TracingMode: "local"}
+
+	tm := NewTracerManager(cfg, mockLogger)
+
 	router := gin.New()
-	router.Use(TraceLoggerMiddleware())
+	router.Use(tm.TraceLoggerMiddleware())
 	router.GET("/test", func(c *gin.Context) {
 		traceID, _ := c.Get("trace_id")
 		spanID, _ := c.Get("span_id")
