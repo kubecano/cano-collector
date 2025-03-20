@@ -2,6 +2,7 @@ package logger
 
 import (
 	"context"
+
 	"go.opentelemetry.io/otel/trace"
 
 	"go.uber.org/zap"

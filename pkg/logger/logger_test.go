@@ -2,27 +2,43 @@ package logger
 
 import (
 	"bytes"
+	"context"
 	"testing"
 
-	"go.uber.org/zap/zapcore"
-
+	"github.com/stretchr/testify/assert"
+	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
-func TestInitLogger(t *testing.T) {
-	InitLogger("debug")
+func TestNewLogger(t *testing.T) {
+	log := NewLogger("debug", "development")
+	assert.NotNil(t, log, "Logger should not be nil")
 
-	if logger == nil {
-		t.Fatal("Logger should not be nil after initialization")
-	}
-
-	logLevel := logger.Core().Enabled(zap.DebugLevel)
-	if !logLevel {
-		t.Error("Expected logger to be initialized with debug level")
-	}
+	logLevel := log.zapLogger.Core().Enabled(zap.DebugLevel)
+	assert.True(t, logLevel, "Expected logger to be initialized with debug level")
 }
 
-func TestLogging(t *testing.T) {
+func TestMockLogger(t *testing.T) {
+	log := NewMockLogger()
+
+	log.Debug("test")
+	log.Debugf("test %s", "formatted")
+	log.Info("test")
+	log.Infof("test %s", "formatted")
+	log.Warn("test")
+	log.Warnf("test %s", "formatted")
+	log.Error("test")
+	log.Errorf("test %s", "formatted")
+	log.Fatal("test")
+	log.Fatalf("test %s", "formatted")
+	log.Panic("test")
+	log.Panicf("test %s", "formatted")
+
+	assert.NotNil(t, log, "MockLogger should not be nil")
+}
+
+func TestLoggingToBuffer(t *testing.T) {
 	var buf bytes.Buffer
 	writer := zapcore.AddSync(&buf)
 
@@ -42,25 +58,13 @@ func TestLogging(t *testing.T) {
 		zap.DebugLevel,
 	)
 
-	logger := zap.New(core).Sugar()
+	log := &Logger{zapLogger: zap.New(core)}
 
 	testMessage := "Test log entry"
-	logger.Info(testMessage)
+	log.Info(testMessage)
 
 	logOutput := buf.String()
-
-	if !bytes.Contains([]byte(logOutput), []byte(testMessage)) {
-		t.Errorf("Expected log output to contain message: %s, but got: %s", testMessage, logOutput)
-	}
-}
-
-func TestGetLogger(t *testing.T) {
-	InitLogger("info")
-	logger := GetLogger()
-
-	if logger == nil {
-		t.Fatal("GetLogger() returned nil, expected an initialized logger")
-	}
+	assert.Contains(t, logOutput, testMessage, "Expected log output to contain message")
 }
 
 func TestLogLevels(t *testing.T) {
@@ -72,15 +76,48 @@ func TestLogLevels(t *testing.T) {
 		{"info", zap.InfoLevel},
 		{"warn", zap.WarnLevel},
 		{"error", zap.ErrorLevel},
-		{"invalid", zap.InfoLevel}, // Domyślny poziom
+		{"invalid", zap.InfoLevel},
 	}
 
 	for _, tt := range tests {
-		InitLogger(tt.level)
-		logger := GetLogger()
+		log := NewLogger(tt.level, "production")
+		assert.NotNil(t, log, "Logger should not be nil")
 
-		if !logger.Core().Enabled(tt.expectedMin) {
-			t.Errorf("Logger with level %s should allow %v level", tt.level, tt.expectedMin)
-		}
+		assert.True(t, log.zapLogger.Core().Enabled(tt.expectedMin),
+			"Logger with level %s should allow %v level", tt.level, tt.expectedMin)
 	}
+}
+
+func TestWithContextLogger(t *testing.T) {
+	log := NewLogger("debug", "development")
+
+	tracer := noop.NewTracerProvider().Tracer("test-tracer")
+	ctx, span := tracer.Start(context.Background(), "test-span")
+	defer span.End()
+
+	logWithCtx := log.WithContextLogger(ctx)
+
+	spanCtx := span.SpanContext()
+	traceID := spanCtx.TraceID().String()
+	spanID := spanCtx.SpanID().String()
+
+	assert.True(t, logWithCtx.Core().Enabled(zap.DebugLevel), "Logger should support debug level")
+	assert.NotEmpty(t, traceID, "Trace ID should not be empty")
+	assert.NotEmpty(t, spanID, "Span ID should not be empty")
+}
+
+func TestNewLogger_InvalidConfig(t *testing.T) {
+	assert.NotPanics(t, func() { NewLogger("", "development") }, "Not expected an error when log level is empty")
+
+	assert.NotPanics(t, func() { NewLogger("invalid", "production") }, "Not expected an error when log level is invalid")
+}
+
+func TestNewLogger_Panic(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("NewLogger should not panic, got: %v", r)
+		}
+	}()
+
+	assert.NotPanics(t, func() { NewLogger("invalid", "production") }, "Expected error but not a panic")
 }

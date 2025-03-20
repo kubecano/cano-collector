@@ -13,27 +13,27 @@ func TestLoadConfig(t *testing.T) {
 	_ = os.Setenv("SENTRY_DSN", "https://example@sentry.io/123")
 	_ = os.Setenv("ENABLE_TELEMETRY", "true")
 
-	LoadConfig()
+	t.Cleanup(func() {
+		_ = os.Unsetenv("APP_NAME")
+		_ = os.Unsetenv("LOG_LEVEL")
+		_ = os.Unsetenv("SENTRY_DSN")
+		_ = os.Unsetenv("ENABLE_TELEMETRY")
+	})
 
-	if GlobalConfig.AppName != "test-app" {
-		t.Errorf("Expected APP_NAME to be 'test-app', got '%s'", GlobalConfig.AppName)
-	}
-	if GlobalConfig.LogLevel != "debug" {
-		t.Errorf("Expected LOG_LEVEL to be 'debug', got '%s'", GlobalConfig.LogLevel)
-	}
-	if GlobalConfig.SentryDSN != "https://example@sentry.io/123" {
-		t.Errorf("Expected SENTRY_DSN to be 'https://example@sentry.io/123', got '%s'", GlobalConfig.SentryDSN)
-	}
-	if !GlobalConfig.SentryEnabled {
-		t.Errorf("Expected SENTRY_ENABLED to be true, got false")
-	}
+	cfg := LoadConfig()
+
+	assert.Equal(t, "test-app", cfg.AppName)
+	assert.Equal(t, "debug", cfg.LogLevel)
+	assert.Equal(t, "https://example@sentry.io/123", cfg.SentryDSN)
+	assert.True(t, cfg.SentryEnabled)
 }
 
 func TestGetEnvString(t *testing.T) {
 	_ = os.Setenv("TEST_STRING", "value1")
-	defer func() {
+
+	t.Cleanup(func() {
 		_ = os.Unsetenv("TEST_STRING")
-	}()
+	})
 
 	assert.Equal(t, "value1", getEnvString("TEST_STRING", "default"))
 	assert.Equal(t, "default", getEnvString("NON_EXISTENT_STRING", "default"))
@@ -43,15 +43,12 @@ func TestGetEnvBool(t *testing.T) {
 	_ = os.Setenv("TEST_BOOL_TRUE", "true")
 	_ = os.Setenv("TEST_BOOL_FALSE", "false")
 	_ = os.Setenv("TEST_BOOL_INVALID", "invalid")
-	defer func() {
+
+	t.Cleanup(func() {
 		_ = os.Unsetenv("TEST_BOOL_TRUE")
-	}()
-	defer func() {
 		_ = os.Unsetenv("TEST_BOOL_FALSE")
-	}()
-	defer func() {
 		_ = os.Unsetenv("TEST_BOOL_INVALID")
-	}()
+	})
 
 	assert.True(t, getEnvBool("TEST_BOOL_TRUE", false))
 	assert.False(t, getEnvBool("TEST_BOOL_FALSE", true))
@@ -67,12 +64,11 @@ func TestGetEnvEnum(t *testing.T) {
 
 	_ = os.Setenv("TEST_ENUM_VALID", "local")
 	_ = os.Setenv("TEST_ENUM_INVALID", "invalid")
-	defer func() {
+
+	t.Cleanup(func() {
 		_ = os.Unsetenv("TEST_ENUM_VALID")
-	}()
-	defer func() {
 		_ = os.Unsetenv("TEST_ENUM_INVALID")
-	}()
+	})
 
 	assert.Equal(t, "local", getEnvEnum("TEST_ENUM_VALID", allowedValues, "disabled"))
 	assert.Equal(t, "disabled", getEnvEnum("TEST_ENUM_INVALID", allowedValues, "disabled"))

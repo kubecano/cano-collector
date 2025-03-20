@@ -2,6 +2,8 @@ package tracer
 
 import (
 	"context"
+	"fmt"
+	"net/url"
 
 	"github.com/gin-gonic/gin"
 
@@ -58,6 +60,11 @@ func (tm *TracerManager) InitTracer(ctx context.Context) (*sdktrace.TracerProvid
 	case "remote":
 		endpoint := tm.cfg.TracingEndpoint
 		tm.logger.Infof("Tracing is enabled in remote mode. Exporting traces to: %s", endpoint)
+
+		if _, err := url.ParseRequestURI(endpoint); err != nil {
+			tm.logger.Errorf("Invalid tracing endpoint: %s", err)
+			return nil, fmt.Errorf("invalid tracing endpoint: %w", err)
+		}
 
 		exporter, err := otlptracegrpc.New(
 			ctx,

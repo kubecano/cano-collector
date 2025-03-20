@@ -13,6 +13,7 @@ import (
 type MetricsInterface interface {
 	PrometheusMiddleware() gin.HandlerFunc
 	ObserveAlert(receiver string, status string)
+	ClearMetrics()
 }
 
 type MetricsCollector struct {
@@ -44,6 +45,11 @@ func NewMetricsCollector(log logger.LoggerInterface) *MetricsCollector {
 	), "alertManagerAlertsTotal").(*prometheus.CounterVec)
 
 	return mc
+}
+
+func (mc *MetricsCollector) ClearMetrics() {
+	prometheus.DefaultRegisterer = prometheus.NewRegistry()
+	prometheus.DefaultGatherer = prometheus.NewRegistry()
 }
 
 func (mc *MetricsCollector) registerCollector(collector prometheus.Collector, name string) prometheus.Collector {

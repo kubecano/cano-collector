@@ -9,6 +9,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/kubecano/cano-collector/pkg/alerts"
 
 	"github.com/kubecano/cano-collector/pkg/tracer"
@@ -111,11 +113,18 @@ func (rm *RouterManager) SetupRouter() *gin.Engine {
 	//   - stack means whether output the stack info.
 	r.Use(ginzap.RecoveryWithZap(rm.logger.GetLogger(), true))
 
-	// Set up routes
 	r.Use(rm.metrics.PrometheusMiddleware())
 
 	r.GET("/", rm.rootHandler)
-	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+	r.GET("/metrics", func(c *gin.Context) {
+		metricsFamilies, err := prometheus.DefaultGatherer.Gather()
+		if err != nil || len(metricsFamilies) == 0 {
+			rm.logger.Error("Prometheus collector not initialized or empty registry")
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Prometheus collector not initialized"})
+			return
+		}
+		promhttp.Handler().ServeHTTP(c.Writer, c.Request)
+	})
 
 	r.GET("/livez", func(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, gin.H{"status": "ok"})

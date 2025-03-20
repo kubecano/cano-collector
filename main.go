@@ -2,9 +2,10 @@ package main
 
 import (
 	"context"
+	"time"
+
 	"github.com/kubecano/cano-collector/pkg/alerts"
 	"github.com/kubecano/cano-collector/pkg/metrics"
-	"time"
 
 	"github.com/kubecano/cano-collector/pkg/router"
 

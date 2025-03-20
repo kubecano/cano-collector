@@ -8,26 +8,36 @@ import (
 	"testing"
 	"time"
 
-	"go.uber.org/zap"
-
-	"github.com/kubecano/cano-collector/pkg/logger"
-
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/alertmanager/template"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/kubecano/cano-collector/pkg/logger"
 )
 
-func setupRouter() *gin.Engine {
-	l, _ := zap.NewDevelopment()
-	logger.SetLogger(l)
+type MockMetricsCollector struct{}
+
+func (m *MockMetricsCollector) PrometheusMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {}
+}
+
+func (m *MockMetricsCollector) ObserveAlert(receiver string, status string) {}
+
+func (m *MockMetricsCollector) ClearMetrics() {}
+
+func setupTestRouter(alertHandler AlertHandlerInterface) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.Default()
-	r.POST("/alert", AlertHandler)
+	r.POST("/alert", alertHandler.HandleAlert)
 	return r
 }
 
 func TestAlertHandler_ValidAlert(t *testing.T) {
-	router := setupRouter()
+	log := logger.NewMockLogger()
+	mockMetrics := &MockMetricsCollector{}
+	alertHandler := NewAlertHandler(log, mockMetrics)
+
+	router := setupTestRouter(alertHandler)
 
 	alert := template.Data{
 		Receiver: "test-receiver",
@@ -60,7 +70,11 @@ func TestAlertHandler_ValidAlert(t *testing.T) {
 }
 
 func TestAlertHandler_InvalidJSON(t *testing.T) {
-	router := setupRouter()
+	log := logger.NewMockLogger()
+	mockMetrics := &MockMetricsCollector{}
+	alertHandler := NewAlertHandler(log, mockMetrics)
+
+	router := setupTestRouter(alertHandler)
 
 	invalidJSON := "{"
 	req, _ := http.NewRequest(http.MethodPost, "/alert", bytes.NewBufferString(invalidJSON))
@@ -74,7 +88,11 @@ func TestAlertHandler_InvalidJSON(t *testing.T) {
 }
 
 func TestAlertHandler_MissingFields(t *testing.T) {
-	router := setupRouter()
+	log := logger.NewMockLogger()
+	mockMetrics := &MockMetricsCollector{}
+	alertHandler := NewAlertHandler(log, mockMetrics)
+
+	router := setupTestRouter(alertHandler)
 
 	alert := `{"receiver": "test-receiver"}`
 	req, _ := http.NewRequest(http.MethodPost, "/alert", bytes.NewBufferString(alert))
@@ -88,7 +106,12 @@ func TestAlertHandler_MissingFields(t *testing.T) {
 }
 
 func TestAlertHandler_EmptyBody(t *testing.T) {
-	router := setupRouter()
+	log := logger.NewMockLogger()
+	mockMetrics := &MockMetricsCollector{}
+	alertHandler := NewAlertHandler(log, mockMetrics)
+
+	router := setupTestRouter(alertHandler)
+
 	req, _ := http.NewRequest(http.MethodPost, "/alert", bytes.NewBuffer([]byte{}))
 	req.Header.Set("Content-Type", "application/json")
 
@@ -100,7 +123,11 @@ func TestAlertHandler_EmptyBody(t *testing.T) {
 }
 
 func TestAlertHandler_AdditionalFields(t *testing.T) {
-	router := setupRouter()
+	log := logger.NewMockLogger()
+	mockMetrics := &MockMetricsCollector{}
+	alertHandler := NewAlertHandler(log, mockMetrics)
+
+	router := setupTestRouter(alertHandler)
 
 	alert := `{"receiver": "test-receiver", "status": "firing", "alerts": [{"status": "firing", "labels": {"alertname": "HighCPUUsage"}}], "extra": "field"}`
 	req, _ := http.NewRequest(http.MethodPost, "/alert", bytes.NewBufferString(alert))
@@ -114,7 +141,11 @@ func TestAlertHandler_AdditionalFields(t *testing.T) {
 }
 
 func TestAlertHandler_LargeAlert(t *testing.T) {
-	router := setupRouter()
+	log := logger.NewMockLogger()
+	mockMetrics := &MockMetricsCollector{}
+	alertHandler := NewAlertHandler(log, mockMetrics)
+
+	router := setupTestRouter(alertHandler)
 
 	alert := template.Data{
 		Receiver: "test-receiver",

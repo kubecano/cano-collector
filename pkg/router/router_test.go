@@ -11,27 +11,75 @@ import (
 	"testing"
 	"time"
 
-	"github.com/prometheus/alertmanager/template"
-
-	"github.com/hellofresh/health-go/v5"
-
-	"go.uber.org/zap"
-
-	"github.com/kubecano/cano-collector/pkg/logger"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hellofresh/health-go/v5"
+	"github.com/prometheus/alertmanager/template"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/kubecano/cano-collector/config"
+	"github.com/kubecano/cano-collector/pkg/logger"
+	"github.com/kubecano/cano-collector/pkg/metrics"
 )
+
+type MockAlertHandler struct{}
+
+func (m *MockAlertHandler) HandleAlert(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"status": "alert received"})
+}
+
+type MockTracer struct{}
+
+func (m *MockTracer) InitTracer(ctx context.Context) (*sdktrace.TracerProvider, error) {
+	return sdktrace.NewTracerProvider(), nil
+}
+
+func (m *MockTracer) TraceLoggerMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {}
+}
+
+func setupTestRouter() *RouterManager {
+	gin.SetMode(gin.TestMode)
+
+	mockLogger := logger.NewMockLogger()
+	if mockLogger == nil {
+		mockLogger = logger.NewLogger("debug", "development") // Upewniamy się, że nie jest nil
+	}
+
+	if mockLogger == nil {
+		panic("mockLogger is nil!")
+	}
+
+	mockMetrics := metrics.NewMetricsCollector(mockLogger)
+	mockTracer := &MockTracer{}
+	mockAlerts := &MockAlertHandler{}
+
+	h, _ := health.New(health.WithChecks())
+
+	cfg := config.Config{
+		AppName:    "cano-collector",
+		AppVersion: "1.0.0",
+	}
+
+	routerManager := NewRouterManager(cfg, mockLogger, mockTracer, mockMetrics, h, mockAlerts)
+
+	if routerManager.logger == nil {
+		panic("RouterManager.logger is nil!")
+	}
+
+	return routerManager
+}
 
 func TestStartServer(t *testing.T) {
 	prometheus.DefaultRegisterer = prometheus.NewRegistry()
-	l, _ := zap.NewDevelopment()
-	logger.SetLogger(l)
-	router := SetupRouter(nil)
+
+	routerManager := setupTestRouter()
+	router := routerManager.SetupRouter()
 
 	srv := &http.Server{
-		Addr:    ":8080",
+		Addr:    ":8081",
 		Handler: router,
 	}
 
@@ -47,19 +95,15 @@ func TestStartServer(t *testing.T) {
 		}
 	}()
 
-	// Wait for server to start using a simple health check
+	// Wait for the server to start
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	var serverReady bool
 	for {
-		resp, err := http.Get("http://127.0.0.1:8080/")
+		resp, err := http.Get("http://127.0.0.1:8081/")
 		if err == nil {
-			func() {
-				if err := resp.Body.Close(); err != nil {
-					t.Logf("Failed to close response body: %v", err)
-				}
-			}()
+			_ = resp.Body.Close()
 			if resp.StatusCode == http.StatusOK {
 				serverReady = true
 				break
@@ -111,18 +155,12 @@ func TestStartServer(t *testing.T) {
 	}
 }
 
-func setupTestRouter() *gin.Engine {
-	gin.SetMode(gin.TestMode)
-	prometheus.DefaultRegisterer = prometheus.NewRegistry()
-	l, _ := zap.NewDevelopment()
-	logger.SetLogger(l)
-
-	h, _ := health.New(health.WithChecks())
-	return SetupRouter(h)
-}
-
 func TestHelloWorld(t *testing.T) {
-	router := setupTestRouter()
+	routerManager := setupTestRouter()
+	assert.NotNil(t, routerManager, "RouterManager should not be nil")
+
+	router := routerManager.SetupRouter()
+	assert.NotNil(t, router, "Router should not be nil")
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/", nil)
@@ -132,39 +170,22 @@ func TestHelloWorld(t *testing.T) {
 	assert.Equal(t, "Hello world!", w.Body.String())
 }
 
-func TestLivezEndpoint(t *testing.T) {
-	router := setupTestRouter()
+func TestHealthEndpoints(t *testing.T) {
+	router := setupTestRouter().SetupRouter()
 
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/livez", nil)
-	router.ServeHTTP(w, req)
+	endpoints := []string{"/livez", "/readyz", "/healthz"}
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.JSONEq(t, `{"status": "ok"}`, w.Body.String())
-}
+	for _, endpoint := range endpoints {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest(http.MethodGet, endpoint, nil)
+		router.ServeHTTP(w, req)
 
-func TestReadyzEndpoint(t *testing.T) {
-	router := setupTestRouter()
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/readyz", nil)
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-}
-
-func TestHealthzEndpoint(t *testing.T) {
-	router := setupTestRouter()
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/healthz", nil)
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusOK, w.Code)
+		assert.Equal(t, http.StatusOK, w.Code, "Expected 200 OK for endpoint %s", endpoint)
+	}
 }
 
 func TestApiAlertsEndpoint(t *testing.T) {
-	router := setupTestRouter()
+	router := setupTestRouter().SetupRouter()
 
 	w := httptest.NewRecorder()
 	alert := template.Data{
@@ -188,6 +209,8 @@ func TestApiAlertsEndpoint(t *testing.T) {
 
 	jsonAlert, _ := json.Marshal(alert)
 	req, _ := http.NewRequest(http.MethodPost, "/api/alerts", bytes.NewBuffer(jsonAlert))
+	req.Header.Set("Content-Type", "application/json")
+
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -195,7 +218,7 @@ func TestApiAlertsEndpoint(t *testing.T) {
 }
 
 func TestMetricsEndpoint(t *testing.T) {
-	router := setupTestRouter()
+	router := setupTestRouter().SetupRouter()
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/metrics", nil)
@@ -203,4 +226,37 @@ func TestMetricsEndpoint(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), "go_goroutines")
+}
+
+func TestMetricsEndpoint_Uninitialized(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	mockLogger := logger.NewMockLogger()
+
+	emptyRegistry := prometheus.NewRegistry()
+	prometheus.DefaultRegisterer = emptyRegistry
+	prometheus.DefaultGatherer = emptyRegistry
+
+	mockMetrics := metrics.NewMetricsCollector(mockLogger)
+
+	mockMetrics.ClearMetrics()
+
+	mockTracer := &MockTracer{}
+	mockAlerts := &MockAlertHandler{}
+
+	h, _ := health.New(health.WithChecks())
+
+	cfg := config.Config{
+		AppName:    "cano-collector",
+		AppVersion: "1.0.0",
+	}
+
+	routerManager := NewRouterManager(cfg, mockLogger, mockTracer, mockMetrics, h, mockAlerts)
+	router := routerManager.SetupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/metrics", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code, "Expected 500 Internal Server Error when Prometheus is not initialized")
+	assert.Contains(t, w.Body.String(), "Prometheus collector not initialized", "Expected error message in response body")
 }
