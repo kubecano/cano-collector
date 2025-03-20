@@ -20,6 +20,12 @@ automountServiceAccountToken: true
 image:
   registry: ghcr.io/kubecano
 
+destinations:
+  slack: [ ]
+  msteams: [ ]
+
+teams: [ ]
+
 collector:
   image:
     name: cano-collector

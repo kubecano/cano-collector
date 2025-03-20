@@ -21,7 +21,10 @@ import (
 )
 
 func main() {
-	cfg := config.LoadConfig()
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		panic("Error loading config: " + err.Error())
+	}
 
 	var log logger.LoggerInterface = logger.NewLogger(cfg.LogLevel, cfg.AppEnv)
 	log.Debug("Logger initialized")
