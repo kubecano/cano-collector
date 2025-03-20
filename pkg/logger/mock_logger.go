@@ -6,7 +6,6 @@ import (
 	"go.uber.org/zap"
 )
 
-// MockLogger to mock dla LoggerInterface
 type MockLogger struct {
 	zapLogger *zap.Logger
 }
