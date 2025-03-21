@@ -14,9 +14,26 @@ type Config struct {
 	TracingEndpoint string
 	SentryDSN       string
 	SentryEnabled   bool
+	Destination     DestinationsConfig
+	Teams           TeamsConfig
 }
 
-func LoadConfig() Config {
+func LoadConfig() (Config, error) {
+	var (
+		teamsPath        = "/etc/cano-collector/teams.yaml"
+		destinationsPath = "/etc/cano-collector/destinations.yaml"
+	)
+
+	d, err := LoadDestinationsConfig(destinationsPath)
+	if err != nil {
+		return Config{}, err
+	}
+
+	t, err := LoadTeamsConfig(teamsPath)
+	if err != nil {
+		return Config{}, err
+	}
+
 	return Config{
 		AppName:         getEnvString("APP_NAME", "cano-collector"),
 		AppVersion:      getEnvString("APP_VERSION", "dev"),
@@ -26,7 +43,9 @@ func LoadConfig() Config {
 		TracingEndpoint: getEnvString("TRACING_ENDPOINT", "http://localhost:4317"),
 		SentryDSN:       getEnvString("SENTRY_DSN", ""),
 		SentryEnabled:   getEnvBool("ENABLE_TELEMETRY", true),
-	}
+		Destination:     *d,
+		Teams:           *t,
+	}, nil
 }
 
 func getEnvString(key, defaultValue string) string {

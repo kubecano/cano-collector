@@ -114,6 +114,20 @@ spec:
             - secretRef:
                 name: {{ include "cano-collector.fullname" . }}-secret
                 optional: true
+          volumeMounts:
+            - name: teams-volume
+              mountPath: /etc/cano-collector/
+              readOnly: true
+            - name: destinations-secret-volume
+              mountPath: /etc/cano-collector/
+              readOnly: true
+      volumes:
+        - name: teams-volume
+          configMap:
+            name: {{ include "cano-collector.fullname" . }}-teams
+        - name: destinations-secret-volume
+          secret:
+            secretName: {{ include "cano-collector.fullname" . }}-destination-secrets
       {{- with .Values.collector.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/stretchr/testify/require"
 	"os"
 	"testing"
 
@@ -20,7 +21,8 @@ func TestLoadConfig(t *testing.T) {
 		_ = os.Unsetenv("ENABLE_TELEMETRY")
 	})
 
-	cfg := LoadConfig()
+	cfg, err := LoadConfig()
+	require.NoError(t, err, "Expected no error when loading config")
 
 	assert.Equal(t, "test-app", cfg.AppName)
 	assert.Equal(t, "debug", cfg.LogLevel)
