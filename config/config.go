@@ -14,22 +14,17 @@ type Config struct {
 	TracingEndpoint string
 	SentryDSN       string
 	SentryEnabled   bool
-	Destination     DestinationsConfig
+	Destinations    DestinationsConfig
 	Teams           TeamsConfig
 }
 
-func LoadConfig() (Config, error) {
-	var (
-		teamsPath        = "/etc/cano-collector/teams.yaml"
-		destinationsPath = "/etc/cano-collector/destinations.yaml"
-	)
+type FullConfigLoader interface {
+	Load() (DestinationsConfig, TeamsConfig, error)
+}
 
-	d, err := LoadDestinationsConfig(destinationsPath)
-	if err != nil {
-		return Config{}, err
-	}
-
-	t, err := LoadTeamsConfig(teamsPath)
+// LoadConfigWithLoader reads the Config from the provided loader
+func LoadConfigWithLoader(loader FullConfigLoader) (Config, error) {
+	destinations, teams, err := loader.Load()
 	if err != nil {
 		return Config{}, err
 	}
@@ -43,17 +38,51 @@ func LoadConfig() (Config, error) {
 		TracingEndpoint: getEnvString("TRACING_ENDPOINT", "http://localhost:4317"),
 		SentryDSN:       getEnvString("SENTRY_DSN", ""),
 		SentryEnabled:   getEnvBool("ENABLE_TELEMETRY", true),
-		Destination:     *d,
-		Teams:           *t,
+		Destinations:    destinations,
+		Teams:           teams,
 	}, nil
 }
 
-func getEnvString(key, defaultValue string) string {
-	value, exists := os.LookupEnv(key)
-	if !exists {
-		return defaultValue
+type fileConfigLoader struct {
+	destinationsPath string
+	teamsPath        string
+}
+
+func NewFileConfigLoader(destinationsPath, teamsPath string) FullConfigLoader {
+	return &fileConfigLoader{destinationsPath: destinationsPath, teamsPath: teamsPath}
+}
+
+func (f *fileConfigLoader) Load() (DestinationsConfig, TeamsConfig, error) {
+	destLoader := NewFileDestinationsLoader(f.destinationsPath)
+	teamLoader := NewFileTeamsLoader(f.teamsPath)
+
+	dest, err := destLoader.Load()
+	if err != nil {
+		return DestinationsConfig{}, TeamsConfig{}, err
 	}
-	return value
+
+	teams, err := teamLoader.Load()
+	if err != nil {
+		return DestinationsConfig{}, TeamsConfig{}, err
+	}
+
+	return *dest, *teams, nil
+}
+
+func LoadConfig() (Config, error) {
+	loader := NewFileConfigLoader(
+		"/etc/cano-collector/destinations.yaml",
+		"/etc/cano-collector/teams.yaml",
+	)
+	return LoadConfigWithLoader(loader)
+}
+
+// Helpers
+func getEnvString(key, defaultValue string) string {
+	if value, exists := os.LookupEnv(key); exists {
+		return value
+	}
+	return defaultValue
 }
 
 func getEnvBool(key string, defaultValue bool) bool {
@@ -61,11 +90,10 @@ func getEnvBool(key string, defaultValue bool) bool {
 	if !exists {
 		return defaultValue
 	}
-	parsedValue, err := strconv.ParseBool(value)
-	if err != nil {
-		return defaultValue
+	if parsed, err := strconv.ParseBool(value); err == nil {
+		return parsed
 	}
-	return parsedValue
+	return defaultValue
 }
 
 func getEnvEnum(key string, allowedValues []string, defaultValue string) string {
