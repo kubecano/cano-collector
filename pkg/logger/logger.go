@@ -9,6 +9,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+//go:generate mockgen -destination=../../mocks/logger_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/logger LoggerInterface
 type LoggerInterface interface {
 	Debug(args ...interface{})
 	Debugf(template string, args ...interface{})

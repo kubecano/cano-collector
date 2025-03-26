@@ -1,4 +1,4 @@
-package config
+package teams
 
 import (
 	"os"
@@ -8,7 +8,7 @@ import (
 
 // TeamsLoader defines the interface for loading team configuration
 //
-//go:generate mockgen -destination=../mocks/teams_loader_mock.go -package=mocks github.com/kubecano/cano-collector/config TeamsLoader
+//go:generate mockgen -destination=../../mocks/teams_loader_mock.go -package=mocks github.com/kubecano/cano-collector/config/teams TeamsLoader
 type TeamsLoader interface {
 	Load() (*TeamsConfig, error)
 }

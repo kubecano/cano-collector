@@ -10,6 +10,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+//go:generate mockgen -destination=../../mocks/metrics_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/metrics MetricsInterface
 type MetricsInterface interface {
 	PrometheusMiddleware() gin.HandlerFunc
 	ObserveAlert(receiver string, status string)

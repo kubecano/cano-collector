@@ -1,4 +1,4 @@
-package config
+package destinations
 
 import (
 	"fmt"
@@ -20,7 +20,7 @@ type Destination struct {
 	WebhookURL string `yaml:"webhookURL"`
 }
 
-//go:generate mockgen -destination=../mocks/config_loader_mock.go -package=mocks github.com/kubecano/cano-collector/config DestinationsLoader
+//go:generate mockgen -destination=../../mocks/destinations_loader_mock.go -package=mocks github.com/kubecano/cano-collector/config/destinations DestinationsLoader
 type DestinationsLoader interface {
 	Load() (*DestinationsConfig, error)
 }
@@ -39,7 +39,9 @@ func (f *FileDestinationsLoader) Load() (*DestinationsConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot open destination config: %w", err)
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		_ = file.Close()
+	}(file)
 
 	return parseDestinationsYAML(file)
 }

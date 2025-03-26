@@ -23,17 +23,17 @@ import (
 
 	"github.com/kubecano/cano-collector/pkg/logger"
 
-	"github.com/hellofresh/health-go/v5"
-
 	sentrygin "github.com/getsentry/sentry-go/gin"
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/kubecano/cano-collector/config"
+	"github.com/kubecano/cano-collector/pkg/health"
 	"github.com/kubecano/cano-collector/pkg/metrics"
 )
 
+//go:generate mockgen -destination=../../mocks/router_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/router RouterInterface
 type RouterInterface interface {
 	SetupRouter() *gin.Engine
 	StartServer(router *gin.Engine)
@@ -44,7 +44,7 @@ type RouterManager struct {
 	logger  logger.LoggerInterface
 	tracer  tracer.TracerInterface
 	metrics metrics.MetricsInterface
-	health  *health.Health
+	health  health.HealthInterface
 	alerts  alerts.AlertHandlerInterface
 }
 
@@ -53,7 +53,7 @@ func NewRouterManager(
 	log logger.LoggerInterface,
 	tracer tracer.TracerInterface,
 	metrics metrics.MetricsInterface,
-	health *health.Health,
+	health health.HealthInterface,
 	alerts alerts.AlertHandlerInterface,
 ) *RouterManager {
 	return &RouterManager{

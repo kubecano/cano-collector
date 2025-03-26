@@ -4,19 +4,45 @@ import (
 	"os"
 	"testing"
 
+	"github.com/golang/mock/gomock"
+
+	"github.com/kubecano/cano-collector/config/destinations"
+	"github.com/kubecano/cano-collector/config/teams"
+	"github.com/kubecano/cano-collector/mocks"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// mockLoader to testowy FullConfigLoader
-type mockLoader struct {
-	destinations DestinationsConfig
-	teams        TeamsConfig
-	err          error
-}
+func setupTestLoader(t *testing.T) (Config, error) {
+	t.Helper()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-func (m *mockLoader) Load() (DestinationsConfig, TeamsConfig, error) {
-	return m.destinations, m.teams, m.err
+	destinationsConfig := destinations.DestinationsConfig{
+		Destinations: struct {
+			Slack []destinations.Destination `yaml:"slack"`
+			Teams []destinations.Destination `yaml:"teams"`
+		}{
+			Slack: []destinations.Destination{{Name: "alerts", WebhookURL: "https://slack.example.com"}},
+			Teams: []destinations.Destination{},
+		},
+	}
+	mockDestinations := mocks.NewMockDestinationsLoader(ctrl)
+	mockDestinations.EXPECT().Load().AnyTimes().Return(&destinationsConfig, nil)
+
+	teamsConfig := teams.TeamsConfig{
+		Teams: []teams.Team{
+			{Name: "devops", Destinations: []string{"alerts"}},
+		},
+	}
+	mockTeams := mocks.NewMockTeamsLoader(ctrl)
+	mockTeams.EXPECT().Load().AnyTimes().Return(&teamsConfig, nil)
+
+	mockLoader := mocks.NewMockFullConfigLoader(ctrl)
+	mockLoader.EXPECT().Load().AnyTimes().Return(destinationsConfig, teamsConfig, nil)
+
+	return LoadConfigWithLoader(mockLoader)
 }
 
 func TestLoadConfigWithLoader(t *testing.T) {
@@ -32,26 +58,7 @@ func TestLoadConfigWithLoader(t *testing.T) {
 		_ = os.Unsetenv("ENABLE_TELEMETRY")
 	})
 
-	mockDest := DestinationsConfig{
-		Destinations: struct {
-			Slack []Destination `yaml:"slack"`
-			Teams []Destination `yaml:"teams"`
-		}{
-			Slack: []Destination{{Name: "alerts", WebhookURL: "https://slack.example.com"}},
-			Teams: []Destination{},
-		},
-	}
-	mockTeams := TeamsConfig{
-		Teams: []Team{
-			{Name: "devops", Destinations: []string{"alerts"}},
-		},
-	}
-
-	cfg, err := LoadConfigWithLoader(&mockLoader{
-		destinations: mockDest,
-		teams:        mockTeams,
-		err:          nil,
-	})
+	cfg, err := setupTestLoader(t)
 	require.NoError(t, err)
 
 	assert.Equal(t, "test-app", cfg.AppName)
@@ -108,13 +115,15 @@ func TestGetEnvEnum(t *testing.T) {
 }
 
 func TestLoadConfigWithLoader_Error(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	mockErr := assert.AnError
 
-	loader := &mockLoader{
-		err: mockErr,
-	}
+	mockLoader := mocks.NewMockFullConfigLoader(ctrl)
+	mockLoader.EXPECT().Load().AnyTimes().Return(destinations.DestinationsConfig{}, teams.TeamsConfig{}, mockErr)
 
-	cfg, err := LoadConfigWithLoader(loader)
+	cfg, err := LoadConfigWithLoader(mockLoader)
 
 	require.Error(t, err, "Expected error when loader fails")
 	assert.Equal(t, Config{}, cfg, "Expected empty config on loader failure")

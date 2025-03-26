@@ -1,4 +1,4 @@
-package config_test
+package destinations
 
 import (
 	"os"
@@ -8,8 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/kubecano/cano-collector/config"
 )
 
 func TestLoadDestinationsConfig_Success(t *testing.T) {
@@ -30,7 +28,7 @@ destinations:
 	err := os.WriteFile(tmpFile, []byte(yamlContent), 0o644)
 	require.NoError(t, err)
 
-	loader := config.NewFileDestinationsLoader(tmpFile)
+	loader := NewFileDestinationsLoader(tmpFile)
 	cfg, err := loader.Load()
 	require.NoError(t, err)
 	assert.NotNil(t, cfg)
@@ -47,7 +45,7 @@ destinations:
 }
 
 func TestLoadDestinationsConfig_FileNotFound(t *testing.T) {
-	loader := config.NewFileDestinationsLoader("non-existent.yaml")
+	loader := NewFileDestinationsLoader("non-existent.yaml")
 	cfg, err := loader.Load()
 	require.Error(t, err)
 	assert.Nil(t, cfg)
@@ -59,7 +57,7 @@ func TestLoadDestinationsConfig_InvalidYAML(t *testing.T) {
 	err := os.WriteFile(tmpFile, []byte("this is not: valid: yaml"), 0o644)
 	require.NoError(t, err)
 
-	loader := config.NewFileDestinationsLoader(tmpFile)
+	loader := NewFileDestinationsLoader(tmpFile)
 	cfg, err := loader.Load()
 	require.Error(t, err)
 	assert.Nil(t, cfg)

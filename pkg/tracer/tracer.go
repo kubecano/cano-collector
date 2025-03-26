@@ -19,37 +19,38 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+//go:generate mockgen -destination=../../mocks/tracer_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/tracer TracerInterface
 type TracerInterface interface {
-	InitTracer(ctx context.Context) (*sdktrace.TracerProvider, error)
+	InitTracer(ctx context.Context) error
 	TraceLoggerMiddleware() gin.HandlerFunc
+	ShutdownTracer(ctx context.Context) error
 }
 
 type TracerManager struct {
-	cfg    config.Config
-	logger logger.LoggerInterface
+	cfg      config.Config
+	logger   logger.LoggerInterface
+	provider *sdktrace.TracerProvider
 }
 
 func NewTracerManager(cfg config.Config, logger logger.LoggerInterface) *TracerManager {
 	return &TracerManager{cfg: cfg, logger: logger}
 }
 
-func (tm *TracerManager) InitTracer(ctx context.Context) (*sdktrace.TracerProvider, error) {
+func (tm *TracerManager) InitTracer(ctx context.Context) error {
 	tm.logger.Debug("Initializing Tracer...")
 
 	otel.SetTracerProvider(sdktrace.NewTracerProvider(sdktrace.WithSampler(sdktrace.NeverSample())))
 
-	var tp *sdktrace.TracerProvider
-
 	switch tm.cfg.TracingMode {
 	case "disabled":
 		tm.logger.Info("Tracing is disabled. No traces will be collected.")
-		tp = sdktrace.NewTracerProvider(
+		tm.provider = sdktrace.NewTracerProvider(
 			sdktrace.WithSampler(sdktrace.NeverSample()),
 		)
 
 	case "local":
 		tm.logger.Info("Tracing is enabled in local mode. Traces will not be exported.")
-		tp = sdktrace.NewTracerProvider(
+		tm.provider = sdktrace.NewTracerProvider(
 			sdktrace.WithSampler(sdktrace.AlwaysSample()),
 			sdktrace.WithResource(sdkresource.NewWithAttributes(
 				semconv.SchemaURL,
@@ -63,7 +64,7 @@ func (tm *TracerManager) InitTracer(ctx context.Context) (*sdktrace.TracerProvid
 
 		if _, err := url.ParseRequestURI(endpoint); err != nil {
 			tm.logger.Errorf("Invalid tracing endpoint: %s", err)
-			return nil, fmt.Errorf("invalid tracing endpoint: %w", err)
+			return fmt.Errorf("invalid tracing endpoint: %w", err)
 		}
 
 		exporter, err := otlptracegrpc.New(
@@ -73,10 +74,10 @@ func (tm *TracerManager) InitTracer(ctx context.Context) (*sdktrace.TracerProvid
 		)
 		if err != nil {
 			tm.logger.Errorf("Failed to initialize OTLP exporter: %v", err)
-			return nil, err
+			return err
 		}
 
-		tp = sdktrace.NewTracerProvider(
+		tm.provider = sdktrace.NewTracerProvider(
 			sdktrace.WithBatcher(exporter),
 			sdktrace.WithSampler(sdktrace.AlwaysSample()),
 			sdktrace.WithResource(sdkresource.NewWithAttributes(
@@ -86,18 +87,18 @@ func (tm *TracerManager) InitTracer(ctx context.Context) (*sdktrace.TracerProvid
 		)
 	}
 
-	if tp == nil {
+	if tm.provider == nil {
 		tm.logger.Warn("TracerProvider was nil. Creating a new default TracerProvider.")
-		tp = sdktrace.NewTracerProvider(
+		tm.provider = sdktrace.NewTracerProvider(
 			sdktrace.WithSampler(sdktrace.NeverSample()),
 		)
 	}
 
-	otel.SetTracerProvider(tp)
+	otel.SetTracerProvider(tm.provider)
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 
 	tm.logger.Debug("Tracer initialized successfully.")
-	return tp, nil
+	return nil
 }
 
 func (tm *TracerManager) TraceLoggerMiddleware() gin.HandlerFunc {
@@ -119,4 +120,11 @@ func (tm *TracerManager) TraceLoggerMiddleware() gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+func (tm *TracerManager) ShutdownTracer(ctx context.Context) error {
+	if tm.provider != nil {
+		return tm.provider.Shutdown(ctx)
+	}
+	return nil
 }

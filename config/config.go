@@ -3,6 +3,9 @@ package config
 import (
 	"os"
 	"strconv"
+
+	"github.com/kubecano/cano-collector/config/destinations"
+	"github.com/kubecano/cano-collector/config/teams"
 )
 
 type Config struct {
@@ -14,12 +17,13 @@ type Config struct {
 	TracingEndpoint string
 	SentryDSN       string
 	SentryEnabled   bool
-	Destinations    DestinationsConfig
-	Teams           TeamsConfig
+	Destinations    destinations.DestinationsConfig
+	Teams           teams.TeamsConfig
 }
 
+//go:generate mockgen -destination=../mocks/fullconfig_loader_mock.go -package=mocks github.com/kubecano/cano-collector/config FullConfigLoader
 type FullConfigLoader interface {
-	Load() (DestinationsConfig, TeamsConfig, error)
+	Load() (destinations.DestinationsConfig, teams.TeamsConfig, error)
 }
 
 // LoadConfigWithLoader reads the Config from the provided loader
@@ -52,21 +56,21 @@ func NewFileConfigLoader(destinationsPath, teamsPath string) FullConfigLoader {
 	return &fileConfigLoader{destinationsPath: destinationsPath, teamsPath: teamsPath}
 }
 
-func (f *fileConfigLoader) Load() (DestinationsConfig, TeamsConfig, error) {
-	destLoader := NewFileDestinationsLoader(f.destinationsPath)
-	teamLoader := NewFileTeamsLoader(f.teamsPath)
+func (f *fileConfigLoader) Load() (destinations.DestinationsConfig, teams.TeamsConfig, error) {
+	destLoader := destinations.NewFileDestinationsLoader(f.destinationsPath)
+	teamLoader := teams.NewFileTeamsLoader(f.teamsPath)
 
-	dest, err := destLoader.Load()
+	d, err := destLoader.Load()
 	if err != nil {
-		return DestinationsConfig{}, TeamsConfig{}, err
+		return destinations.DestinationsConfig{}, teams.TeamsConfig{}, err
 	}
 
-	teams, err := teamLoader.Load()
+	t, err := teamLoader.Load()
 	if err != nil {
-		return DestinationsConfig{}, TeamsConfig{}, err
+		return destinations.DestinationsConfig{}, teams.TeamsConfig{}, err
 	}
 
-	return *dest, *teams, nil
+	return *d, *t, nil
 }
 
 func LoadConfig() (Config, error) {

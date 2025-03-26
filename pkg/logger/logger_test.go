@@ -19,25 +19,6 @@ func TestNewLogger(t *testing.T) {
 	assert.True(t, logLevel, "Expected logger to be initialized with debug level")
 }
 
-func TestMockLogger(t *testing.T) {
-	log := NewMockLogger()
-
-	log.Debug("test")
-	log.Debugf("test %s", "formatted")
-	log.Info("test")
-	log.Infof("test %s", "formatted")
-	log.Warn("test")
-	log.Warnf("test %s", "formatted")
-	log.Error("test")
-	log.Errorf("test %s", "formatted")
-	log.Fatal("test")
-	log.Fatalf("test %s", "formatted")
-	log.Panic("test")
-	log.Panicf("test %s", "formatted")
-
-	assert.NotNil(t, log, "MockLogger should not be nil")
-}
-
 func TestLoggingToBuffer(t *testing.T) {
 	var buf bytes.Buffer
 	writer := zapcore.AddSync(&buf)
@@ -115,7 +96,7 @@ func TestNewLogger_InvalidConfig(t *testing.T) {
 func TestNewLogger_Panic(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
-			t.Errorf("NewLogger should not panic, got: %v", r)
+			t.Errorf("LoggerFactory should not panic, got: %v", r)
 		}
 	}()
 
