@@ -11,59 +11,60 @@ import (
 	"testing"
 	"time"
 
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"github.com/golang/mock/gomock"
+	"go.uber.org/zap"
+
+	"github.com/kubecano/cano-collector/mocks"
 
 	"github.com/gin-gonic/gin"
-	"github.com/hellofresh/health-go/v5"
 	"github.com/prometheus/alertmanager/template"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/kubecano/cano-collector/config"
-	"github.com/kubecano/cano-collector/pkg/logger"
 	"github.com/kubecano/cano-collector/pkg/metrics"
 )
 
-type MockAlertHandler struct{}
-
-func (m *MockAlertHandler) HandleAlert(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"status": "alert received"})
-}
-
-type MockTracer struct{}
-
-func (m *MockTracer) InitTracer(ctx context.Context) (*sdktrace.TracerProvider, error) {
-	return sdktrace.NewTracerProvider(), nil
-}
-
-func (m *MockTracer) TraceLoggerMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {}
-}
-
-func setupTestRouter() *RouterManager {
+func setupTestRouter(t *testing.T) *RouterManager {
+	t.Helper()
 	gin.SetMode(gin.TestMode)
 
-	mockLogger := logger.NewMockLogger()
-	if mockLogger == nil {
-		mockLogger = logger.NewLogger("debug", "development") // Upewniamy się, że nie jest nil
-	}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-	if mockLogger == nil {
-		panic("mockLogger is nil!")
-	}
+	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+
+	realLogger := zap.NewNop()
+	mockLogger.EXPECT().GetLogger().Return(realLogger).AnyTimes()
+
+	mockLogger.EXPECT().Debug(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debugf(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Warnf(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
+
+	mockTracer := mocks.NewMockTracerInterface(ctrl)
+	mockAlerts := mocks.NewMockAlertHandlerInterface(ctrl)
+	mockAlerts.EXPECT().HandleAlert(gomock.Any()).DoAndReturn(func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "alert received"})
+	}).AnyTimes()
+
+	mockHealth := mocks.NewMockHealthInterface(ctrl)
 
 	mockMetrics := metrics.NewMetricsCollector(mockLogger)
-	mockTracer := &MockTracer{}
-	mockAlerts := &MockAlertHandler{}
 
-	h, _ := health.New(health.WithChecks())
+	// Stub minimalne wymagane zachowania
+	mockTracer.EXPECT().TraceLoggerMiddleware().AnyTimes().Return(func(c *gin.Context) {})
+	mockHealth.EXPECT().RegisterHealthChecks().AnyTimes().Return(nil)
+	mockHealth.EXPECT().Handler().AnyTimes().Return(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
 
 	cfg := config.Config{
 		AppName:    "cano-collector",
 		AppVersion: "1.0.0",
 	}
 
-	routerManager := NewRouterManager(cfg, mockLogger, mockTracer, mockMetrics, h, mockAlerts)
+	routerManager := NewRouterManager(cfg, mockLogger, mockTracer, mockMetrics, mockHealth, mockAlerts)
 
 	if routerManager.logger == nil {
 		panic("RouterManager.logger is nil!")
@@ -75,7 +76,7 @@ func setupTestRouter() *RouterManager {
 func TestStartServer(t *testing.T) {
 	prometheus.DefaultRegisterer = prometheus.NewRegistry()
 
-	routerManager := setupTestRouter()
+	routerManager := setupTestRouter(t)
 	router := routerManager.SetupRouter()
 
 	srv := &http.Server{
@@ -156,7 +157,7 @@ func TestStartServer(t *testing.T) {
 }
 
 func TestHelloWorld(t *testing.T) {
-	routerManager := setupTestRouter()
+	routerManager := setupTestRouter(t)
 	assert.NotNil(t, routerManager, "RouterManager should not be nil")
 
 	router := routerManager.SetupRouter()
@@ -171,7 +172,8 @@ func TestHelloWorld(t *testing.T) {
 }
 
 func TestHealthEndpoints(t *testing.T) {
-	router := setupTestRouter().SetupRouter()
+	routerManager := setupTestRouter(t)
+	router := routerManager.SetupRouter()
 
 	endpoints := []string{"/livez", "/readyz", "/healthz"}
 
@@ -185,7 +187,8 @@ func TestHealthEndpoints(t *testing.T) {
 }
 
 func TestApiAlertsEndpoint(t *testing.T) {
-	router := setupTestRouter().SetupRouter()
+	routerManager := setupTestRouter(t)
+	router := routerManager.SetupRouter()
 
 	w := httptest.NewRecorder()
 	alert := template.Data{
@@ -218,7 +221,8 @@ func TestApiAlertsEndpoint(t *testing.T) {
 }
 
 func TestMetricsEndpoint(t *testing.T) {
-	router := setupTestRouter().SetupRouter()
+	routerManager := setupTestRouter(t)
+	router := routerManager.SetupRouter()
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/metrics", nil)
@@ -230,27 +234,46 @@ func TestMetricsEndpoint(t *testing.T) {
 
 func TestMetricsEndpoint_Uninitialized(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	mockLogger := logger.NewMockLogger()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+
+	realLogger := zap.NewNop()
+	mockLogger.EXPECT().GetLogger().Return(realLogger).AnyTimes()
+
+	mockLogger.EXPECT().Error(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debugf(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Warnf(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
+
+	mockTracer := mocks.NewMockTracerInterface(ctrl)
+	mockAlerts := mocks.NewMockAlertHandlerInterface(ctrl)
+	mockHealth := mocks.NewMockHealthInterface(ctrl)
+
+	mockMetrics := metrics.NewMetricsCollector(mockLogger)
+
+	// Stub minimalne wymagane zachowania
+	mockTracer.EXPECT().TraceLoggerMiddleware().AnyTimes().Return(func(c *gin.Context) {})
+	mockHealth.EXPECT().RegisterHealthChecks().AnyTimes().Return(nil)
+	mockHealth.EXPECT().Handler().AnyTimes().Return(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
 
 	emptyRegistry := prometheus.NewRegistry()
 	prometheus.DefaultRegisterer = emptyRegistry
 	prometheus.DefaultGatherer = emptyRegistry
 
-	mockMetrics := metrics.NewMetricsCollector(mockLogger)
-
 	mockMetrics.ClearMetrics()
-
-	mockTracer := &MockTracer{}
-	mockAlerts := &MockAlertHandler{}
-
-	h, _ := health.New(health.WithChecks())
 
 	cfg := config.Config{
 		AppName:    "cano-collector",
 		AppVersion: "1.0.0",
 	}
 
-	routerManager := NewRouterManager(cfg, mockLogger, mockTracer, mockMetrics, h, mockAlerts)
+	routerManager := NewRouterManager(cfg, mockLogger, mockTracer, mockMetrics, mockHealth, mockAlerts)
 	router := routerManager.SetupRouter()
 
 	w := httptest.NewRecorder()

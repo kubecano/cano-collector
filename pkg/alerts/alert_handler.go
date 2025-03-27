@@ -13,6 +13,7 @@ import (
 	"github.com/kubecano/cano-collector/pkg/metrics"
 )
 
+//go:generate mockgen -destination=../../mocks/alert_handler_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/alerts AlertHandlerInterface
 type AlertHandlerInterface interface {
 	HandleAlert(c *gin.Context)
 }

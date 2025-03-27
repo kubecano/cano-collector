@@ -8,36 +8,42 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/mock/gomock"
+
+	"github.com/kubecano/cano-collector/mocks"
+	"github.com/kubecano/cano-collector/pkg/metrics"
+
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/alertmanager/template"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/kubecano/cano-collector/pkg/logger"
 )
 
-type MockMetricsCollector struct{}
-
-func (m *MockMetricsCollector) PrometheusMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {}
-}
-
-func (m *MockMetricsCollector) ObserveAlert(receiver string, status string) {}
-
-func (m *MockMetricsCollector) ClearMetrics() {}
-
-func setupTestRouter(alertHandler AlertHandlerInterface) *gin.Engine {
+func setupTestRouter(t *testing.T) *gin.Engine {
+	t.Helper()
 	gin.SetMode(gin.TestMode)
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+
+	mockLogger.EXPECT().Error(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debugf(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Warnf(gomock.Any(), gomock.Any()).AnyTimes()
+
+	mockMetrics := metrics.NewMetricsCollector(mockLogger)
+
+	alertHandler := NewAlertHandler(mockLogger, mockMetrics)
+
 	r := gin.Default()
 	r.POST("/alert", alertHandler.HandleAlert)
 	return r
 }
 
 func TestAlertHandler_ValidAlert(t *testing.T) {
-	log := logger.NewMockLogger()
-	mockMetrics := &MockMetricsCollector{}
-	alertHandler := NewAlertHandler(log, mockMetrics)
-
-	router := setupTestRouter(alertHandler)
+	router := setupTestRouter(t)
 
 	alert := template.Data{
 		Receiver: "test-receiver",
@@ -70,11 +76,7 @@ func TestAlertHandler_ValidAlert(t *testing.T) {
 }
 
 func TestAlertHandler_InvalidJSON(t *testing.T) {
-	log := logger.NewMockLogger()
-	mockMetrics := &MockMetricsCollector{}
-	alertHandler := NewAlertHandler(log, mockMetrics)
-
-	router := setupTestRouter(alertHandler)
+	router := setupTestRouter(t)
 
 	invalidJSON := "{"
 	req, _ := http.NewRequest(http.MethodPost, "/alert", bytes.NewBufferString(invalidJSON))
@@ -88,11 +90,7 @@ func TestAlertHandler_InvalidJSON(t *testing.T) {
 }
 
 func TestAlertHandler_MissingFields(t *testing.T) {
-	log := logger.NewMockLogger()
-	mockMetrics := &MockMetricsCollector{}
-	alertHandler := NewAlertHandler(log, mockMetrics)
-
-	router := setupTestRouter(alertHandler)
+	router := setupTestRouter(t)
 
 	alert := `{"receiver": "test-receiver"}`
 	req, _ := http.NewRequest(http.MethodPost, "/alert", bytes.NewBufferString(alert))
@@ -106,11 +104,7 @@ func TestAlertHandler_MissingFields(t *testing.T) {
 }
 
 func TestAlertHandler_EmptyBody(t *testing.T) {
-	log := logger.NewMockLogger()
-	mockMetrics := &MockMetricsCollector{}
-	alertHandler := NewAlertHandler(log, mockMetrics)
-
-	router := setupTestRouter(alertHandler)
+	router := setupTestRouter(t)
 
 	req, _ := http.NewRequest(http.MethodPost, "/alert", bytes.NewBuffer([]byte{}))
 	req.Header.Set("Content-Type", "application/json")
@@ -123,11 +117,7 @@ func TestAlertHandler_EmptyBody(t *testing.T) {
 }
 
 func TestAlertHandler_AdditionalFields(t *testing.T) {
-	log := logger.NewMockLogger()
-	mockMetrics := &MockMetricsCollector{}
-	alertHandler := NewAlertHandler(log, mockMetrics)
-
-	router := setupTestRouter(alertHandler)
+	router := setupTestRouter(t)
 
 	alert := `{"receiver": "test-receiver", "status": "firing", "alerts": [{"status": "firing", "labels": {"alertname": "HighCPUUsage"}}], "extra": "field"}`
 	req, _ := http.NewRequest(http.MethodPost, "/alert", bytes.NewBufferString(alert))
@@ -141,11 +131,7 @@ func TestAlertHandler_AdditionalFields(t *testing.T) {
 }
 
 func TestAlertHandler_LargeAlert(t *testing.T) {
-	log := logger.NewMockLogger()
-	mockMetrics := &MockMetricsCollector{}
-	alertHandler := NewAlertHandler(log, mockMetrics)
-
-	router := setupTestRouter(alertHandler)
+	router := setupTestRouter(t)
 
 	alert := template.Data{
 		Receiver: "test-receiver",

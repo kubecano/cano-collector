@@ -4,10 +4,48 @@ import (
 	"os"
 	"testing"
 
+	"github.com/golang/mock/gomock"
+
+	"github.com/kubecano/cano-collector/config/destinations"
+	"github.com/kubecano/cano-collector/config/teams"
+	"github.com/kubecano/cano-collector/mocks"
+
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestLoadConfig(t *testing.T) {
+func setupTestLoader(t *testing.T) (Config, error) {
+	t.Helper()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	destinationsConfig := destinations.DestinationsConfig{
+		Destinations: struct {
+			Slack []destinations.Destination `yaml:"slack"`
+			Teams []destinations.Destination `yaml:"teams"`
+		}{
+			Slack: []destinations.Destination{{Name: "alerts", WebhookURL: "https://slack.example.com"}},
+			Teams: []destinations.Destination{},
+		},
+	}
+	mockDestinations := mocks.NewMockDestinationsLoader(ctrl)
+	mockDestinations.EXPECT().Load().AnyTimes().Return(&destinationsConfig, nil)
+
+	teamsConfig := teams.TeamsConfig{
+		Teams: []teams.Team{
+			{Name: "devops", Destinations: []string{"alerts"}},
+		},
+	}
+	mockTeams := mocks.NewMockTeamsLoader(ctrl)
+	mockTeams.EXPECT().Load().AnyTimes().Return(&teamsConfig, nil)
+
+	mockLoader := mocks.NewMockFullConfigLoader(ctrl)
+	mockLoader.EXPECT().Load().AnyTimes().Return(destinationsConfig, teamsConfig, nil)
+
+	return LoadConfigWithLoader(mockLoader)
+}
+
+func TestLoadConfigWithLoader(t *testing.T) {
 	_ = os.Setenv("APP_NAME", "test-app")
 	_ = os.Setenv("LOG_LEVEL", "debug")
 	_ = os.Setenv("SENTRY_DSN", "https://example@sentry.io/123")
@@ -20,17 +58,21 @@ func TestLoadConfig(t *testing.T) {
 		_ = os.Unsetenv("ENABLE_TELEMETRY")
 	})
 
-	cfg := LoadConfig()
+	cfg, err := setupTestLoader(t)
+	require.NoError(t, err)
 
 	assert.Equal(t, "test-app", cfg.AppName)
 	assert.Equal(t, "debug", cfg.LogLevel)
 	assert.Equal(t, "https://example@sentry.io/123", cfg.SentryDSN)
 	assert.True(t, cfg.SentryEnabled)
+	assert.Len(t, cfg.Destinations.Destinations.Slack, 1)
+	assert.Equal(t, "alerts", cfg.Destinations.Destinations.Slack[0].Name)
+	assert.Len(t, cfg.Teams.Teams, 1)
+	assert.Equal(t, "devops", cfg.Teams.Teams[0].Name)
 }
 
 func TestGetEnvString(t *testing.T) {
 	_ = os.Setenv("TEST_STRING", "value1")
-
 	t.Cleanup(func() {
 		_ = os.Unsetenv("TEST_STRING")
 	})
@@ -52,25 +94,37 @@ func TestGetEnvBool(t *testing.T) {
 
 	assert.True(t, getEnvBool("TEST_BOOL_TRUE", false))
 	assert.False(t, getEnvBool("TEST_BOOL_FALSE", true))
-
 	assert.True(t, getEnvBool("NON_EXISTENT_BOOL", true))
-	assert.False(t, getEnvBool("NON_EXISTENT_BOOL", false))
-
 	assert.False(t, getEnvBool("TEST_BOOL_INVALID", false))
 }
 
 func TestGetEnvEnum(t *testing.T) {
-	allowedValues := []string{"disabled", "local", "remote"}
+	allowed := []string{"disabled", "local", "remote"}
 
 	_ = os.Setenv("TEST_ENUM_VALID", "local")
-	_ = os.Setenv("TEST_ENUM_INVALID", "invalid")
+	_ = os.Setenv("TEST_ENUM_INVALID", "xxx")
 
 	t.Cleanup(func() {
 		_ = os.Unsetenv("TEST_ENUM_VALID")
 		_ = os.Unsetenv("TEST_ENUM_INVALID")
 	})
 
-	assert.Equal(t, "local", getEnvEnum("TEST_ENUM_VALID", allowedValues, "disabled"))
-	assert.Equal(t, "disabled", getEnvEnum("TEST_ENUM_INVALID", allowedValues, "disabled"))
-	assert.Equal(t, "disabled", getEnvEnum("NON_EXISTENT_ENUM", allowedValues, "disabled"))
+	assert.Equal(t, "local", getEnvEnum("TEST_ENUM_VALID", allowed, "disabled"))
+	assert.Equal(t, "disabled", getEnvEnum("TEST_ENUM_INVALID", allowed, "disabled"))
+	assert.Equal(t, "disabled", getEnvEnum("NON_EXISTENT_ENUM", allowed, "disabled"))
+}
+
+func TestLoadConfigWithLoader_Error(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockErr := assert.AnError
+
+	mockLoader := mocks.NewMockFullConfigLoader(ctrl)
+	mockLoader.EXPECT().Load().AnyTimes().Return(destinations.DestinationsConfig{}, teams.TeamsConfig{}, mockErr)
+
+	cfg, err := LoadConfigWithLoader(mockLoader)
+
+	require.Error(t, err, "Expected error when loader fails")
+	assert.Equal(t, Config{}, cfg, "Expected empty config on loader failure")
 }

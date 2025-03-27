@@ -7,18 +7,28 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/mock/gomock"
+
+	"github.com/kubecano/cano-collector/mocks"
+
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/kubecano/cano-collector/pkg/logger"
 )
 
-func setupTestMetricsCollector() *MetricsCollector {
-	reg := prometheus.NewRegistry()
+func setupTestMetricsCollector(t *testing.T) *MetricsCollector {
+	t.Helper()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-	mockLogger := logger.NewMockLogger()
+	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+	mockLogger.EXPECT().Debug(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debugf(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Warnf(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
+
+	reg := prometheus.NewRegistry()
 
 	metrics := NewMetricsCollector(mockLogger)
 
@@ -31,13 +41,13 @@ func setupTestMetricsCollector() *MetricsCollector {
 }
 
 func TestNewMetricsCollector(t *testing.T) {
-	metrics := setupTestMetricsCollector()
+	metrics := setupTestMetricsCollector(t)
 	assert.NotNil(t, metrics, "MetricsCollector should not be nil")
 }
 
 func TestPrometheusMiddleware(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	metrics := setupTestMetricsCollector()
+	metrics := setupTestMetricsCollector(t)
 
 	router := gin.New()
 	router.Use(metrics.PrometheusMiddleware())
@@ -87,7 +97,7 @@ func TestPrometheusMiddleware(t *testing.T) {
 }
 
 func TestObserveAlert(t *testing.T) {
-	metrics := setupTestMetricsCollector()
+	metrics := setupTestMetricsCollector(t)
 
 	metrics.ObserveAlert("test-receiver", "firing")
 	metrics.ObserveAlert("test-receiver", "resolved")
