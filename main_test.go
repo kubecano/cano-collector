@@ -3,6 +3,8 @@ package main
 import (
 	"testing"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/getsentry/sentry-go"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -64,7 +66,7 @@ func TestRun_WithMocks(t *testing.T) {
 	mockTracer.EXPECT().InitTracer(gomock.Any()).Return(nil).Times(1)
 	mockTracer.EXPECT().ShutdownTracer(gomock.Any()).Return(nil).Times(1)
 
-	mockRouter.EXPECT().SetupRouter().Return(nil).Times(1)
+	mockRouter.EXPECT().SetupRouter().Return(gin.New()).Times(1)
 	mockRouter.EXPECT().StartServer(nil).Times(1)
 
 	deps := AppDependencies{
