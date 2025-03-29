@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.0.3](https://github.com/kubecano/cano-collector/compare/cano-collector-0.0.2...cano-collector-v0.0.3) (2025-03-29)
+
+
+### Features
+
+* CU-86985a80p - Add AlertManager alerts handler ([#60](https://github.com/kubecano/cano-collector/issues/60)) ([1cf86e7](https://github.com/kubecano/cano-collector/commit/1cf86e7b2247145d0b01dc2831efcbf5dc0511f4))
+* CU-86985aa3g - Add bundled kube-prom-stack to collector helm chart ([#57](https://github.com/kubecano/cano-collector/issues/57)) ([7ad12ed](https://github.com/kubecano/cano-collector/commit/7ad12edf1fb4e90ad300dd79c48dff0493ba3f48))
+* CU-86985axxj - Add destinations to Helm Chart ([#64](https://github.com/kubecano/cano-collector/issues/64)) ([4f2dc0e](https://github.com/kubecano/cano-collector/commit/4f2dc0e14542fc1ddea9520fcfe5e8b7218b08f8))
+* CU-8698ck4q1 - Dependency Injection refactor ([#65](https://github.com/kubecano/cano-collector/issues/65)) ([3f3146e](https://github.com/kubecano/cano-collector/commit/3f3146e4d48e240f05912e001de7f702d4b514ea))
+
+
+### Bug Fixes
+
+* NO-ISSUE - Removed compromised action tj-actions/changed-files ([#61](https://github.com/kubecano/cano-collector/issues/61)) ([4894a5c](https://github.com/kubecano/cano-collector/commit/4894a5c23a605a2e56bbdab6bc7d77bde584ae2d))
+
 ## [0.0.2](https://github.com/kubecano/cano-collector/compare/cano-collector-0.0.1...cano-collector-v0.0.2) (2025-03-10)
 
 
