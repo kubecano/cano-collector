@@ -37,7 +37,7 @@ func TestRegisterHealthChecks(t *testing.T) {
 	ctx := context.Background()
 	healthStatus := healthChecker.health.Measure(ctx)
 
-	assert.Equal(t, "cano-collector", healthStatus.Component.Name, "AppName should be set correctly")
+	assert.Equal(t, "cano-collector", healthStatus.Name, "AppName should be set correctly")
 	assert.Equal(t, "1.0.0", healthStatus.Component.Version, "AppVersion should be set correctly")
 
 	assert.Equal(t, health.StatusOK, healthStatus.Status, "Healthcheck should initially return StatusOK")
