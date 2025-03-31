@@ -13,7 +13,7 @@ env:
   GOLANG_VERSION: '1.24.0'
   # GolangCI-Lint version to use across CI steps
   # renovate: datasource=go packageName=github.com/golangci/golangci-lint versioning=regex:^v(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)?$
-  GOLANGCI_LINT_VERSION: 'v1.64.6'
+  GOLANGCI_LINT_VERSION: 'v2.0.2'
   GROUP_NAME: 'kubecano'
   PROJ_NAME: 'cano-collector'
 
