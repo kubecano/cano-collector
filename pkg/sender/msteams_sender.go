@@ -59,8 +59,8 @@ func (s *MSTeamsSender) Send(alert Alert) error {
 	if err != nil {
 		return fmt.Errorf("failed to send alert to MS Teams: %w", err)
 	}
-	defer func(Body io.ReadCloser) {
-		if err := Body.Close(); err != nil {
+	defer func(body io.ReadCloser) {
+		if err := body.Close(); err != nil {
 			s.logger.Errorf("failed to close response body: %v", err)
 		}
 	}(resp.Body)
