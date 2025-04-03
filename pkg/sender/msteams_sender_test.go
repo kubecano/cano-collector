@@ -67,7 +67,7 @@ func TestMSTeamsSender_Send_Error(t *testing.T) {
 
 	err := msTeamsSender.Send(alert)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "MS Teams returned non-OK status")
+	assert.Contains(t, err.Error(), "failed to send to Microsoft Teams")
 }
 
 func TestMSTeamsSender_Send_RequestError(t *testing.T) {

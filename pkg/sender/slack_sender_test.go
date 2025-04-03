@@ -66,7 +66,7 @@ func TestSlackSender_Send_Error(t *testing.T) {
 
 	err := slackSender.Send(alert)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "slack returned non-OK status")
+	assert.Contains(t, err.Error(), "failed to send to Slack")
 }
 
 func TestSlackSender_Send_RequestError(t *testing.T) {
