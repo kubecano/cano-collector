@@ -67,7 +67,7 @@ func (s *SlackSender) Send(alert Alert) error {
 	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("slack returned non-OK status: %d", resp.StatusCode)
+		return fmt.Errorf("failed to send to Slack: non-OK status %d", resp.StatusCode)
 	}
 
 	s.logger.Infof("Successfully sent alert to Slack: %s", alert.Title)

@@ -66,7 +66,7 @@ func (s *MSTeamsSender) Send(alert Alert) error {
 	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("MS Teams returned non-OK status: %d", resp.StatusCode)
+		return fmt.Errorf("failed to send to Microsoft Teams: non-OK status %d", resp.StatusCode)
 	}
 
 	s.logger.Infof("Successfully sent alert to MS Teams: %s", alert.Title)
