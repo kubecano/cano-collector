@@ -10,19 +10,19 @@ import (
 	"github.com/kubecano/cano-collector/mocks"
 )
 
-func setupTest(t *testing.T) *SenderFactory {
+func setupTest(t *testing.T) (*SenderFactory, *gomock.Controller) {
 	t.Helper()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	mockLogger := mocks.NewMockLoggerInterface(ctrl)
 	mockClient := mocks.NewMockHTTPClient(ctrl)
 
-	return NewSenderFactory(mockLogger, mockClient)
+	return NewSenderFactory(mockLogger, mockClient), ctrl
 }
 
 func TestSenderFactory_Create_Slack(t *testing.T) {
-	factory := setupTest(t)
+	factory, ctrl := setupTest(t)
+	defer ctrl.Finish()
 
 	dest := destinations.Destination{
 		Name:       "slack",
@@ -35,7 +35,8 @@ func TestSenderFactory_Create_Slack(t *testing.T) {
 }
 
 func TestSenderFactory_Create_MSTeams(t *testing.T) {
-	factory := setupTest(t)
+	factory, ctrl := setupTest(t)
+	defer ctrl.Finish()
 
 	dest := destinations.Destination{
 		Name:       "teams",
@@ -48,7 +49,8 @@ func TestSenderFactory_Create_MSTeams(t *testing.T) {
 }
 
 func TestSenderFactory_Create_UnsupportedType(t *testing.T) {
-	factory := setupTest(t)
+	factory, ctrl := setupTest(t)
+	defer ctrl.Finish()
 
 	dest := destinations.Destination{
 		Name:       "pagerduty",
