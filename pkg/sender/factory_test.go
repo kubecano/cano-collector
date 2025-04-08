@@ -3,6 +3,8 @@ package sender
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
@@ -30,7 +32,7 @@ func TestSenderFactory_Create_Slack(t *testing.T) {
 	}
 
 	sender, err := factory.Create(dest)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.IsType(t, &SlackSender{}, sender)
 }
 
@@ -44,7 +46,7 @@ func TestSenderFactory_Create_MSTeams(t *testing.T) {
 	}
 
 	sender, err := factory.Create(dest)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.IsType(t, &MSTeamsSender{}, sender)
 }
 
@@ -59,6 +61,6 @@ func TestSenderFactory_Create_UnsupportedType(t *testing.T) {
 
 	sender, err := factory.Create(dest)
 	assert.Nil(t, sender)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unsupported destination type: pagerduty")
 }
