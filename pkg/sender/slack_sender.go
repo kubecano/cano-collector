@@ -1,75 +1,245 @@
 package sender
 
 import (
-	"bytes"
-	"encoding/json"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
-	"io"
 	"net/http"
+	"os"
+	"sync"
+	"time"
 
-	"github.com/kubecano/cano-collector/pkg/utils"
+	"github.com/kubecano/cano-collector/pkg/core/reporting"
+
+	"github.com/slack-go/slack"
 
 	"github.com/kubecano/cano-collector/pkg/logger"
 )
 
+const (
+	SlackRequestTimeout = 30 * time.Second
+	ActionLink          = "link"
+)
+
+// SlackBlock represents a block in Slack message
+type SlackBlock map[string]interface{}
+
+// SlackMessage represents a message to be sent to Slack
+type SlackMessage struct {
+	Channel     string
+	Text        string
+	Blocks      []slack.Block
+	Attachments []slack.Attachment
+}
+
 // SlackSender sends alerts to a Slack webhook
 type SlackSender struct {
-	WebhookURL string
-	httpClient utils.HTTPClient
-	logger     logger.LoggerInterface
+	slackClient       *slack.Client
+	signingKey        string
+	accountID         string
+	clusterName       string
+	channel           string
+	channelNameToID   map[string]string
+	verifiedAPITokens sync.Map
+	logger            logger.LoggerInterface
 }
 
-// NewSlackSender creates a new SlackSender
-func NewSlackSender(webhookURL string, logger logger.LoggerInterface, opts ...Option) *SlackSender {
-	sender := &SlackSender{
-		WebhookURL: webhookURL,
-		httpClient: utils.DefaultHTTPClient(),
-		logger:     logger,
-	}
+// NewSlackSender creates a new SlackSender using the Slack SDK and verifies Slack token
+func NewSlackSender(slackToken, accountID, clusterName, signingKey, slackChannel string, additionalCertificate string, logger logger.LoggerInterface) (*SlackSender, error) {
+	var tlsConfig *tls.Config
 
-	// Apply functional options
-	for _, opt := range opts {
-		opt(sender)
-	}
-
-	return sender
-}
-
-// SetClient allows setting a custom HTTP client
-func (s *SlackSender) SetClient(client utils.HTTPClient) {
-	s.httpClient = client
-}
-
-// Send sends an alert to Slack
-func (s *SlackSender) Send(alert Alert) error {
-	payload := map[string]string{
-		"text": fmt.Sprintf("*%s*\n%s", alert.Title, alert.Message),
-	}
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return fmt.Errorf("failed to marshal Slack message: %w", err)
-	}
-
-	req, err := http.NewRequest(http.MethodPost, s.WebhookURL, bytes.NewBuffer(data))
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := s.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to send alert to Slack: %w", err)
-	}
-	defer func(body io.ReadCloser) {
-		if err := body.Close(); err != nil {
-			s.logger.Errorf("failed to close response body: %v", err)
+	// Configure additional certificate, if provided
+	if additionalCertificate != "" {
+		rootCAs, _ := x509.SystemCertPool()
+		if rootCAs == nil {
+			rootCAs = x509.NewCertPool()
 		}
-	}(resp.Body)
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to send to Slack: non-OK status %d", resp.StatusCode)
+		cert, err := os.ReadFile(additionalCertificate)
+		if err != nil {
+			logger.Warnf("Nie udało się wczytać dodatkowego certyfikatu: %v", err)
+		} else {
+			if ok := rootCAs.AppendCertsFromPEM(cert); !ok {
+				logger.Warnf("Nie udało się dodać certyfikatu do puli")
+			}
+
+			tlsConfig = &tls.Config{
+				RootCAs: rootCAs,
+			}
+		}
 	}
 
-	s.logger.Infof("Successfully sent alert to Slack: %s", alert.Title)
-	return nil
+	// Creating a Slack client with optional TLS configuration
+	slackClient := slack.New(
+		slackToken,
+		slack.OptionHTTPClient(&http.Client{
+			Timeout: SlackRequestTimeout,
+			Transport: &http.Transport{
+				TLSClientConfig: tlsConfig,
+			},
+		}),
+		slack.OptionLog(logger.GetSlackLogger()),
+	)
+
+	// Creating SlackSender instance
+	sender := &SlackSender{
+		slackClient:     slackClient,
+		signingKey:      signingKey,
+		accountID:       accountID,
+		clusterName:     clusterName,
+		channel:         slackChannel,
+		channelNameToID: make(map[string]string),
+		logger:          logger,
+	}
+
+	// Verifying Slack token
+	_, alreadyVerified := sender.verifiedAPITokens.Load(slackToken)
+	if !alreadyVerified {
+		// Auth test
+		_, err := slackClient.AuthTest()
+		if err != nil {
+			return nil, fmt.Errorf("nie można połączyć się ze Slack API: %w", err)
+		}
+
+		// Saved verified token
+		sender.verifiedAPITokens.Store(slackToken, true)
+	}
+
+	return sender, nil
+}
+
+// ToSlackLinks converts a slice of LinkProp to SlackBlock
+func (s *SlackSender) ToSlackLinks(links []reporting.LinkProp) []SlackBlock {
+	if len(links) == 0 {
+		return []SlackBlock{}
+	}
+
+	buttons := []map[string]interface{}{}
+
+	for i, link := range links {
+		button := map[string]interface{}{
+			"type": "button",
+			"text": map[string]interface{}{
+				"type": "plain_text",
+				"text": link.Text,
+			},
+			"action_id": fmt.Sprintf("%s_%d", ActionLink, i),
+			"url":       link.URL,
+		}
+
+		buttons = append(buttons, button)
+	}
+
+	return []SlackBlock{
+		{
+			"type":     "actions",
+			"elements": buttons,
+		},
+	}
+}
+
+// UpdateMessage updates a message in a Slack channel
+func (s *SlackSender) UpdateMessage(channel, timestamp, text string, blocks []slack.Block) (string, error) {
+	// Check if the channel exists
+	channelID, exists := s.channelNameToID[channel]
+	if !exists {
+		return "", fmt.Errorf("channel ID for %s could not be determined, update aborted", channel)
+	}
+
+	_, timestamp, _, err := s.slackClient.UpdateMessage(
+		channelID,
+		timestamp,
+		slack.MsgOptionText(text, false),
+		slack.MsgOptionBlocks(blocks...),
+	)
+
+	s.logger.Debugf("message updated successfully: %s", timestamp)
+	return timestamp, err
+}
+
+// Send implements the Sender interface for sending messages to Slack
+func (s *SlackSender) Send(message interface{}) error {
+	slackMsg, ok := message.(SlackMessage)
+	if !ok {
+		return fmt.Errorf("wiadomość nie jest poprawną wiadomością Slack")
+	}
+
+	channelID := slackMsg.Channel
+	if channelID == "" {
+		channelID = s.channel
+	}
+
+	_, _, err := s.slackClient.PostMessage(
+		channelID,
+		slack.MsgOptionText(slackMsg.Text, false),
+		slack.MsgOptionBlocks(slackMsg.Blocks...),
+		slack.MsgOptionAttachments(slackMsg.Attachments...),
+	)
+
+	return err
+}
+
+// FormatMessage formats the alert details for Slack
+func (s *SlackSender) FormatMessage(details reporting.AlertDetails) interface{} {
+	var blocks []slack.Block
+
+	// Dodaj nagłówek z tytułem i powagą alertu
+	headerText := fmt.Sprintf("*%s*", details.Title)
+	if details.Severity != "" {
+		headerText = fmt.Sprintf("*[%s]* %s", details.Severity, details.Title)
+	}
+
+	headerBlock := slack.NewHeaderBlock(
+		slack.NewTextBlockObject("plain_text", headerText, false, false),
+	)
+	blocks = append(blocks, headerBlock)
+
+	// Dodaj opis
+	if details.Description != "" {
+		descBlock := slack.NewSectionBlock(
+			slack.NewTextBlockObject("mrkdwn", details.Description, false, false),
+			nil, nil,
+		)
+		blocks = append(blocks, descBlock)
+	}
+
+	// Dodaj linki jako przyciski akcji
+	if len(details.Links) > 0 {
+		actionElements := []slack.BlockElement{}
+		for i, link := range details.Links {
+			actionElements = append(actionElements,
+				slack.NewButtonBlockElement(
+					fmt.Sprintf("%s_%d", ActionLink, i),
+					link.URL,
+					slack.NewTextBlockObject("plain_text", link.Text, false, false),
+				),
+			)
+		}
+
+		blocks = append(blocks, slack.NewActionBlock(
+			"links",
+			actionElements...,
+		))
+	}
+
+	// Dodaj metadane jako pola kontekstu
+	if len(details.Metadata) > 0 {
+		contextElements := []slack.MixedElement{}
+		for key, value := range details.Metadata {
+			contextElements = append(contextElements,
+				slack.NewTextBlockObject("mrkdwn", fmt.Sprintf("*%s*: %s", key, value), false, false),
+			)
+		}
+
+		blocks = append(blocks, slack.NewContextBlock(
+			"metadata",
+			contextElements...,
+		))
+	}
+
+	return SlackMessage{
+		Channel: s.channel,
+		Text:    details.Title,
+		Blocks:  blocks,
+	}
 }

@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/kubecano/cano-collector/pkg/core/reporting"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/kubecano/cano-collector/mocks"
@@ -15,8 +17,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Helper function to set up test environment for MSTeamsSender
-func setupMSTeamsTest(t *testing.T, statusCode int, responseBody string) *MSTeamsSender {
+// Helper function to set up test environment for TeamsSender
+func setupMSTeamsTest(t *testing.T, statusCode int, responseBody string) *TeamsSender {
 	t.Helper()
 	ctrl := gomock.NewController(t)
 
@@ -39,8 +41,8 @@ func setupMSTeamsTest(t *testing.T, statusCode int, responseBody string) *MSTeam
 		}, nil).
 		AnyTimes()
 
-	// Create MSTeamsSender with mock logger and client
-	msTeamsSender := NewMSTeamsSender("http://example.com", mockLogger, WithHTTPClient(mockClient))
+	// Create TeamsSender with mock logger and client
+	msTeamsSender, _ := NewTeamsSender("http://example.com", mockLogger, WithHTTPClient(mockClient))
 
 	return msTeamsSender
 }
@@ -48,9 +50,9 @@ func setupMSTeamsTest(t *testing.T, statusCode int, responseBody string) *MSTeam
 func TestMSTeamsSender_Send_Success(t *testing.T) {
 	msTeamsSender := setupMSTeamsTest(t, http.StatusOK, "ok")
 
-	alert := Alert{
-		Title:   "Test Alert",
-		Message: "This is a test alert message",
+	alert := reporting.AlertDetails{
+		Title:       "Test Alert",
+		Description: "This is a test alert message",
 	}
 
 	err := msTeamsSender.Send(alert)
@@ -60,9 +62,9 @@ func TestMSTeamsSender_Send_Success(t *testing.T) {
 func TestMSTeamsSender_Send_Error(t *testing.T) {
 	msTeamsSender := setupMSTeamsTest(t, http.StatusInternalServerError, "error")
 
-	alert := Alert{
-		Title:   "Error Alert",
-		Message: "This is a failing test",
+	alert := reporting.AlertDetails{
+		Title:       "Error Alert",
+		Description: "This is a failing test",
 	}
 
 	err := msTeamsSender.Send(alert)
@@ -82,11 +84,11 @@ func TestMSTeamsSender_Send_RequestError(t *testing.T) {
 		Return(nil, fmt.Errorf("request error")).
 		Times(1)
 
-	msTeamsSender := NewMSTeamsSender("http://example.com", mockLogger, WithHTTPClient(mockClient))
+	msTeamsSender, _ := NewTeamsSender("http://example.com", mockLogger, WithHTTPClient(mockClient))
 
-	alert := Alert{
-		Title:   "Request Error Alert",
-		Message: "This alert will fail to send",
+	alert := reporting.AlertDetails{
+		Title:       "Request Error Alert",
+		Description: "This alert will fail to send",
 	}
 
 	err := msTeamsSender.Send(alert)

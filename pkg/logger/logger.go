@@ -25,6 +25,7 @@ type LoggerInterface interface {
 	Panicf(template string, args ...interface{})
 	WithContextLogger(ctx context.Context) *zap.Logger
 	GetLogger() *zap.Logger
+	GetSlackLogger() *SlackLoggerAdapter
 }
 
 type Logger struct {
@@ -74,6 +75,23 @@ func NewLogger(level, env string) *Logger {
 
 func (l *Logger) GetLogger() *zap.Logger {
 	return l.zapLogger
+}
+
+type SlackLoggerAdapter struct {
+	zapLogger *zap.Logger
+}
+
+func (a *SlackLoggerAdapter) Output(calldepth int, s string) error {
+	a.zapLogger.Info(s)
+	return nil
+}
+
+func NewSlackLoggerAdapter(logger *zap.Logger) *SlackLoggerAdapter {
+	return &SlackLoggerAdapter{zapLogger: logger}
+}
+
+func (l *Logger) GetSlackLogger() *SlackLoggerAdapter {
+	return NewSlackLoggerAdapter(l.zapLogger)
 }
 
 func (l *Logger) WithContextLogger(ctx context.Context) *zap.Logger {

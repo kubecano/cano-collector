@@ -6,8 +6,8 @@ import (
 
 	"github.com/golang/mock/gomock"
 
-	"github.com/kubecano/cano-collector/config/destinations"
-	"github.com/kubecano/cano-collector/config/teams"
+	"github.com/kubecano/cano-collector/config/destination"
+	"github.com/kubecano/cano-collector/config/team"
 	"github.com/kubecano/cano-collector/mocks"
 
 	"github.com/stretchr/testify/assert"
@@ -19,20 +19,20 @@ func setupTestLoader(t *testing.T) (Config, error) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	destinationsConfig := destinations.DestinationsConfig{
+	destinationsConfig := destination.DestinationsConfig{
 		Destinations: struct {
-			Slack []destinations.Destination `yaml:"slack"`
-			Teams []destinations.Destination `yaml:"teams"`
+			Slack []destination.SlackDestinationConfig `yaml:"slack"`
+			Teams []destination.TeamsDestinationConfig `yaml:"teams"`
 		}{
-			Slack: []destinations.Destination{{Name: "alerts", WebhookURL: "https://slack.example.com"}},
-			Teams: []destinations.Destination{},
+			Slack: []destination.SlackDestinationConfig{{BaseDestinationConfig: destination.BaseDestinationConfig{Name: "alerts"}, Token: "xxxx", Channel: "alerts", SigningKey: "xxxx", AccountID: "xxxx", ClusterName: "test-cluster"}},
+			Teams: []destination.TeamsDestinationConfig{{BaseDestinationConfig: destination.BaseDestinationConfig{Name: "alerts"}, WebhookURL: "https://example.com/webhook"}},
 		},
 	}
 	mockDestinations := mocks.NewMockDestinationsLoader(ctrl)
 	mockDestinations.EXPECT().Load().AnyTimes().Return(&destinationsConfig, nil)
 
-	teamsConfig := teams.TeamsConfig{
-		Teams: []teams.Team{
+	teamsConfig := team.TeamsConfig{
+		Teams: []team.Team{
 			{Name: "devops", Destinations: []string{"alerts"}},
 		},
 	}
@@ -121,7 +121,7 @@ func TestLoadConfigWithLoader_Error(t *testing.T) {
 	mockErr := assert.AnError
 
 	mockLoader := mocks.NewMockFullConfigLoader(ctrl)
-	mockLoader.EXPECT().Load().AnyTimes().Return(destinations.DestinationsConfig{}, teams.TeamsConfig{}, mockErr)
+	mockLoader.EXPECT().Load().AnyTimes().Return(destination.DestinationsConfig{}, team.TeamsConfig{}, mockErr)
 
 	cfg, err := LoadConfigWithLoader(mockLoader)
 

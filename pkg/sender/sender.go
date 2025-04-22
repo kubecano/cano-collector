@@ -1,46 +1,44 @@
 package sender
 
 import (
+	"github.com/kubecano/cano-collector/pkg/core/reporting"
 	"github.com/kubecano/cano-collector/pkg/logger"
-	"github.com/kubecano/cano-collector/pkg/utils"
+	"github.com/kubecano/cano-collector/pkg/util"
 )
 
-// Alert represents a structured alert to be sent
-type Alert struct {
-	Title   string
-	Message string
+// Sender defines the interface for sending alerts to different platforms
+type Sender interface {
+	// Send sends formatted alert details to the destination
+	Send(message interface{}) error
+	// FormatMessage formats the alert details for the destination
+	FormatMessage(details reporting.AlertDetails) interface{}
 }
 
-// DestinationSender defines the interface for sending alerts to various destinations
-type DestinationSender interface {
-	Send(alert Alert) error
-}
+// Option defines a functional option type for configuring the sender
+type Option func(interface{})
 
-// Option defines a function signature for configuring the sender
-type Option func(DestinationSender)
-
-// WithHTTPClient sets a custom HTTP client
-func WithHTTPClient(client utils.HTTPClient) Option {
-	return func(s DestinationSender) {
-		if senderWithClient, ok := s.(interface{ SetClient(utils.HTTPClient) }); ok {
+// WithHTTPClient sets a custom HTTP client for the sender
+func WithHTTPClient(client util.HTTPClient) Option {
+	return func(s interface{}) {
+		if senderWithClient, ok := s.(interface{ SetClient(util.HTTPClient) }); ok {
 			senderWithClient.SetClient(client)
 		}
 	}
 }
 
-// WithLogger sets a custom logger
+// WithLogger sets a custom logger for the sender
 func WithLogger(log logger.LoggerInterface) Option {
-	return func(s DestinationSender) {
+	return func(s interface{}) {
 		if senderWithLogger, ok := s.(interface{ SetLogger(logger.LoggerInterface) }); ok {
 			senderWithLogger.SetLogger(log)
 		}
 	}
 }
 
-// ApplyOptions applies functional options to a sender
-func ApplyOptions(sender DestinationSender, opts ...Option) DestinationSender {
+// ApplyOptions sets the provided options on the target sender
+func ApplyOptions(target interface{}, opts ...Option) interface{} {
 	for _, opt := range opts {
-		opt(sender)
+		opt(target)
 	}
-	return sender
+	return target
 }
