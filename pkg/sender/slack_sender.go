@@ -4,12 +4,11 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"github.com/kubecano/cano-collector/pkg/core/reporting"
+	"io/ioutil"
 	"net/http"
-	"os"
 	"sync"
 	"time"
-
-	"github.com/kubecano/cano-collector/pkg/core/reporting"
 
 	"github.com/slack-go/slack"
 
@@ -18,7 +17,7 @@ import (
 
 const (
 	SlackRequestTimeout = 30 * time.Second
-	ActionLink          = "link"
+	ACTION_LINK         = "link"
 )
 
 // SlackBlock represents a block in Slack message
@@ -55,7 +54,7 @@ func NewSlackSender(slackToken, accountID, clusterName, signingKey, slackChannel
 			rootCAs = x509.NewCertPool()
 		}
 
-		cert, err := os.ReadFile(additionalCertificate)
+		cert, err := ioutil.ReadFile(additionalCertificate)
 		if err != nil {
 			logger.Warnf("Nie udało się wczytać dodatkowego certyfikatu: %v", err)
 		} else {
@@ -123,7 +122,7 @@ func (s *SlackSender) ToSlackLinks(links []reporting.LinkProp) []SlackBlock {
 				"type": "plain_text",
 				"text": link.Text,
 			},
-			"action_id": fmt.Sprintf("%s_%d", ActionLink, i),
+			"action_id": fmt.Sprintf("%s_%d", ACTION_LINK, i),
 			"url":       link.URL,
 		}
 
@@ -209,7 +208,7 @@ func (s *SlackSender) FormatMessage(details reporting.AlertDetails) interface{} 
 		for i, link := range details.Links {
 			actionElements = append(actionElements,
 				slack.NewButtonBlockElement(
-					fmt.Sprintf("%s_%d", ActionLink, i),
+					fmt.Sprintf("%s_%d", ACTION_LINK, i),
 					link.URL,
 					slack.NewTextBlockObject("plain_text", link.Text, false, false),
 				),

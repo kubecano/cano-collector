@@ -17,7 +17,7 @@ destinations:
   slack:
     - name: "incident-alerts"
       token: "xoxb-1234567890-0987654321-ABCDEF"
-	  channel: "#alerts"
+      channel: "#alerts"
   teams:
     - name: "infra-team"
       webhookURL: "https://outlook.office.com/webhook/YYY"

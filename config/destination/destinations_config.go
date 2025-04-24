@@ -11,8 +11,8 @@ import (
 // DestinationsConfig configuration for all destinations
 type DestinationsConfig struct {
 	Destinations struct {
-		Slack []SlackDestinationConfig `yaml:"slack"`
-		Teams []TeamsDestinationConfig `yaml:"teams"`
+		Slack []SlackDestinationConfig `yaml:"slack,omitempty"`
+		Teams []TeamsDestinationConfig `yaml:"teams,omitempty"`
 	} `yaml:"destinations"`
 }
 

@@ -17,6 +17,7 @@ func setupTest(t *testing.T) (*DestinationFactory, *gomock.Controller) {
 	ctrl := gomock.NewController(t)
 
 	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+	mockLogger.EXPECT().GetSlackLogger().Return(nil).AnyTimes()
 	mockClient := mocks.NewMockHTTPClient(ctrl)
 
 	return NewDestinationFactory(mockLogger, mockClient), ctrl
@@ -60,8 +61,8 @@ func TestDestinationFactory_CreateAllDestinations(t *testing.T) {
 
 	config := destination.DestinationsConfig{
 		Destinations: struct {
-			Slack []destination.SlackDestinationConfig `yaml:"slack"`
-			Teams []destination.TeamsDestinationConfig `yaml:"teams"`
+			Slack []destination.SlackDestinationConfig `yaml:"slack,omitempty"`
+			Teams []destination.TeamsDestinationConfig `yaml:"teams,omitempty"`
 		}{
 			Slack: []destination.SlackDestinationConfig{
 				{
