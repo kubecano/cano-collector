@@ -4,11 +4,12 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/kubecano/cano-collector/pkg/core/reporting"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"sync"
 	"time"
+
+	"github.com/kubecano/cano-collector/pkg/core/reporting"
 
 	"github.com/slack-go/slack"
 
@@ -19,6 +20,15 @@ const (
 	SlackRequestTimeout = 30 * time.Second
 	ACTION_LINK         = "link"
 )
+
+// SlackClientInterface definiuje interfejs dla klienta Slack
+//
+//go:generate mockgen -destination=../../mocks/slack_client_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/sender SlackClientInterface
+type SlackClientInterface interface {
+	PostMessage(channelID string, options ...slack.MsgOption) (string, string, error)
+	AuthTest() (*slack.AuthTestResponse, error)
+	UpdateMessage(channelID, timestamp string, options ...slack.MsgOption) (string, string, string, error)
+}
 
 // SlackBlock represents a block in Slack message
 type SlackBlock map[string]interface{}
@@ -33,7 +43,7 @@ type SlackMessage struct {
 
 // SlackSender sends alerts to a Slack webhook
 type SlackSender struct {
-	slackClient       *slack.Client
+	slackClient       SlackClientInterface
 	signingKey        string
 	accountID         string
 	clusterName       string
@@ -54,12 +64,12 @@ func NewSlackSender(slackToken, accountID, clusterName, signingKey, slackChannel
 			rootCAs = x509.NewCertPool()
 		}
 
-		cert, err := ioutil.ReadFile(additionalCertificate)
+		cert, err := os.ReadFile(additionalCertificate)
 		if err != nil {
-			logger.Warnf("Nie udało się wczytać dodatkowego certyfikatu: %v", err)
+			logger.Warnf("Cannot read additional certificate: %v", err)
 		} else {
 			if ok := rootCAs.AppendCertsFromPEM(cert); !ok {
-				logger.Warnf("Nie udało się dodać certyfikatu do puli")
+				logger.Warnf("Cannot add additional certificate to the pool")
 			}
 
 			tlsConfig = &tls.Config{
@@ -68,19 +78,46 @@ func NewSlackSender(slackToken, accountID, clusterName, signingKey, slackChannel
 		}
 	}
 
-	// Creating a Slack client with optional TLS configuration
-	slackClient := slack.New(
-		slackToken,
+	// Preparing Slack client options
+	slackOptions := []slack.Option{
 		slack.OptionHTTPClient(&http.Client{
 			Timeout: SlackRequestTimeout,
 			Transport: &http.Transport{
 				TLSClientConfig: tlsConfig,
 			},
 		}),
-		slack.OptionLog(logger.GetSlackLogger()),
-	)
+	}
+
+	// Only add logger if provided
+	if logger != nil {
+		slackLogger := logger.GetSlackLogger()
+		if slackLogger != nil {
+			slackOptions = append(slackOptions, slack.OptionLog(slackLogger))
+		}
+	}
+
+	// Creating a Slack client with optional TLS configuration
+	slackClient := slack.New(slackToken, slackOptions...)
 
 	// Creating SlackSender instance
+	sender, err := createSlackSender(slackToken, accountID, clusterName, signingKey, slackChannel, slackClient, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	return sender, nil
+}
+
+// createSlackSender creates a new SlackSender instance
+func createSlackSender(
+	slackToken string,
+	accountID string,
+	clusterName string,
+	signingKey string,
+	slackChannel string,
+	slackClient SlackClientInterface,
+	logger logger.LoggerInterface,
+) (*SlackSender, error) {
 	sender := &SlackSender{
 		slackClient:     slackClient,
 		signingKey:      signingKey,
@@ -97,7 +134,7 @@ func NewSlackSender(slackToken, accountID, clusterName, signingKey, slackChannel
 		// Auth test
 		_, err := slackClient.AuthTest()
 		if err != nil {
-			return nil, fmt.Errorf("nie można połączyć się ze Slack API: %w", err)
+			return nil, fmt.Errorf("cannot connect with Slack API: %w", err)
 		}
 
 		// Saved verified token
@@ -168,6 +205,11 @@ func (s *SlackSender) Send(message interface{}) error {
 		channelID = s.channel
 	}
 
+	// Pobierz ID kanału, jeśli podano nazwę
+	if id, exists := s.channelNameToID[channelID]; exists {
+		channelID = id
+	}
+
 	_, _, err := s.slackClient.PostMessage(
 		channelID,
 		slack.MsgOptionText(slackMsg.Text, false),
@@ -182,12 +224,13 @@ func (s *SlackSender) Send(message interface{}) error {
 func (s *SlackSender) FormatMessage(details reporting.AlertDetails) interface{} {
 	var blocks []slack.Block
 
-	// Dodaj nagłówek z tytułem i powagą alertu
-	headerText := fmt.Sprintf("*%s*", details.Title)
+	// Przygotuj tekst nagłówka
+	headerText := details.Title
 	if details.Severity != "" {
-		headerText = fmt.Sprintf("*[%s]* %s", details.Severity, details.Title)
+		headerText = fmt.Sprintf("[%s] %s", details.Severity, details.Title)
 	}
 
+	// Dodaj nagłówek
 	headerBlock := slack.NewHeaderBlock(
 		slack.NewTextBlockObject("plain_text", headerText, false, false),
 	)
