@@ -19,8 +19,12 @@ func setupTest(t *testing.T) (*DestinationFactory, *gomock.Controller) {
 	mockLogger := mocks.NewMockLoggerInterface(ctrl)
 	mockLogger.EXPECT().GetSlackLogger().Return(nil).AnyTimes()
 	mockClient := mocks.NewMockHTTPClient(ctrl)
+	mockSlackSender := mocks.NewMockSender(ctrl)
 
-	return NewDestinationFactory(mockLogger, mockClient), ctrl
+	factory := NewDestinationFactory(mockLogger, mockClient)
+	factory.WithSlackSender(mockSlackSender)
+
+	return factory, ctrl
 }
 
 func TestDestinationFactory_CreateSlackDestination(t *testing.T) {

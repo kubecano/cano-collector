@@ -6,8 +6,10 @@ import (
 	"github.com/kubecano/cano-collector/pkg/util"
 )
 
-// Sender defines the interface for sending alerts to different platforms
-type Sender interface {
+// SenderInterface defines the interface for sending alerts to different platforms
+//
+//go:generate mockgen -destination=../../mocks/sender_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/sender SenderInterface
+type SenderInterface interface {
 	// Send sends formatted alert details to the destination
 	Send(message interface{}) error
 	// FormatMessage formats the alert details for the destination

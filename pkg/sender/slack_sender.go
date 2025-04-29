@@ -193,7 +193,7 @@ func (s *SlackSender) UpdateMessage(channel, timestamp, text string, blocks []sl
 	return timestamp, err
 }
 
-// Send implements the Sender interface for sending messages to Slack
+// Send implements the SenderInterface interface for sending messages to Slack
 func (s *SlackSender) Send(message interface{}) error {
 	slackMsg, ok := message.(SlackMessage)
 	if !ok {

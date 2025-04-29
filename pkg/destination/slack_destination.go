@@ -9,7 +9,7 @@ import (
 // SlackDestination implements the Destination interface for sending alerts to Slack
 type SlackDestination struct {
 	name    string
-	sender  *sender.SlackSender
+	sender  sender.SenderInterface
 	channel string
 	logger  logger.LoggerInterface
 }
@@ -23,10 +23,18 @@ func NewSlackDestination(
 	accountID string,
 	clusterName string,
 	logger logger.LoggerInterface,
+	customSender sender.SenderInterface,
 ) (*SlackDestination, error) {
-	s, err := sender.NewSlackSender(token, accountID, clusterName, signingKey, channel, "", logger)
-	if err != nil {
-		return nil, err
+	var s sender.SenderInterface
+	var err error
+
+	if customSender != nil {
+		s = customSender
+	} else {
+		s, err = sender.NewSlackSender(token, accountID, clusterName, signingKey, channel, "", logger)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &SlackDestination{

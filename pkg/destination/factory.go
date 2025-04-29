@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/kubecano/cano-collector/config/destination"
+	"github.com/kubecano/cano-collector/pkg/sender"
 	"github.com/kubecano/cano-collector/pkg/util"
 
 	"github.com/kubecano/cano-collector/pkg/logger"
@@ -11,8 +12,9 @@ import (
 
 // DestinationFactory creates instances of different destinations
 type DestinationFactory struct {
-	logger logger.LoggerInterface
-	client util.HTTPClient
+	logger      logger.LoggerInterface
+	client      util.HTTPClient
+	slackSender sender.SenderInterface
 }
 
 // NewDestinationFactory creates a new instance of DestinationFactory
@@ -26,6 +28,12 @@ func NewDestinationFactory(logger logger.LoggerInterface, client util.HTTPClient
 	}
 }
 
+// WithSlackSender ustawia niestandardowy SlackSender dla fabryki (głównie dla testów)
+func (f *DestinationFactory) WithSlackSender(slackSender sender.SenderInterface) *DestinationFactory {
+	f.slackSender = slackSender
+	return f
+}
+
 // CreateSlackDestination creates a Slack destination
 func (f *DestinationFactory) CreateSlackDestination(config destination.SlackDestinationConfig) (Destination, error) {
 	return NewSlackDestination(
@@ -36,6 +44,7 @@ func (f *DestinationFactory) CreateSlackDestination(config destination.SlackDest
 		config.AccountID,
 		config.ClusterName,
 		f.logger,
+		f.slackSender,
 	)
 }
 
