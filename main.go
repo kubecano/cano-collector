@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/kubecano/cano-collector/pkg/alerts"
-	"github.com/kubecano/cano-collector/pkg/metrics"
+	"github.com/kubecano/cano-collector/pkg/alert"
+	"github.com/kubecano/cano-collector/pkg/metric"
 
 	"github.com/kubecano/cano-collector/pkg/router"
 
@@ -24,9 +24,9 @@ type AppDependencies struct {
 	LoggerFactory        func(level string, env string) logger.LoggerInterface
 	HealthCheckerFactory func(cfg config.Config, log logger.LoggerInterface) health.HealthInterface
 	TracerManagerFactory func(cfg config.Config, log logger.LoggerInterface) tracer.TracerInterface
-	MetricsFactory       func(log logger.LoggerInterface) metrics.MetricsInterface
-	AlertHandlerFactory  func(log logger.LoggerInterface, m metrics.MetricsInterface) alerts.AlertHandlerInterface
-	RouterManagerFactory func(cfg config.Config, log logger.LoggerInterface, t tracer.TracerInterface, m metrics.MetricsInterface, h health.HealthInterface, a alerts.AlertHandlerInterface) router.RouterInterface
+	MetricsFactory       func(log logger.LoggerInterface) metric.MetricsInterface
+	AlertHandlerFactory  func(log logger.LoggerInterface, m metric.MetricsInterface) alert.AlertHandlerInterface
+	RouterManagerFactory func(cfg config.Config, log logger.LoggerInterface, t tracer.TracerInterface, m metric.MetricsInterface, h health.HealthInterface, a alert.AlertHandlerInterface) router.RouterInterface
 }
 
 func main() {
@@ -45,13 +45,13 @@ func main() {
 		TracerManagerFactory: func(cfg config.Config, log logger.LoggerInterface) tracer.TracerInterface {
 			return tracer.NewTracerManager(cfg, log)
 		},
-		MetricsFactory: func(log logger.LoggerInterface) metrics.MetricsInterface {
-			return metrics.NewMetricsCollector(log)
+		MetricsFactory: func(log logger.LoggerInterface) metric.MetricsInterface {
+			return metric.NewMetricsCollector(log)
 		},
-		AlertHandlerFactory: func(log logger.LoggerInterface, m metrics.MetricsInterface) alerts.AlertHandlerInterface {
-			return alerts.NewAlertHandler(log, m)
+		AlertHandlerFactory: func(log logger.LoggerInterface, m metric.MetricsInterface) alert.AlertHandlerInterface {
+			return alert.NewAlertHandler(log, m)
 		},
-		RouterManagerFactory: func(cfg config.Config, log logger.LoggerInterface, t tracer.TracerInterface, m metrics.MetricsInterface, h health.HealthInterface, a alerts.AlertHandlerInterface) router.RouterInterface {
+		RouterManagerFactory: func(cfg config.Config, log logger.LoggerInterface, t tracer.TracerInterface, m metric.MetricsInterface, h health.HealthInterface, a alert.AlertHandlerInterface) router.RouterInterface {
 			return router.NewRouterManager(cfg, log, t, m, h, a)
 		},
 	}

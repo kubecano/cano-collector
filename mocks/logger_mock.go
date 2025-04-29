@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	logger "github.com/kubecano/cano-collector/pkg/logger"
 	zap "go.uber.org/zap"
 )
 
@@ -146,6 +147,20 @@ func (m *MockLoggerInterface) GetLogger() *zap.Logger {
 func (mr *MockLoggerInterfaceMockRecorder) GetLogger() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLogger", reflect.TypeOf((*MockLoggerInterface)(nil).GetLogger))
+}
+
+// GetSlackLogger mocks base method.
+func (m *MockLoggerInterface) GetSlackLogger() *logger.SlackLoggerAdapter {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSlackLogger")
+	ret0, _ := ret[0].(*logger.SlackLoggerAdapter)
+	return ret0
+}
+
+// GetSlackLogger indicates an expected call of GetSlackLogger.
+func (mr *MockLoggerInterfaceMockRecorder) GetSlackLogger() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSlackLogger", reflect.TypeOf((*MockLoggerInterface)(nil).GetSlackLogger))
 }
 
 // Info mocks base method.
