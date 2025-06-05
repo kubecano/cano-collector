@@ -9,7 +9,7 @@ import (
 	"github.com/kubecano/cano-collector/pkg/logger"
 )
 
-//go:generate mockgen -destination=../../mocks/healh_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/health HealthInterface
+//go:generate mockgen -destination=../../mocks/health_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/health HealthInterface
 type HealthInterface interface {
 	RegisterHealthChecks() error
 	Handler() http.Handler
