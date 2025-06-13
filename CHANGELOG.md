@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.5](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.4...cano-collector-v0.0.5) (2025-06-13)
+
+
+### Bug Fixes
+
+* Fix Chart and image pipeline pushes ([9b779c6](https://github.com/kubecano/cano-collector/commit/9b779c64d40ed80f0e2e362214db108b92205932))
+
 ## [0.0.4](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.3...cano-collector-v0.0.4) (2025-06-13)
 
 
