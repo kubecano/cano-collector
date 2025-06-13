@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.0.3](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.2...cano-collector-v0.0.3) (2025-06-13)
+
+
+### Features
+
+* CU-86985a80p - Add AlertManager alerts handler ([#60](https://github.com/kubecano/cano-collector/issues/60)) ([1cf86e7](https://github.com/kubecano/cano-collector/commit/1cf86e7b2247145d0b01dc2831efcbf5dc0511f4))
+* CU-86985aa3g - Add bundled kube-prom-stack to collector helm chart ([#57](https://github.com/kubecano/cano-collector/issues/57)) ([7ad12ed](https://github.com/kubecano/cano-collector/commit/7ad12edf1fb4e90ad300dd79c48dff0493ba3f48))
+* CU-86985axww - Send alert using strategy pattern - factory test ([#80](https://github.com/kubecano/cano-collector/issues/80)) ([d8a2278](https://github.com/kubecano/cano-collector/commit/d8a2278ca924f18f193c0988df787ac27ff543db))
+* CU-86985axww - Send alert using strategy pattern ([#79](https://github.com/kubecano/cano-collector/issues/79)) ([230ab24](https://github.com/kubecano/cano-collector/commit/230ab247863cce3a8b4dec1508cf918a4212f9b1))
+* CU-86985axxj - Add destinations to Helm Chart ([#64](https://github.com/kubecano/cano-collector/issues/64)) ([4f2dc0e](https://github.com/kubecano/cano-collector/commit/4f2dc0e14542fc1ddea9520fcfe5e8b7218b08f8))
+* CU-8698ck4q1 - Dependency Injection refactor ([#65](https://github.com/kubecano/cano-collector/issues/65)) ([3f3146e](https://github.com/kubecano/cano-collector/commit/3f3146e4d48e240f05912e001de7f702d4b514ea))
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/getsentry/sentry-go to v0.33.0 ([f8f3d3f](https://github.com/kubecano/cano-collector/commit/f8f3d3f29c9b36497f6aef0b77b2a9adc569018b))
+* **deps:** update module github.com/getsentry/sentry-go/gin to v0.33.0 ([64cb22b](https://github.com/kubecano/cano-collector/commit/64cb22b9b149a11af9d612bb08af4833e07fd182))
+* **deps:** update module github.com/gin-contrib/zap to v1.1.5 ([07efcb2](https://github.com/kubecano/cano-collector/commit/07efcb27604948d22468fd5012f8eb4dd1942ee8))
+* **deps:** update module github.com/gin-gonic/gin to v1.10.1 ([d9fc02e](https://github.com/kubecano/cano-collector/commit/d9fc02e669e759e6913c52f1f21622de0a9e1d01))
+* **deps:** update module github.com/hellofresh/health-go/v5 to v5.5.4 ([f7c2caf](https://github.com/kubecano/cano-collector/commit/f7c2cafe962ea662b018afa80748179dd0830d53))
+* **deps:** update module github.com/prometheus/client_golang to v1.22.0 ([c3f3a81](https://github.com/kubecano/cano-collector/commit/c3f3a81843f5a140941239debea79d7332fc568a))
+* **deps:** update module go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin to v0.61.0 ([fab3842](https://github.com/kubecano/cano-collector/commit/fab384258629a8e009812555300f97873184c1f2))
+* **deps:** update opentelemetry-go monorepo to v1.36.0 ([cabbf61](https://github.com/kubecano/cano-collector/commit/cabbf6168978cc73617540778fb51beafa1d1e9c))
+* NO-ISSUE - Removed compromised action tj-actions/changed-files ([#61](https://github.com/kubecano/cano-collector/issues/61)) ([4894a5c](https://github.com/kubecano/cano-collector/commit/4894a5c23a605a2e56bbdab6bc7d77bde584ae2d))
+* rename health mock file ([3e25528](https://github.com/kubecano/cano-collector/commit/3e255282e15bb0f0834023dc2c0bb4b84a0e6291))
+
 ## [0.0.2](https://github.com/kubecano/cano-collector/compare/cano-collector-0.0.1...cano-collector-v0.0.2) (2025-03-10)
 
 
