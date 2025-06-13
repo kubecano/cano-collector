@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.3](https://github.com/kubecano/cano-collector/compare/cano-collector-helm-v0.0.2...cano-collector-helm-v0.0.3) (2025-06-13)
+
+
+### Features
+
+* CU-86985aa3g - Add bundled kube-prom-stack to collector helm chart ([#57](https://github.com/kubecano/cano-collector/issues/57)) ([7ad12ed](https://github.com/kubecano/cano-collector/commit/7ad12edf1fb4e90ad300dd79c48dff0493ba3f48))
+* CU-86985axxj - Add destinations to Helm Chart ([#64](https://github.com/kubecano/cano-collector/issues/64)) ([4f2dc0e](https://github.com/kubecano/cano-collector/commit/4f2dc0e14542fc1ddea9520fcfe5e8b7218b08f8))
+
 ## [0.0.2](https://github.com/kubecano/cano-collector/compare/cano-collector-helm-v0.0.1...cano-collector-helm-v0.0.2) (2025-03-10)
 
 
