@@ -2,7 +2,7 @@ module github.com/kubecano/cano-collector
 
 go 1.23.0
 
-toolchain go1.24.1
+toolchain go1.24.4
 
 require (
 	github.com/getsentry/sentry-go v0.31.1
