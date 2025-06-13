@@ -34,7 +34,12 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=semver,pattern={{version}}
+            type=raw,value={{tag}}
+            type=ref,event=branch
+            type=semver,pattern={{version}},value={{tag}},prefix=v
+            type=semver,pattern=v{{version}},value={{tag}},prefix=v
+            type=semver,pattern={{major}}.{{minor}},value={{tag}},prefix=v
+            type=semver,pattern=cano-collector-v{{version}},value={{tag}}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
