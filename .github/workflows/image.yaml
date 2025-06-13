@@ -4,7 +4,7 @@ on:
   push:
     tags:
       - 'v*'
-      - 'cano-collector-*'
+      - 'cano-collector-v*'
 
 env:
   REGISTRY: ghcr.io

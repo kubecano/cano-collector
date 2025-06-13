@@ -3,7 +3,7 @@ name: release-charts
 on:
   push:
     tags:
-      - 'cano-collector-helm-*'
+      - 'cano-collector-helm-v*'
 
 jobs:
   release:
