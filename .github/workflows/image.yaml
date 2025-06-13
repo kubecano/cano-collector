@@ -34,11 +34,6 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value={{tag}}
-            type=ref,event=branch
-            type=semver,pattern={{version}},value={{tag}},prefix=v
-            type=semver,pattern=v{{version}},value={{tag}},prefix=v
-            type=semver,pattern={{major}}.{{minor}},value={{tag}},prefix=v
             type=semver,pattern=cano-collector-v{{version}},value={{tag}}
 
       - name: Build and push Docker image
