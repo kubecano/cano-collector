@@ -6,7 +6,7 @@ toolchain go1.24.4
 
 require (
 	github.com/getsentry/sentry-go v0.33.0
-	github.com/getsentry/sentry-go/gin v0.31.1
+	github.com/getsentry/sentry-go/gin v0.33.0
 	github.com/gin-contrib/zap v1.1.5
 	github.com/gin-gonic/gin v1.10.1
 	github.com/golang/mock v1.6.0
