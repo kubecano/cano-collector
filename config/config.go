@@ -75,8 +75,8 @@ func (f *fileConfigLoader) Load() (destinations.DestinationsConfig, teams.TeamsC
 
 func LoadConfig() (Config, error) {
 	loader := NewFileConfigLoader(
-		"/etc/cano-collector/destinations.yaml",
-		"/etc/cano-collector/teams.yaml",
+		"/etc/cano-collector/destinations/destinations.yaml",
+		"/etc/cano-collector/teams/teams.yaml",
 	)
 	return LoadConfigWithLoader(loader)
 }

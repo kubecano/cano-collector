@@ -116,10 +116,10 @@ spec:
                 optional: true
           volumeMounts:
             - name: teams-volume
-              mountPath: /etc/cano-collector/
+              mountPath: /etc/cano-collector/teams
               readOnly: true
             - name: destinations-secret-volume
-              mountPath: /etc/cano-collector/
+              mountPath: /etc/cano-collector/destinations
               readOnly: true
       volumes:
         - name: teams-volume
