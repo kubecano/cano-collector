@@ -34,10 +34,7 @@ jobs:
           images:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=match,pattern=^refs/tags/cano-collector-v(?<version>[0-9]+\.[0-9]+\.[0-9]+)$
-            type=ref,event=tag
-            type=ref,event=branch
-            type=ref,event=pr
+            type=match,pattern=cano-collector-v(\d.\d.\d)
             type=sha
 
       - name: Build and push Docker image
