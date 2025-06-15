@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.6](https://github.com/kubecano/cano-collector/compare/cano-collector-helm-v0.0.5...cano-collector-helm-v0.0.6) (2025-06-15)
+
+
+### Bug Fixes
+
+* Fix Docker image versioning ([17b501d](https://github.com/kubecano/cano-collector/commit/17b501d4483f3dd06ab1867660c2054a48c7dd7b))
+
 ## [0.0.5](https://github.com/kubecano/cano-collector/compare/cano-collector-helm-v0.0.4...cano-collector-helm-v0.0.5) (2025-06-15)
 
 ### Bug Fixes

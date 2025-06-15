@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.8](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.7...cano-collector-v0.0.8) (2025-06-15)
+
+
+### Bug Fixes
+
+* Fix Docker image versioning ([17b501d](https://github.com/kubecano/cano-collector/commit/17b501d4483f3dd06ab1867660c2054a48c7dd7b))
+
 ## [0.0.7](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.6...cano-collector-v0.0.7) (2025-06-15)
 
 
