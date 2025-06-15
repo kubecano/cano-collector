@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.8](https://github.com/kubecano/cano-collector/compare/cano-collector-helm-v0.0.7...cano-collector-helm-v0.0.8) (2025-06-15)
+
+
+### Bug Fixes
+
+* CU-869972wjv - Deploy Kubecano on dev cluster ([b5da203](https://github.com/kubecano/cano-collector/commit/b5da203fc49a66da04ce2731bebc53ee5f9c5411))
+
 ## [0.0.7](https://github.com/kubecano/cano-collector/compare/cano-collector-helm-v0.0.6...cano-collector-helm-v0.0.7) (2025-06-15)
 
 
