@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.9](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.8...cano-collector-v0.0.9) (2025-06-15)
+
+
+### Bug Fixes
+
+* CU-869972wjv - Deploy Kubecano on dev cluster ([0c64c04](https://github.com/kubecano/cano-collector/commit/0c64c0461a113c667cf2e5ed8be18f81d0c4a069))
+
 ## [0.0.8](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.7...cano-collector-v0.0.8) (2025-06-15)
 
 
