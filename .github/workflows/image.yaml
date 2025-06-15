@@ -34,7 +34,7 @@ jobs:
           images:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=match,pattern=cano-collector-v(\d.\d.\d)
+            type=match,pattern=cano-collector-v(\d.\d.\d),group=1
             type=sha
 
       - name: Build and push Docker image
