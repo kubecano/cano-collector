@@ -11,10 +11,10 @@ import (
 
 	"github.com/kubecano/cano-collector/config"
 	"github.com/kubecano/cano-collector/mocks"
-	"github.com/kubecano/cano-collector/pkg/alerts"
+	"github.com/kubecano/cano-collector/pkg/alert"
 	"github.com/kubecano/cano-collector/pkg/health"
 	"github.com/kubecano/cano-collector/pkg/logger"
-	"github.com/kubecano/cano-collector/pkg/metrics"
+	"github.com/kubecano/cano-collector/pkg/metric"
 	"github.com/kubecano/cano-collector/pkg/router"
 	"github.com/kubecano/cano-collector/pkg/tracer"
 )
@@ -74,11 +74,11 @@ func TestRun_WithMocks(t *testing.T) {
 		LoggerFactory:        func(_, _ string) logger.LoggerInterface { return mockLogger },
 		HealthCheckerFactory: func(cfg config.Config, log logger.LoggerInterface) health.HealthInterface { return mockHealth },
 		TracerManagerFactory: func(cfg config.Config, log logger.LoggerInterface) tracer.TracerInterface { return mockTracer },
-		MetricsFactory:       func(log logger.LoggerInterface) metrics.MetricsInterface { return mockMetrics },
-		AlertHandlerFactory: func(log logger.LoggerInterface, m metrics.MetricsInterface) alerts.AlertHandlerInterface {
+		MetricsFactory:       func(log logger.LoggerInterface) metric.MetricsInterface { return mockMetrics },
+		AlertHandlerFactory: func(log logger.LoggerInterface, m metric.MetricsInterface) alert.AlertHandlerInterface {
 			return mockAlerts
 		},
-		RouterManagerFactory: func(cfg config.Config, log logger.LoggerInterface, t tracer.TracerInterface, m metrics.MetricsInterface, h health.HealthInterface, a alerts.AlertHandlerInterface) router.RouterInterface {
+		RouterManagerFactory: func(cfg config.Config, log logger.LoggerInterface, t tracer.TracerInterface, m metric.MetricsInterface, h health.HealthInterface, a alert.AlertHandlerInterface) router.RouterInterface {
 			return mockRouter
 		},
 	}

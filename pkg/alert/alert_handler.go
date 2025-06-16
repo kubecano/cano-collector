@@ -1,4 +1,4 @@
-package alerts
+package alert
 
 import (
 	"bytes"
@@ -10,7 +10,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/kubecano/cano-collector/pkg/logger"
-	"github.com/kubecano/cano-collector/pkg/metrics"
+	"github.com/kubecano/cano-collector/pkg/metric"
 )
 
 //go:generate mockgen -destination=../../mocks/alert_handler_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/alerts AlertHandlerInterface
@@ -21,11 +21,11 @@ type AlertHandlerInterface interface {
 // AlertHandler handles incoming alerts from Alertmanager
 type AlertHandler struct {
 	logger  logger.LoggerInterface
-	metrics metrics.MetricsInterface
+	metrics metric.MetricsInterface
 }
 
 // NewAlertHandler creates a new handler with dependencies
-func NewAlertHandler(logger logger.LoggerInterface, metrics metrics.MetricsInterface) *AlertHandler {
+func NewAlertHandler(logger logger.LoggerInterface, metrics metric.MetricsInterface) *AlertHandler {
 	return &AlertHandler{logger: logger, metrics: metrics}
 }
 

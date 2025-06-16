@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/kubecano/cano-collector/config"
-	"github.com/kubecano/cano-collector/pkg/metrics"
+	"github.com/kubecano/cano-collector/pkg/metric"
 )
 
 func setupTestRouter(t *testing.T) *RouterManager {
@@ -50,7 +50,7 @@ func setupTestRouter(t *testing.T) *RouterManager {
 
 	mockHealth := mocks.NewMockHealthInterface(ctrl)
 
-	mockMetrics := metrics.NewMetricsCollector(mockLogger)
+	mockMetrics := metric.NewMetricsCollector(mockLogger)
 
 	// Stub minimalne wymagane zachowania
 	mockTracer.EXPECT().TraceLoggerMiddleware().AnyTimes().Return(func(c *gin.Context) {})
@@ -253,7 +253,7 @@ func TestMetricsEndpoint_Uninitialized(t *testing.T) {
 	mockAlerts := mocks.NewMockAlertHandlerInterface(ctrl)
 	mockHealth := mocks.NewMockHealthInterface(ctrl)
 
-	mockMetrics := metrics.NewMetricsCollector(mockLogger)
+	mockMetrics := metric.NewMetricsCollector(mockLogger)
 
 	// Stub minimalne wymagane zachowania
 	mockTracer.EXPECT().TraceLoggerMiddleware().AnyTimes().Return(func(c *gin.Context) {})

@@ -8,8 +8,8 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	destinations "github.com/kubecano/cano-collector/config/destinations"
-	teams "github.com/kubecano/cano-collector/config/teams"
+	destinations "github.com/kubecano/cano-collector/config/destination"
+	teams "github.com/kubecano/cano-collector/config/team"
 )
 
 // MockFullConfigLoader is a mock of FullConfigLoader interface.

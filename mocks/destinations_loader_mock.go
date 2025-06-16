@@ -8,7 +8,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	destinations "github.com/kubecano/cano-collector/config/destinations"
+	destinations "github.com/kubecano/cano-collector/config/destination"
 )
 
 // MockDestinationsLoader is a mock of DestinationsLoader interface.

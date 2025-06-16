@@ -5,7 +5,7 @@ import (
 
 	"github.com/kubecano/cano-collector/pkg/utils"
 
-	"github.com/kubecano/cano-collector/config/destinations"
+	"github.com/kubecano/cano-collector/config/destination"
 	"github.com/kubecano/cano-collector/pkg/logger"
 )
 
@@ -27,7 +27,7 @@ func NewSenderFactory(logger logger.LoggerInterface, client utils.HTTPClient) *S
 }
 
 // Create creates a DestinationSender based on destination type
-func (f *SenderFactory) Create(destination destinations.Destination, opts ...Option) (DestinationSender, error) {
+func (f *SenderFactory) Create(destination destination.Destination, opts ...Option) (DestinationSender, error) {
 	var sender DestinationSender
 
 	switch destination.Name {

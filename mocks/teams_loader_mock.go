@@ -8,7 +8,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	teams "github.com/kubecano/cano-collector/config/teams"
+	teams "github.com/kubecano/cano-collector/config/team"
 )
 
 // MockTeamsLoader is a mock of TeamsLoader interface.

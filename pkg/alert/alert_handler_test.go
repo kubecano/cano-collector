@@ -1,4 +1,4 @@
-package alerts
+package alert
 
 import (
 	"bytes"
@@ -11,7 +11,7 @@ import (
 	"github.com/golang/mock/gomock"
 
 	"github.com/kubecano/cano-collector/mocks"
-	"github.com/kubecano/cano-collector/pkg/metrics"
+	"github.com/kubecano/cano-collector/pkg/metric"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/alertmanager/template"
@@ -33,7 +33,7 @@ func setupTestRouter(t *testing.T) *gin.Engine {
 	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Warnf(gomock.Any(), gomock.Any()).AnyTimes()
 
-	mockMetrics := metrics.NewMetricsCollector(mockLogger)
+	mockMetrics := metric.NewMetricsCollector(mockLogger)
 
 	alertHandler := NewAlertHandler(mockLogger, mockMetrics)
 
