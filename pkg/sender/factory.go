@@ -3,7 +3,7 @@ package sender
 import (
 	"fmt"
 
-	"github.com/kubecano/cano-collector/pkg/utils"
+	"github.com/kubecano/cano-collector/pkg/util"
 
 	"github.com/kubecano/cano-collector/config/destination"
 	"github.com/kubecano/cano-collector/pkg/logger"
@@ -12,13 +12,13 @@ import (
 // SenderFactory creates appropriate DestinationSender based on destination type
 type SenderFactory struct {
 	logger logger.LoggerInterface
-	client utils.HTTPClient
+	client util.HTTPClient
 }
 
 // NewSenderFactory creates a new SenderFactory
-func NewSenderFactory(logger logger.LoggerInterface, client utils.HTTPClient) *SenderFactory {
+func NewSenderFactory(logger logger.LoggerInterface, client util.HTTPClient) *SenderFactory {
 	if client == nil {
-		client = utils.DefaultHTTPClient()
+		client = util.DefaultHTTPClient()
 	}
 	return &SenderFactory{
 		logger: logger,

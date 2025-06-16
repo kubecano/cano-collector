@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/kubecano/cano-collector/pkg/utils"
+	"github.com/kubecano/cano-collector/pkg/util"
 
 	"github.com/kubecano/cano-collector/pkg/logger"
 )
@@ -15,7 +15,7 @@ import (
 // SlackSender sends alerts to a Slack webhook
 type SlackSender struct {
 	WebhookURL string
-	httpClient utils.HTTPClient
+	httpClient util.HTTPClient
 	logger     logger.LoggerInterface
 }
 
@@ -23,7 +23,7 @@ type SlackSender struct {
 func NewSlackSender(webhookURL string, logger logger.LoggerInterface, opts ...Option) *SlackSender {
 	sender := &SlackSender{
 		WebhookURL: webhookURL,
-		httpClient: utils.DefaultHTTPClient(),
+		httpClient: util.DefaultHTTPClient(),
 		logger:     logger,
 	}
 
@@ -36,7 +36,7 @@ func NewSlackSender(webhookURL string, logger logger.LoggerInterface, opts ...Op
 }
 
 // SetClient allows setting a custom HTTP client
-func (s *SlackSender) SetClient(client utils.HTTPClient) {
+func (s *SlackSender) SetClient(client util.HTTPClient) {
 	s.httpClient = client
 }
 

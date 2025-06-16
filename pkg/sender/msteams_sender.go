@@ -8,13 +8,13 @@ import (
 	"net/http"
 
 	"github.com/kubecano/cano-collector/pkg/logger"
-	"github.com/kubecano/cano-collector/pkg/utils"
+	"github.com/kubecano/cano-collector/pkg/util"
 )
 
 // MSTeamsSender sends alerts to a Microsoft Teams webhook
 type MSTeamsSender struct {
 	WebhookURL string
-	httpClient utils.HTTPClient
+	httpClient util.HTTPClient
 	logger     logger.LoggerInterface
 }
 
@@ -22,8 +22,8 @@ type MSTeamsSender struct {
 func NewMSTeamsSender(webhookURL string, logger logger.LoggerInterface, opts ...Option) *MSTeamsSender {
 	sender := &MSTeamsSender{
 		WebhookURL: webhookURL,
-		httpClient: utils.DefaultHTTPClient(), // Default client
-		logger:     logger,                    // Default logger
+		httpClient: util.DefaultHTTPClient(), // Default client
+		logger:     logger,                   // Default logger
 	}
 
 	// Apply functional options
@@ -35,7 +35,7 @@ func NewMSTeamsSender(webhookURL string, logger logger.LoggerInterface, opts ...
 }
 
 // SetClient allows setting a custom HTTP client
-func (s *MSTeamsSender) SetClient(client utils.HTTPClient) {
+func (s *MSTeamsSender) SetClient(client util.HTTPClient) {
 	s.httpClient = client
 }
 
