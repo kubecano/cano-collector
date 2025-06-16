@@ -16,7 +16,8 @@ func TestLoadDestinationsConfig_Success(t *testing.T) {
 destinations:
   slack:
     - name: "incident-alerts"
-      webhookURL: "https://hooks.slack.com/services/XXX"
+      token: "xoxb-1234567890-0987654321-ABCDEF"
+      channel: "#alerts"
   teams:
     - name: "infra-team"
       webhookURL: "https://outlook.office.com/webhook/YYY"
@@ -36,7 +37,8 @@ destinations:
 	// Validate Slack destination
 	assert.Len(t, cfg.Destinations.Slack, 1)
 	assert.Equal(t, "incident-alerts", cfg.Destinations.Slack[0].Name)
-	assert.Equal(t, "https://hooks.slack.com/services/XXX", cfg.Destinations.Slack[0].WebhookURL)
+	assert.Equal(t, "xoxb-1234567890-0987654321-ABCDEF", cfg.Destinations.Slack[0].Token)
+	assert.Equal(t, "#alerts", cfg.Destinations.Slack[0].Channel)
 
 	// Validate Teams destination
 	assert.Len(t, cfg.Destinations.Teams, 1)

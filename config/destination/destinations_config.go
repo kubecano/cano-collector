@@ -8,16 +8,33 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// DestinationsConfig configuration for all destinations
 type DestinationsConfig struct {
 	Destinations struct {
-		Slack []Destination `yaml:"slack"`
-		Teams []Destination `yaml:"teams"`
+		Slack []SlackDestinationConfig `yaml:"slack,omitempty"`
+		Teams []TeamsDestinationConfig `yaml:"teams,omitempty"`
 	} `yaml:"destinations"`
 }
 
-type Destination struct {
-	Name       string `yaml:"name"`
-	WebhookURL string `yaml:"webhookURL"`
+// BaseDestinationConfig base configuration used in all destinations
+type BaseDestinationConfig struct {
+	Name string `yaml:"name"`
+}
+
+// SlackDestinationConfig configuration for Slack
+type SlackDestinationConfig struct {
+	BaseDestinationConfig `yaml:",inline"`
+	Token                 string `yaml:"token"`
+	Channel               string `yaml:"channel"`
+	SigningKey            string `yaml:"signingKey,omitempty"`
+	AccountID             string `yaml:"accountId,omitempty"`
+	ClusterName           string `yaml:"clusterName,omitempty"`
+}
+
+// TeamsDestinationConfig configuration for Microsoft Teams
+type TeamsDestinationConfig struct {
+	BaseDestinationConfig `yaml:",inline"`
+	WebhookURL            string `yaml:"webhookURL"`
 }
 
 //go:generate mockgen -destination=../../mocks/destinations_loader_mock.go -package=mocks github.com/kubecano/cano-collector/config/destination DestinationsLoader
@@ -53,12 +70,20 @@ func parseDestinationsYAML(r io.Reader) (*DestinationsConfig, error) {
 		return nil, fmt.Errorf("failed to decode destinations YAML: %w", err)
 	}
 
-	// Optional: Add basic validation
-	for _, d := range append(config.Destinations.Slack, config.Destinations.Teams...) {
-		if d.Name == "" || d.WebhookURL == "" {
-			return nil, fmt.Errorf("invalid destination entry: name and webhookURL must be set")
+	// Validate the configuration
+	for _, d := range config.Destinations.Slack {
+		if d.Name == "" || d.Token == "" || d.Channel == "" {
+			return nil, fmt.Errorf("invalid Slack destination entry: name, token and channel must be set")
 		}
 	}
+
+	for _, d := range config.Destinations.Teams {
+		if d.Name == "" || d.WebhookURL == "" {
+			return nil, fmt.Errorf("invalid Teams destination entry: name and webhookURL must be set")
+		}
+	}
+
+	// Similar validation can be added for Email and OpsGenie destinations
 
 	return &config, nil
 }
