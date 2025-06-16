@@ -1,4 +1,4 @@
-package destinations
+package destination
 
 import (
 	"fmt"
@@ -20,7 +20,7 @@ type Destination struct {
 	WebhookURL string `yaml:"webhookURL"`
 }
 
-//go:generate mockgen -destination=../../mocks/destinations_loader_mock.go -package=mocks github.com/kubecano/cano-collector/config/destinations DestinationsLoader
+//go:generate mockgen -destination=../../mocks/destinations_loader_mock.go -package=mocks github.com/kubecano/cano-collector/config/destination DestinationsLoader
 type DestinationsLoader interface {
 	Load() (*DestinationsConfig, error)
 }

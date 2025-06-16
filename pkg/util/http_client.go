@@ -1,4 +1,4 @@
-package utils
+package util
 
 import (
 	"net"
@@ -8,7 +8,7 @@ import (
 
 // HTTPClient defines the methods needed for sending HTTP requests
 //
-//go:generate mockgen -destination=../../mocks/http_client_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/utils HTTPClient
+//go:generate mockgen -destination=../../mocks/http_client_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/util HTTPClient
 type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }

@@ -2,7 +2,7 @@ package sender
 
 import (
 	"github.com/kubecano/cano-collector/pkg/logger"
-	"github.com/kubecano/cano-collector/pkg/utils"
+	"github.com/kubecano/cano-collector/pkg/util"
 )
 
 // Alert represents a structured alert to be sent
@@ -20,9 +20,9 @@ type DestinationSender interface {
 type Option func(DestinationSender)
 
 // WithHTTPClient sets a custom HTTP client
-func WithHTTPClient(client utils.HTTPClient) Option {
+func WithHTTPClient(client util.HTTPClient) Option {
 	return func(s DestinationSender) {
-		if senderWithClient, ok := s.(interface{ SetClient(utils.HTTPClient) }); ok {
+		if senderWithClient, ok := s.(interface{ SetClient(util.HTTPClient) }); ok {
 			senderWithClient.SetClient(client)
 		}
 	}

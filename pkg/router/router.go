@@ -11,7 +11,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/kubecano/cano-collector/pkg/alerts"
+	"github.com/kubecano/cano-collector/pkg/alert"
 
 	"github.com/kubecano/cano-collector/pkg/tracer"
 
@@ -30,7 +30,7 @@ import (
 
 	"github.com/kubecano/cano-collector/config"
 	"github.com/kubecano/cano-collector/pkg/health"
-	"github.com/kubecano/cano-collector/pkg/metrics"
+	"github.com/kubecano/cano-collector/pkg/metric"
 )
 
 //go:generate mockgen -destination=../../mocks/router_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/router RouterInterface
@@ -43,18 +43,18 @@ type RouterManager struct {
 	cfg     config.Config
 	logger  logger.LoggerInterface
 	tracer  tracer.TracerInterface
-	metrics metrics.MetricsInterface
+	metrics metric.MetricsInterface
 	health  health.HealthInterface
-	alerts  alerts.AlertHandlerInterface
+	alerts  alert.AlertHandlerInterface
 }
 
 func NewRouterManager(
 	cfg config.Config,
 	log logger.LoggerInterface,
 	tracer tracer.TracerInterface,
-	metrics metrics.MetricsInterface,
+	metrics metric.MetricsInterface,
 	health health.HealthInterface,
-	alerts alerts.AlertHandlerInterface,
+	alerts alert.AlertHandlerInterface,
 ) *RouterManager {
 	return &RouterManager{
 		cfg:     cfg,
