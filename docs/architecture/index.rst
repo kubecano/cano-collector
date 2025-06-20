@@ -12,4 +12,14 @@ Architecture
    sender/slack
    sender/msteams
    sender/opsgenie
-   sender/pagerduty 
+   sender/pagerduty
+   sender/discord
+   sender/google_chat
+   sender/mattermost
+   sender/kafka
+   sender/servicenow
+   sender/webhook
+   sender/jira
+   sender/telegram
+   sender/victorops
+   sender/datadog 
