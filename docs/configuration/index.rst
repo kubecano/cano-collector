@@ -5,5 +5,5 @@ Configuration
    :maxdepth: 2
    :caption: Contents:
 
-   destinations
+   destinations/index
    teams 
