@@ -1,32 +1,38 @@
+.. _servicenow-destination:
+
 ServiceNow
 ==========
 
-Creates incidents in a ServiceNow instance using the Table API.
+This destination creates incidents in ServiceNow based on issues in your Kubernetes cluster.
 
 Configuration
 -------------
 
 .. code-block:: yaml
 
-    # values.yaml
-    destinations:
-      servicenow:
-        - name: "my-servicenow-instance"
-          url: "https://my-instance.service-now.com"
-          username: "api-user"
-          password: "api-user-password"
+    - name: servicenow_destination_name
+      type: servicenow
+      params:
+        # ServiceNow instance identifier
+        instance: "your-instance"
+        # ServiceNow username
+        username: "admin"
+        # ServiceNow password
+        password: "SecurePassword@123"
+        # Optional: Caller ID for incidents (default: empty)
+        caller_id: "robusta_bot"
 
-Parameters
-----------
+Parameter Reference
+-------------------
 
--   **`name`** (string, required)
-    A unique name for this destination instance.
+``instance``
+  *(Required)* Your ServiceNow instance identifier (e.g., "mycompany" for mycompany.service-now.com).
 
--   **`url`** (string, required)
-    The full URL of your ServiceNow instance.
+``username``
+  *(Required)* The ServiceNow username for authentication.
 
--   **`username`** (string, required)
-    The username for authenticating with the ServiceNow API.
+``password``
+  *(Required)* The ServiceNow password for authentication.
 
--   **`password`** (string, required)
-    The password for the API user. 
+``caller_id``
+  *(Optional)* Used to specify a user for the "Caller" field in ServiceNow incidents. It's advisable to create a dedicated user like "robusta_bot" to easily track incidents from the system. 

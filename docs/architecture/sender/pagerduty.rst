@@ -1,34 +1,27 @@
 PagerDuty Sender
 ================
 
-The PagerDuty Sender integrates with the PagerDuty incident response platform. Its function is to trigger, acknowledge, or resolve PagerDuty incidents based on the `Issue` object.
+The `PagerDutySender` is responsible for communicating with the PagerDuty Events API. It receives instructions and a prepared data context from the `PagerDutyDestination` and handles the final payload construction and API interaction.
 
-Formatting
-----------
+Responsibilities
+----------------
 
-The sender uses the **PagerDuty Events API v2**. This API is event-driven and expects a specific JSON payload. The focus is on providing structured data for routing and incident management, not on creating a visual message.
+-   **Endpoint Selection**: Based on the command from the destination, it sends requests to either the `Alert Events API` (`/v2/enqueue`) or the `Change Events API` (`/v2/change/enqueue`).
 
-Field Mapping
-~~~~~~~~~~~~~
+-   **Payload Construction**: It builds the specific JSON payload required by the selected PagerDuty API endpoint.
+    -   **For Alerts**:
+        -   It maps the `Issue` severity to PagerDuty's severity levels (`critical`, `error`, `warning`, `info`).
+        -   It converts all `Enrichment` blocks into plain text and combines them into a single `state_message` field within `custom_details`. This means structured data like tables or diffs are presented as simple text.
+        -   It extracts links from `LinksBlock` and places them in the top-level `links` array of the PagerDuty payload.
+        -   Key `Issue` attributes like `source`, `component`, and `fingerprint` are mapped to their corresponding fields (`source`, `component`, `dedup_key`) in the PagerDuty event.
+    -   **For Changes**:
+        -   It constructs a simpler payload focused on a summary of the change, including which resource was affected and in what way.
 
-The properties of the `Issue` object are mapped to the fields of a PagerDuty event payload:
+-   **API Communication**: It handles the final HTTP POST request to PagerDuty, including setting the correct headers and the `routing_key`.
 
-- **`issue.Status`**: Determines the `event_action`. `FIRING` maps to `trigger`, and `RESOLVED` maps to `resolve`.
-- **`issue.AggregationKey`**: Used as the `dedup_key`. This is crucial for PagerDuty's deduplication logic, ensuring that multiple alerts for the same problem are grouped into a single incident and that a `resolve` event closes the correct incident.
-- **`issue.Title`**: Mapped to the `payload.summary`.
-- **`issue.Source`**: Mapped to the `payload.source`.
-- **`issue.Severity`**: Mapped to the `payload.severity` field (e.g., `critical`, `warning`, `info`).
+Key Implementation Details
+--------------------------
 
-Handling Enrichments
---------------------
+-   **Flattening Enrichments**: Unlike Senders for chat platforms (Slack, MSTeams), the PagerDuty Sender does not preserve the rich formatting of blocks like tables. All enrichments are converted to a single text block, optimized for readability within the PagerDuty UI's "Custom Details" section.
 
-`Enrichment` blocks are handled by serializing them into a JSON object. This object is then sent in the `payload.custom_details` field of the PagerDuty event.
-
-This approach preserves the structure of the enrichment data, making it available within the PagerDuty UI's "Details" section. While not rendered as a rich UI, the data is accessible to on-call engineers who need to investigate the incident further.
-
-Key Functionality
------------------
-
-- **Lifecycle Management**: The sender fully manages the incident lifecycle in PagerDuty by correctly mapping the issue status to `trigger` and `resolve` actions.
-- **Structured Data for Triage**: By placing detailed context in `custom_details`, it provides all necessary information for an engineer to begin troubleshooting directly within the PagerDuty incident, without needing to switch to other tools immediately.
-- **Deduplication**: Correct use of the `dedup_key` is fundamental to preventing alert storms and ensuring a clean incident timeline. 
+-   **Deduplication**: Correct use of the `dedup_key` is fundamental to preventing alert storms and ensuring a clean incident timeline. 

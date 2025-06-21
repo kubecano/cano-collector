@@ -9,6 +9,12 @@ A **Destination** is a configured instance of a notification channel. It acts as
 
    overview
    slack
+   discord
    msteams
-   incident_management
-   data_and_ticketing 
+   pagerduty
+   opsgenie
+   victorops
+   jira
+   datadog
+   kafka
+   servicenow 

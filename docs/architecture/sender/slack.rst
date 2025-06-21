@@ -1,27 +1,29 @@
 Slack Sender
 ============
 
-The Slack Sender is responsible for formatting an `Issue` object into a rich, interactive Slack message and sending it to the configured Slack webhook.
+The Slack Sender is responsible for formatting an `Issue` object into a rich, interactive Slack message and sending it to the configured Slack channel. It leverages the full capabilities of the Slack platform, including the **Block Kit UI framework** and file uploads.
 
-Formatting
-----------
+Message Structure and Formatting
+--------------------------------
 
-The sender leverages **Slack Block Kit**, Slack's UI framework for building messages. This allows for detailed and well-structured notifications that are easy to read and act upon.
+The sender constructs a message payload for the `chat.postMessage` Slack API endpoint. This payload consists of a primary `text` field (for notifications) and a series of `blocks` for rich content.
 
-Block Conversion
-~~~~~~~~~~~~~~~~
+Block Conversion Details
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 Each `BaseBlock` from an `Issue`'s enrichments is converted into a corresponding Slack Block Kit element:
 
-- **`HeaderBlock`**: Converted to a `header` block.
-- **`MarkdownBlock`**: Converted to a `section` block with `mrkdwn` text. This supports Slack's flavor of Markdown for formatting like bold, italics, and lists.
-- **`TableBlock`**: Rendered as a formatted `section` block using a fixed-width font to simulate a table. For very wide tables, it may instead be converted to a `FileBlock` to preserve readability.
-- **`ListBlock`**: Converted to a `section` block with a Markdown list.
-- **`FileBlock`**: This is handled specially. The file content is uploaded to Slack using the `files.upload` API, and a link to the uploaded file is included in the message. This is ideal for attaching logs or other diagnostic files.
-- **`LinksBlock`**: Converted to an `actions` block containing interactive `button` elements.
+-   **`HeaderBlock`**: Converted to a `header` block for prominent titles.
+-   **`MarkdownBlock`**: Converted to a `section` block with `mrkdwn` text. The sender respects Slack's Markdown flavor and enforces character limits to prevent API errors.
+-   **`TableBlock`**: Handled intelligently. Simple two-column tables are formatted into a clean, readable list of key-value pairs. Tables with more columns are converted to a Markdown table inside a `section` block. Very wide tables are automatically converted to an attached text file to preserve readability.
+-   **`ListBlock`**: Converted to a `section` block with a Markdown-formatted list.
+-   **`LinksBlock`**: Rendered as an `actions` block containing interactive `button` elements, providing a better user experience than plain text links.
+-   **`FileBlock`**: Handled specially. The file content is uploaded to Slack using the `files_upload_v2` API. A permanent link to the uploaded file is then included in the message body. This is ideal for attaching logs, graphs, or other diagnostic files.
 
 Special Features
 ----------------
 
-- **Attachments**: Enrichments can be designated as "attachments" using annotations. These are displayed in a visually distinct, color-coded section of the Slack message, which is useful for separating primary information from secondary details like labels or annotations.
-- **Interactivity**: The sender supports interactive components like buttons, which can be used for features like silencing alerts or triggering follow-up actions. 
+-   **Message Threading**: The sender supports replying within a thread. If a `thread_ts` (timestamp of the parent message) is provided, the message will be posted as a reply, which is essential for grouping related notifications, like updates to an ongoing alert.
+-   **Message Updates**: The sender can update existing messages using the `chat.update` API. This is used, for example, to update a summary message when a grouped alert's status changes.
+-   **Attachments**: Enrichments can be designated as "attachments" using a specific annotation. These blocks are placed in a separate `attachments` field in the API payload. This allows for a distinct visual presentation, often with a color-coded border (e.g., red for firing alerts, green for resolved) that indicates the status of the issue.
+-   **Link Unfurling**: The sender can control whether Slack should show previews for links in the message, based on the `unfurl_links` parameter from the destination configuration. 

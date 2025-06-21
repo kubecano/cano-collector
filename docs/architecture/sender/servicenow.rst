@@ -1,7 +1,29 @@
 ServiceNow Sender
 =================
 
-The ServiceNow Sender integrates with the ServiceNow platform to create incidents based on `Issue` objects. It is designed for enterprise ITSM workflows.
+The `ServiceNowSender` communicates with the ServiceNow REST API to create and manage incidents. It receives data from the `ServiceNowDestination` and handles the conversion of `Issue` data into ServiceNow-compatible format.
+
+Responsibilities
+----------------
+
+-   **ServiceNow REST API Communication**: It handles HTTP requests to the ServiceNow REST API for incident creation and management, including authentication and error handling.
+
+-   **HTML Conversion**: It converts `Enrichment` blocks into HTML format using the `HTMLTransformer`, which preserves formatting and structure for display in the ServiceNow interface.
+
+-   **Incident Payload Construction**: It builds the ServiceNow incident payload with fields like `short_description`, `description`, `impact`, `urgency`, `priority`, and `category` according to the ServiceNow API specification.
+
+-   **File Attachment Management**: It handles file uploads to ServiceNow incidents, converting `FileBlock` objects into proper ServiceNow attachments.
+
+Key Implementation Details
+--------------------------
+
+-   **HTML-Based Content**: Unlike other senders that use plain text or markdown, the ServiceNow Sender converts enrichments into HTML format, which provides rich formatting in the ServiceNow interface.
+
+-   **ServiceNow IUP Matrix**: The sender implements ServiceNow's specific Impact-Urgency-Priority mapping system, using numerical combinations (like 1,1,1 for critical incidents) that ServiceNow interprets to determine priority levels.
+
+-   **REST API Integration**: It uses ServiceNow's modern REST API rather than the older SOAP interface, providing better performance and easier integration.
+
+-   **Authentication**: It uses HTTP Basic Authentication with the configured username and password to access the ServiceNow instance.
 
 Formatting
 ----------

@@ -1,21 +1,41 @@
 DataDog Sender
 ==============
 
-The DataDog Sender forwards `Issue` objects to the DataDog Events API, allowing you to correlate infrastructure issues with your application metrics and logs within the DataDog platform.
+The `DataDogSender` communicates with the DataDog Events API to create events that appear in the DataDog dashboard. It receives data from the `DataDogDestination` and handles the final payload construction and API communication.
 
-Formatting
-----------
+Responsibilities
+----------------
 
-The sender transforms an `Issue` into a **DataDog Event** JSON payload.
+-   **DataDog Events API Communication**: It sends HTTP requests to the DataDog Events API to create events that appear in the DataDog dashboard timeline.
 
-- **`issue.Title`**: Mapped to the `title` of the DataDog event.
-- **`issue.Description`** and **`Enrichments`**: The description and all enrichment blocks are serialized into a single Markdown-formatted string and placed in the `text` body of the event.
-- **`issue.Severity`**: Converted to the DataDog event `alert_type` (e.g., `error`, `warning`, `info`).
-- **`issue.Source`**: Used as the `source_type_name`.
-- **`issue.Subject` and labels**: Mapped to `tags` in the event, enabling filtering and correlation within DataDog.
+-   **Text Conversion**: It converts all `Enrichment` blocks into a single text field using DataDog's specific formatting conventions, including special markers like `%%%` for sections and `presto` table format.
 
-Key Functionality
+-   **Event Payload Construction**: It builds the DataDog event payload with fields like `title`, `text`, `aggregation_key`, `alert_type`, and `tags` according to the DataDog Events API specification.
+
+-   **Content Truncation**: It handles DataDog's content length limits by truncating long text fields while preserving the most important information.
+
+Key Implementation Details
+--------------------------
+
+-   **DataDog-Specific Formatting**: The sender uses DataDog's unique text formatting conventions, including `%%%` markers for section headers and the `presto` table format for structured data.
+
+-   **Length Limits**: DataDog has strict limits on event content (97 characters for title, 3997 for text), so the sender includes intelligent truncation to ensure events are created successfully.
+
+-   **Tag-Based Organization**: It adds cluster information as tags to help organize and filter events in the DataDog dashboard.
+
+-   **Event Timeline**: Unlike other destinations that create persistent incidents, DataDog events appear in a timeline view, making them ideal for monitoring and alerting rather than incident management.
+
+-   **Severity Mapping**: It maps Robusta severity levels to DataDog event types (`error` for HIGH severity, `info` for others), which affects how events are displayed and filtered in DataDog.
+
+Payload Structure
 -----------------
 
-- **Event Correlation**: By sending issues as events tagged with relevant metadata (like pod name, namespace, node), you can see them directly on your DataDog dashboards and metric graphs.
-- **Centralized Visibility**: It allows you to see operational events from your cluster alongside your performance monitoring data, providing a unified view for troubleshooting. 
+The sender transforms an `Issue` into a **DataDog Event** JSON payload with the following key fields:
+
+-   **`title`**: The issue title (truncated to 97 characters)
+-   **`text`**: Combined description and enrichments (truncated to 3997 characters)
+-   **`aggregation_key`**: Used for event grouping and deduplication
+-   **`alert_type`**: Mapped from issue severity (`error` or `info`)
+-   **`tags`**: Cluster and resource information for filtering
+-   **`source_type_name`**: Set to "Robusta" for identification
+-   **`host`**: Resource information in format `namespace/resource_type/name`

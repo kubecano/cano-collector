@@ -1,28 +1,25 @@
+.. _victorops-destination:
+
 VictorOps
 =========
 
-Triggers and resolves incidents in Splunk On-Call (formerly VictorOps).
+This destination sends notifications to VictorOps (Splunk On-Call) using the REST API.
 
 Configuration
 -------------
 
 .. code-block:: yaml
 
-    # values.yaml
-    destinations:
-      victorops:
-        - name: "my-victorops-team"
-          api_key: "your-victorops-api-key"
-          routing_key: "my-team-routing-key"
+    - name: victorops_destination_name
+      type: victorops
+      params:
+        # VictorOps REST endpoint URL.
+        # This URL determines which team and routing key will receive the alert.
+        # It is a required parameter.
+        url: "https://alert.victorops.com/integrations/generic/20131114/alert/4a6a87eb-fca9-4117-931a-c842277ea90a/$routing_key"
 
-Parameters
-----------
+Parameter Reference
+-------------------
 
--   **`name`** (string, required)
-    A unique name for this destination instance.
-
--   **`api_key`** (string, required)
-    Your VictorOps API key.
-
--   **`routing_key`** (string, required)
-    The routing key to direct the incident to the correct team or escalation policy. 
+``url``
+  *(Required)* The VictorOps REST endpoint URL. This URL includes the integration ID and routing key that determine which team receives the alert and how it is processed. 

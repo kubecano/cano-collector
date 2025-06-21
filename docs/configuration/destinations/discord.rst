@@ -1,24 +1,34 @@
+.. _discord-destination:
+
 Discord
 =======
 
-Sends notifications to a Discord channel via a webhook.
+This destination sends notifications to Discord channels using webhooks with rich embed formatting.
 
 Configuration
 -------------
 
 .. code-block:: yaml
 
-    # values.yaml
-    destinations:
-      discord:
-        - name: "my-discord-channel"
-          url: "https://discord.com/api/webhooks/..."
+    - name: discord_destination_name
+      type: discord
+      params:
+        # Discord webhook URL
+        # This URL determines which channel will receive the messages
+        # It is a required parameter
+        url: "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN"
 
-Parameters
-----------
+Parameter Reference
+-------------------
 
--   **`name`** (string, required)
-    A unique name for this destination instance.
+``url``
+  *(Required)* The Discord webhook URL. This URL includes the webhook ID and token that determine which channel receives the messages.
 
--   **`url`** (string, required)
-    The webhook URL provided by Discord for your channel. 
+Getting a Discord Webhook URL
+----------------------------
+
+1. Open the Discord channel where you want to receive notifications
+2. Go to **Channel Settings** → **Integrations** → **Webhooks**
+3. Click **New Webhook**
+4. Configure the webhook (name, avatar, etc.)
+5. Copy the **Webhook URL** from the webhook settings 

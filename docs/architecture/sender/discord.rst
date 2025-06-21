@@ -1,7 +1,36 @@
 Discord Sender
 ==============
 
-The Discord Sender formats `Issue` objects for delivery to a Discord channel via a webhook.
+The `DiscordSender` communicates with Discord's webhook API to create rich, embed-based messages. It receives data from the `DiscordDestination` and handles the conversion of `Issue` data into Discord's embed format.
+
+Responsibilities
+----------------
+
+-   **Discord Webhook Communication**: It sends HTTP POST requests to Discord webhooks to create embed messages with rich formatting, colors, and fields.
+
+-   **Embed Construction**: It builds Discord embeds with proper structure including title, description, fields, and color coding based on issue severity.
+
+-   **Block Conversion**: It converts `Enrichment` blocks into Discord-compatible format:
+    -   `MarkdownBlock` becomes embed description or fields
+    -   `TableBlock` is converted to code blocks or file attachments for wide tables
+    -   `FileBlock` is sent as separate file attachments
+    -   `HeaderBlock` becomes embed title
+    -   `ListBlock` is converted to markdown lists
+
+-   **File Attachment Management**: It handles file uploads by sending separate webhook requests with file attachments alongside the main embed message.
+
+Key Implementation Details
+--------------------------
+
+-   **Embed-Based Architecture**: Discord uses embeds for rich message formatting, with support for fields, colors, and structured content.
+
+-   **Color Coding**: The sender maps issue severity to Discord embed colors (red for HIGH, yellow for LOW, green for INFO) for immediate visual identification.
+
+-   **Table Handling**: Wide tables that exceed Discord's field limits are automatically converted to file attachments to maintain readability.
+
+-   **Length Limits**: The sender respects Discord's character limits (2048 for descriptions, 1024 for fields) and truncates content accordingly.
+
+-   **Dual Webhook Requests**: For messages with file attachments, the sender makes two webhook requests: one for the embed and one for the files.
 
 Formatting
 ----------

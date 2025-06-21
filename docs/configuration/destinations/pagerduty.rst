@@ -1,24 +1,25 @@
+.. _pagerduty-destination:
+
 PagerDuty
 =========
 
-Triggers, acknowledges, and resolves incidents in PagerDuty using the Events API v2.
+This destination sends notifications to PagerDuty, creating and resolving incidents.
 
 Configuration
 -------------
 
 .. code-block:: yaml
 
-    # values.yaml
-    destinations:
-      pagerduty:
-        - name: "my-pagerduty-service"
-          integrationKey: "your-pagerduty-integration-key"
+    - name: pagerduty_destination_name
+      type: pagerduty
+      params:
+        # PagerDuty Integration Key (also known as the routing key).
+        # This key determines which service in PagerDuty will receive the event.
+        # It is a required parameter.
+        apiKey: "f6c6e02a5a1a490ee02e90cde19ee388"
 
-Parameters
-----------
+Parameter Reference
+-------------------
 
--   **`name`** (string, required)
-    A unique name for this destination instance.
-
--   **`integrationKey`** (string, required)
-    The Integration Key (also known as Routing Key) from a PagerDuty service integration using the "Events API v2". 
+``apiKey``
+  *(Required)* The integration key (or routing key) for your PagerDuty service. This directs the alert to the correct team and escalation policy within PagerDuty. 

@@ -1,21 +1,28 @@
 VictorOps Sender
 ================
 
-The VictorOps Sender integrates with Splunk On-Call (formerly VictorOps) to manage the incident lifecycle.
+The `VictorOpsSender` communicates with the VictorOps REST API using a simple JSON payload structure. It receives data from the `VictorOpsDestination` and handles the final payload construction and HTTP communication.
 
-Formatting
-----------
+Responsibilities
+----------------
 
-The sender uses the **VictorOps REST Endpoint API** to trigger, acknowledge, and resolve incidents.
+-   **REST API Communication**: It sends HTTP POST requests to the configured VictorOps REST endpoint with a JSON payload containing all alert information.
 
-- **`issue.Status`**: This is mapped to the `message_type` field. `FIRING` becomes `CRITICAL`, and `RESOLVED` becomes `RECOVERY`.
-- **`issue.Title`**: Mapped to the `entity_display_name` field, which is the main title of the incident.
-- **`issue.AggregationKey`**: Used as the `entity_id`, which is VictorOps's key for alert deduplication and lifecycle management.
-- **`issue.Description`** and **`Enrichments`**: This content is serialized into a string and sent in the `state_message`, providing the body of the incident details.
+-   **Payload Construction**: It builds a flat JSON object where each piece of information becomes a top-level field:
+    -   `entity_id`: Uses the issue's `fingerprint` for deduplication
+    -   `entity_display_name`: The formatted title with severity emoji
+    -   `state_message`: Contains the description and all enrichments converted to plain text
+    -   `message_type`: Always set to "CRITICAL"
+    -   `monitoring_tool`: Set to "Robusta"
+    -   Custom fields for resource details (Resource, Source, Namespace, Node)
 
-Key Functionality
------------------
+-   **Link Handling**: Links from the issue are added as fields with the prefix `vo_annotate.u.`, which VictorOps displays as clickable annotations.
 
-- **Full Incident Lifecycle**: The sender correctly maps issue states to `CRITICAL` and `RECOVERY` message types, ensuring incidents are automatically opened and closed.
-- **Deduplication**: Use of the `entity_id` field prevents alert storms by grouping subsequent alerts for the same issue into a single, active incident.
-- **On-Call Routing**: Incidents are directed to the correct on-call team based on the `routing_key` provided in the destination configuration. 
+Key Implementation Details
+--------------------------
+
+-   **Flattened Structure**: Unlike other senders that use nested objects, VictorOps expects all information in a flat JSON structure where each field represents a piece of data.
+
+-   **No Lifecycle Management**: VictorOps does not support automatic incident resolution. All alerts are sent as "CRITICAL" and require manual intervention to close.
+
+-   **Text Conversion**: All enrichment blocks (tables, markdown, etc.) are converted to plain text and combined into the `state_message` field. 

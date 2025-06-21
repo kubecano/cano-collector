@@ -1,46 +1,53 @@
+.. _kafka-destination:
+
 Kafka
 =====
 
-Publishes the raw `Issue` object as a JSON message to a Kafka topic.
+This destination streams structured data to Kafka topics for data pipeline integration.
 
 Configuration
 -------------
 
+Basic Configuration
+~~~~~~~~~~~~~~~~~~
+
 .. code-block:: yaml
 
-    # values.yaml
-    destinations:
-      kafka:
-        - name: "my-kafka-pipeline"
-          brokers: "kafka-broker-1:9092,kafka-broker-2:9092"
-          topic: "cluster-issues"
-          # Optional SASL authentication
-          sasl_enabled: true
-          username: "my-kafka-user"
-          password: "my-kafka-password"
-          # scram_sha_256 | scram_sha_512 | plain
-          mechanism: "scram_sha_512"
+    - name: kafka_destination_name
+      type: kafka
+      params:
+        # Kafka broker URL
+        kafka_url: "localhost:9092"
+        # Topic to publish messages to
+        topic: "robusta-events"
 
-Parameters
-----------
+Authenticated Configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
--   **`name`** (string, required)
-    A unique name for this destination instance.
+.. code-block:: yaml
 
--   **`brokers`** (string, required)
-    A comma-separated list of Kafka broker addresses.
+    - name: kafka_destination_name
+      type: kafka
+      params:
+        # Kafka broker URL
+        kafka_url: "localhost:9096"
+        # Topic to publish messages to
+        topic: "robusta-events"
+        # Authentication configuration
+        auth:
+          sasl_mechanism: SCRAM-SHA-512
+          security_protocol: SASL_SSL
+          sasl_plain_username: robusta
+          sasl_plain_password: password
 
--   **`topic`** (string, required)
-    The Kafka topic to publish messages to.
+Parameter Reference
+-------------------
 
--   **`sasl_enabled`** (boolean, optional)
-    Set to `true` to enable SASL authentication. Defaults to `false`.
+``kafka_url``
+  *(Required)* The URL of your Kafka broker(s) in the format `host:port`.
 
--   **`username`** (string, optional)
-    The SASL username. Required if `sasl_enabled` is `true`.
+``topic``
+  *(Required)* The Kafka topic where messages will be published.
 
--   **`password`** (string, optional)
-    The SASL password. Required if `sasl_enabled` is `true`.
-
--   **`mechanism`** (string, optional)
-    The SASL mechanism. Supported values are `scram_sha_256`, `scram_sha_512`, and `plain`. Required if `sasl_enabled` is `true`. 
+``auth``
+  *(Optional)* Authentication configuration for Kafka. Supports various mechanisms including SASL and SSL. 

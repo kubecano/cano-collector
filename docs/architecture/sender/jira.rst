@@ -1,7 +1,29 @@
 Jira Sender
 ===========
 
-The Jira Sender integrates with Atlassian Jira to automatically create issues in a specified project, streamlining the process of tracking and managing work generated from cluster events.
+The `JiraSender` communicates with the Jira REST API to create, update, and manage tickets. It receives instructions from the `JiraDestination` and handles the conversion of `Issue` data into Jira-compatible format.
+
+Responsibilities
+----------------
+
+-   **Jira REST API Communication**: It handles all HTTP requests to the Jira REST API, including authentication, ticket creation, status transitions, and updates.
+
+-   **Rich Text Conversion**: It converts `Enrichment` blocks into Jira's Atlassian Document Format (ADF), preserving formatting like markdown, tables, and lists while maintaining readability in the Jira interface.
+
+-   **File Attachment Handling**: It manages file uploads to Jira tickets, converting `FileBlock` objects into proper Jira attachments.
+
+-   **Ticket Management**: It handles the complete lifecycle of Jira tickets, including creation, status transitions, and updates based on the commands from the destination.
+
+Key Implementation Details
+--------------------------
+
+-   **Atlassian Document Format**: Unlike other senders that use simple text or HTML, the Jira Sender converts enrichments into Jira's native ADF format, which supports rich formatting, tables, and structured content.
+
+-   **Markdown Processing**: It includes sophisticated markdown parsing to convert common markdown elements (bold, italic, code blocks) into their ADF equivalents.
+
+-   **Status Transition Management**: The sender handles complex Jira workflow transitions, mapping issue statuses to appropriate Jira status changes through the REST API.
+
+-   **Authentication**: It uses HTTP Basic Authentication with the configured username and API key to access the Jira instance.
 
 Formatting
 ----------
