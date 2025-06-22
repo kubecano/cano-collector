@@ -1,38 +1,75 @@
 .. _servicenow-destination:
 
-ServiceNow
-==========
+ServiceNow Destination Configuration
+===================================
 
-This destination creates incidents in ServiceNow based on issues in your Kubernetes cluster.
+The ServiceNow destination allows cano-collector to create and manage incidents in ServiceNow.
 
 Configuration
 -------------
 
 .. code-block:: yaml
 
-    - name: servicenow_destination_name
-      type: servicenow
-      params:
-        # ServiceNow instance identifier
-        instance: "your-instance"
-        # ServiceNow username
-        username: "admin"
-        # ServiceNow password
-        password: "SecurePassword@123"
-        # Optional: Caller ID for incidents (default: empty)
-        caller_id: "robusta_bot"
+    destinations:
+      servicenow:
+        - name: "production-incidents"
+          url: "https://your-org.service-now.com"
+          username: "cano-bot"
+          password: "your-password"
+          caller_id: "cano_bot"
+          category: "Infrastructure"
+          subcategory: "Kubernetes"
+          priorityMapping:
+            critical: "1"
+            warning: "2"
+            info: "3"
+          customFields:
+            environment: "Production"
+            team: "Platform"
 
-Parameter Reference
--------------------
+Parameters
+----------
 
-``instance``
-  *(Required)* Your ServiceNow instance identifier (e.g., "mycompany" for mycompany.service-now.com).
+.. list-table::
+   :header-rows: 1
 
-``username``
-  *(Required)* The ServiceNow username for authentication.
-
-``password``
-  *(Required)* The ServiceNow password for authentication.
-
-``caller_id``
-  *(Optional)* Used to specify a user for the "Caller" field in ServiceNow incidents. It's advisable to create a dedicated user like "robusta_bot" to easily track incidents from the system. 
+   * - Parameter
+     - Type
+     - Required
+     - Description
+   * - name
+     - string
+     - Yes
+     - Unique name for this ServiceNow destination
+   * - url
+     - string
+     - Yes
+     - ServiceNow instance URL
+   * - username
+     - string
+     - Yes
+     - ServiceNow username
+   * - password
+     - string
+     - Yes
+     - ServiceNow password
+   * - caller_id
+     - string
+     - No
+     - Used to specify a user for the "Caller" field in ServiceNow incidents. It's advisable to create a dedicated user like "cano_bot" to easily track incidents from the system.
+   * - category
+     - string
+     - No
+     - Incident category
+   * - subcategory
+     - string
+     - No
+     - Incident subcategory
+   * - priorityMapping
+     - map
+     - No
+     - Maps severity levels to ServiceNow priority levels
+   * - customFields
+     - map
+     - No
+     - Custom field values to set 

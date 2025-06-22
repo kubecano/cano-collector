@@ -6,7 +6,7 @@ This document describes how cano-collector processes alerts through workflows, c
 Workflow Selection and Processing
 --------------------------------
 
-Workflows in cano-collector are the equivalent of Robusta's playbooks, providing a flexible mechanism for alert enrichment and processing. The workflow selection process determines which workflows should be applied to a specific alert.
+Workflows in cano-collector provide a flexible mechanism for alert enrichment and processing. The workflow selection process determines which workflows should be applied to a specific alert.
 
 Workflow Selection Logic
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -86,13 +86,13 @@ Workflows are selected based on matching criteria defined in the workflow config
         return true
     }
 
-Comparison with Robusta's Playbook Selection:
+The workflow selection system supports:
 
-Robusta uses a similar trigger-based system but with additional capabilities:
-- More complex matching patterns (regex, wildcards)
-- Time-based triggers
-- Resource type matching
-- Custom matcher functions
+- **Exact Matching**: Match specific alert names, namespaces, or severity levels
+- **Label Matching**: Match based on alert labels using key-value pairs
+- **Annotation Matching**: Match based on alert annotations
+- **Priority-based Selection**: Higher priority workflows are selected first
+- **Multiple Triggers**: Each workflow can have multiple trigger conditions
 
 Workflow Execution
 ~~~~~~~~~~~~~~~~~~
@@ -129,7 +129,7 @@ Selected workflows are executed in priority order, with each workflow potentiall
 Issue Creation with Enrichment Blocks
 -------------------------------------
 
-The Issue object is the central data structure in cano-collector, equivalent to Robusta's Finding. It contains all the enriched context and metadata about the alert.
+The Issue object is the central data structure in cano-collector. It contains all the enriched context and metadata about the alert.
 
 Issue Structure
 ~~~~~~~~~~~~~~~
@@ -167,26 +167,13 @@ Issue Structure
         Annotations map[string]string
     }
 
-Comparison with Robusta's Finding:
+The Issue structure provides:
 
-.. code-block:: python
-
-    # Robusta's Finding structure
-    class Finding(Filterable):
-        title: str
-        description: str
-        aggregation_key: str
-        severity: FindingSeverity
-        status: FindingStatus
-        source: FindingSource
-        subject: FindingSubject
-        enrichments: List[Enrichment]
-        links: List[Link]
-        fingerprint: str
-        starts_at: datetime
-        ends_at: Optional[datetime]
-
-Both structures serve the same purpose but with language-specific implementations.
+- **Unique Identification**: UUID and fingerprint for tracking
+- **Rich Metadata**: Title, description, severity, and status
+- **Subject Information**: Details about the affected resource
+- **Enrichment Blocks**: Structured content for different senders
+- **Temporal Information**: Start and end times for alert lifecycle
 
 Issue Creation Process
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -283,24 +270,15 @@ Enrichment blocks provide structured content that can be rendered by different s
         Links []Link
     }
 
-Comparison with Robusta's BaseBlock:
+The block system provides:
 
-.. code-block:: python
-
-    # Robusta's BaseBlock structure
-    class BaseBlock(BaseModel):
-        hidden: bool = False
-        html_class: str = None
-
-    class MarkdownBlock(BaseBlock):
-        text: str
-
-    class TableBlock(BaseBlock):
-        rows: List[List[str]]
-        headers: List[str]
-        name: str
-
-Both implementations provide similar block types for rich content rendering.
+- **MarkdownBlock**: Rich text content with markdown formatting
+- **TableBlock**: Structured tabular data
+- **FileBlock**: File attachments with content
+- **ListBlock**: Ordered or unordered lists
+- **HeaderBlock**: Section headers
+- **DividerBlock**: Visual separators
+- **LinksBlock**: Clickable links
 
 Example workflow actions that create enrichment blocks:
 
@@ -351,7 +329,7 @@ Example workflow actions that create enrichment blocks:
 Planned Alert Enrichment Features (TODO)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Based on the routing_comparison.rst TODO items, the following enrichment features are planned:
+The following enrichment features are planned:
 
 1. **Pod Logs Enrichment**: Automatically fetch and include relevant pod logs
 2. **Resource Status Enrichment**: Add current resource status and conditions

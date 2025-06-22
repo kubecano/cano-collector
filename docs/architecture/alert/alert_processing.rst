@@ -6,7 +6,7 @@ This document describes the alert processing architecture in cano-collector, inc
 PrometheusAlert Structure
 -------------------------
 
-The PrometheusAlert structure in cano-collector follows the standard Alertmanager format, similar to Robusta's implementation:
+The PrometheusAlert structure in cano-collector follows the standard Alertmanager format:
 
 .. code-block:: go
 
@@ -41,21 +41,7 @@ Key fields and their purposes:
 - **StartsAt/EndsAt**: Timestamps for alert lifecycle
 - **GeneratorURL**: Link to the alerting rule or source
 
-Comparison with Robusta's PrometheusAlert:
-
-.. code-block:: python
-
-    # Robusta's implementation
-    class PrometheusAlert(BaseModel):
-        endsAt: datetime
-        generatorURL: str
-        startsAt: datetime
-        fingerprint: str
-        status: str
-        labels: Dict[str, str]
-        annotations: Dict[str, str]
-
-Both implementations follow the same structure, ensuring compatibility with Alertmanager webhook format.
+This structure ensures compatibility with Alertmanager webhook format and provides all necessary information for alert processing.
 
 Alert Parsing from template.Data
 --------------------------------
@@ -94,7 +80,7 @@ The parsing process includes:
 Alert Deduplication
 -------------------
 
-Deduplication prevents processing the same alert multiple times, similar to Robusta's approach:
+Deduplication prevents processing the same alert multiple times:
 
 .. code-block:: go
 
@@ -138,10 +124,6 @@ The deduplication strategy:
 2. **TTL-based Cache**: Prevents reprocessing within a configurable time window
 3. **Thread-safe**: Concurrent access protection
 4. **Memory Management**: Automatic cleanup of expired entries
-
-Comparison with Robusta's deduplication:
-
-Robusta uses a similar approach with compound hashing, but includes additional fields like namespace and resource type in the hash calculation for more granular deduplication.
 
 Alert Relabeling
 ----------------
@@ -259,14 +241,6 @@ Queue characteristics:
 3. **Retry Logic**: Automatic retry for failed processing
 4. **Metrics**: Comprehensive monitoring of queue performance
 5. **Backpressure**: Graceful handling of queue overflow
-
-Comparison with Robusta's async processing:
-
-Robusta uses a similar worker pool pattern but with additional features like:
-- Priority-based processing
-- Alert grouping and batching
-- Dynamic worker scaling
-- More sophisticated retry mechanisms
 
 Processing Flow
 ---------------

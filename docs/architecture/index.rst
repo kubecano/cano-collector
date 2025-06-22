@@ -11,7 +11,6 @@ Architecture
    flow
    alert/index
    event/index
-   routing_comparison
    workflow
    monitoring/index
    destination/overview

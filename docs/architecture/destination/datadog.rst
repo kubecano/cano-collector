@@ -1,22 +1,33 @@
 DataDog Destination
-===================
+==================
 
-The DataDog Destination prepares data for the DataDog Events API, focusing on creating structured events that can be viewed in the DataDog dashboard.
+The DataDog destination allows cano-collector to send alerts and findings to DataDog as events.
 
-Responsibilities
-----------------
+Features
+--------
 
--   **Event Preparation**: The destination extracts key information from the `Issue` and prepares it for the DataDog Events API, including the `aggregation_key` for event grouping and severity mapping.
+-   **Event Creation**: Creates DataDog events for alerts and findings
+-   **Severity Mapping**: It maps severity levels to DataDog event types (`error` for HIGH severity, `info` for others), which affects how events are displayed and filtered in DataDog.
+-   **Tag Management**: Automatically adds relevant tags for filtering and grouping
+-   **Alert Correlation**: Links related events and alerts
+-   **Custom Attributes**: Supports custom event attributes
+-   **Metric Integration**: Can trigger metric-based alerts
 
--   **DataDog API Context**: It prepares the API key and configuration needed by the `DataDogSender` to communicate with the DataDog Events API.
+Configuration
+-------------
 
--   **Delegation**: After preparing the basic context, it delegates the construction of the DataDog event payload and the API communication to the `DataDogSender`.
+.. code-block:: yaml
 
-Key Implementation Details
---------------------------
-
--   **Event-Based Architecture**: Unlike incident management systems, DataDog uses an event-based model where each alert becomes an event in the DataDog timeline.
-
--   **Aggregation Key**: The destination uses the issue's `aggregation_key` to group related events in DataDog, ensuring that similar alerts are grouped together in the dashboard.
-
--   **Severity Mapping**: It maps Robusta severity levels to DataDog event types (`error` for HIGH severity, `info` for others), which affects how events are displayed and filtered in DataDog. 
+    destinations:
+      datadog:
+        - name: "production-events"
+          apiKey: "your-datadog-api-key"
+          appKey: "your-datadog-app-key"
+          site: "datadoghq.com"
+          tags:
+            - "env:production"
+            - "team:platform"
+          severityMapping:
+            critical: "error"
+            warning: "warning"
+            info: "info" 

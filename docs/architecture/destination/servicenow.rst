@@ -1,24 +1,34 @@
 ServiceNow Destination
-======================
+=====================
 
-The ServiceNow Destination manages the creation and lifecycle of incidents in ServiceNow, handling the conversion of `Issue` objects into ServiceNow incident records.
+The ServiceNow destination allows cano-collector to create and manage incidents in ServiceNow.
 
-Responsibilities
-----------------
+Features
+--------
 
--   **Incident Lifecycle Management**: The destination determines whether to create a new incident or update an existing one based on the issue's status and ServiceNow configuration.
+-   **Incident Creation**: Automatically creates ServiceNow incidents for alerts
+-   **Incident Updates**: Updates existing incidents when alerts are resolved
+-   **Priority Mapping**: It maps severity levels to ServiceNow's Impact, Urgency, and Priority (IUP) matrix using ServiceNow's specific numerical combinations.
+-   **Assignment Rules**: Supports automatic assignment based on configuration
+-   **Category Mapping**: Maps alert types to ServiceNow categories
+-   **Caller Management**: It supports configuring a dedicated caller ID (like "cano_bot") to easily track and manage incidents created by the system.
+-   **Custom Fields**: Supports mapping to custom ServiceNow fields
 
--   **ServiceNow Context Preparation**: It prepares the ServiceNow instance URL, authentication credentials, and caller information needed by the `ServiceNowSender`.
+Configuration
+-------------
 
--   **Priority Mapping**: It maps Robusta severity levels to ServiceNow's Impact, Urgency, and Priority (IUP) matrix using ServiceNow's specific numerical combinations.
+.. code-block:: yaml
 
--   **Delegation**: After preparing the ServiceNow context, it delegates the actual incident creation and management to the `ServiceNowSender`.
-
-Key Implementation Details
---------------------------
-
--   **ServiceNow IUP Matrix**: The destination uses ServiceNow's specific Impact-Urgency-Priority mapping system, which uses numerical combinations to determine incident priority levels.
-
--   **Caller Management**: It supports configuring a dedicated caller ID (like "robusta_bot") to easily track and manage incidents created by the system.
-
--   **Incident Categorization**: It automatically categorizes incidents as "Network" type, which can be customized based on organizational needs. 
+    destinations:
+      servicenow:
+        - name: "production-incidents"
+          url: "https://your-org.service-now.com"
+          username: "cano-bot"
+          password: "your-password"
+          caller_id: "cano_bot"
+          category: "Infrastructure"
+          subcategory: "Kubernetes"
+          priorityMapping:
+            critical: "1"
+            warning: "2"
+            info: "3" 

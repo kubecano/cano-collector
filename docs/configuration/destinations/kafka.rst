@@ -1,53 +1,111 @@
 .. _kafka-destination:
 
-Kafka
-=====
+Kafka Destination Configuration
+==============================
 
-This destination streams structured data to Kafka topics for data pipeline integration.
+The Kafka destination allows cano-collector to publish alerts and findings to Kafka topics for downstream processing.
 
 Configuration
 -------------
 
-Basic Configuration
-~~~~~~~~~~~~~~~~~~
-
 .. code-block:: yaml
 
-    - name: kafka_destination_name
-      type: kafka
-      params:
-        # Kafka broker URL
-        kafka_url: "localhost:9092"
-        # Topic to publish messages to
-        topic: "robusta-events"
+    destinations:
+      kafka:
+        - name: "alerts-topic"
+          brokers:
+            - "kafka-1:9092"
+            - "kafka-2:9092"
+            - "kafka-3:9092"
+          topic: "cano-events"
+          sasl:
+            mechanism: "PLAIN"
+            username: "cano"
+            password: "your-password"
+          tls:
+            enabled: true
+            caFile: "/etc/cano-collector/certs/kafka-ca.crt"
+            certFile: "/etc/cano-collector/certs/kafka-client.crt"
+            keyFile: "/etc/cano-collector/certs/kafka-client.key"
 
-Authenticated Configuration
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+Parameters
+----------
 
-.. code-block:: yaml
+.. list-table::
+   :header-rows: 1
 
-    - name: kafka_destination_name
-      type: kafka
-      params:
-        # Kafka broker URL
-        kafka_url: "localhost:9096"
-        # Topic to publish messages to
-        topic: "robusta-events"
-        # Authentication configuration
-        auth:
-          sasl_mechanism: SCRAM-SHA-512
-          security_protocol: SASL_SSL
-          sasl_plain_username: robusta
-          sasl_plain_password: password
+   * - Parameter
+     - Type
+     - Required
+     - Description
+   * - name
+     - string
+     - Yes
+     - Unique name for this Kafka destination
+   * - brokers
+     - list
+     - Yes
+     - List of Kafka broker addresses
+   * - topic
+     - string
+     - Yes
+     - Kafka topic to publish messages to
+   * - sasl.mechanism
+     - string
+     - No
+     - SASL authentication mechanism (PLAIN, SCRAM-SHA-256, etc.)
+   * - sasl.username
+     - string
+     - No
+     - SASL username for authentication
+   * - sasl.password
+     - string
+     - No
+     - SASL password for authentication
+   * - tls.enabled
+     - boolean
+     - No
+     - Enable TLS encryption
+   * - tls.caFile
+     - string
+     - No
+     - Path to CA certificate file
+   * - tls.certFile
+     - string
+     - No
+     - Path to client certificate file
+   * - tls.keyFile
+     - string
+     - No
+     - Path to client private key file
 
-Parameter Reference
--------------------
+Message Format
+--------------
 
-``kafka_url``
-  *(Required)* The URL of your Kafka broker(s) in the format `host:port`.
+Messages published to Kafka are in JSON format:
 
-``topic``
-  *(Required)* The Kafka topic where messages will be published.
+.. code-block:: json
 
-``auth``
-  *(Optional)* Authentication configuration for Kafka. Supports various mechanisms including SASL and SSL. 
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "title": "Pod CrashLooping",
+      "description": "Pod is in CrashLoopBackOff state",
+      "severity": "warning",
+      "status": "firing",
+      "subject": {
+        "name": "my-app-pod",
+        "type": "pod",
+        "namespace": "default"
+      },
+      "timestamp": "2024-01-15T10:30:00Z",
+      "enrichments": [
+        {
+          "blocks": [
+            {
+              "type": "markdown",
+              "text": "Pod logs:\n```\nError: connection refused\n```"
+            }
+          ]
+        }
+      ]
+    } 
