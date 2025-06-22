@@ -40,7 +40,6 @@ extensions = [
     "sphinx_design",
     "sphinxcontrib.images",
     "sphinx_immaterial",
-    "sphinxcontrib.details.directive",
     "sphinx_jinja",
     "sphinx_reredirects",
 ]
@@ -118,7 +117,6 @@ html_theme_options = {
     },
     "repo_url": "https://github.com/kubecano/cano-collector/",
     "repo_name": "Cano-Collector",
-    "repo_type": "github",
     "edit_uri": "tree/master/docs",
     "palette": [
         {

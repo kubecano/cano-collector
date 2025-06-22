@@ -8,23 +8,29 @@ SPHINXPROJ    = cano-collector
 SOURCEDIR     = .
 BUILDDIR      = _build
 
+# Virtual environment paths for macOS/Linux
+VENV_BIN = venv/bin
+VENV_ACTIVATE = venv/bin/activate
+
 # Put it first so that "make" without argument is like "make help".
 help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+
+# Complete setup and serve - runs all steps for local development
+setup-and-serve: local-setup install-venv html-venv serve-venv
 
 # Setup local environment with virtual environment
 local-setup:
 	@echo "Setting up local environment with virtual environment..."
 	python -m venv venv
 	@echo "Virtual environment created. Please activate it:"
-	@echo "  source venv/bin/activate  # On macOS/Linux"
-	@echo "  venv\\Scripts\\activate     # On Windows"
+	@echo "  source $(VENV_ACTIVATE)"
 	@echo "Then run: pip install -r requirements.txt"
 
 # Install dependencies in virtual environment
 install-venv:
 	@echo "Installing dependencies in virtual environment..."
-	venv/bin/pip install -r requirements.txt
+	$(VENV_BIN)/pip install -r requirements.txt
 
 # Build HTML documentation
 html:
@@ -37,7 +43,7 @@ html-strict:
 # Build HTML documentation using virtual environment
 html-venv:
 	@echo "Building documentation using virtual environment..."
-	venv/bin/$(SPHINXBUILD) -b html "$(SOURCEDIR)" "$(BUILDDIR)/html" $(SPHINXOPTS) $(O)
+	$(VENV_BIN)/$(SPHINXBUILD) -b html "$(SOURCEDIR)" "$(BUILDDIR)/html" $(SPHINXOPTS) $(O)
 
 # Build HTML documentation using Docker
 docker-build:
@@ -76,7 +82,7 @@ linkcheck:
 
 # Check for broken links using virtual environment
 linkcheck-venv:
-	@venv/bin/$(SPHINXBUILD) -b linkcheck "$(SOURCEDIR)" "$(BUILDDIR)/linkcheck" $(SPHINXOPTS) $(O)
+	@$(VENV_BIN)/$(SPHINXBUILD) -b linkcheck "$(SOURCEDIR)" "$(BUILDDIR)/linkcheck" $(SPHINXOPTS) $(O)
 
 # Build PDF documentation
 pdf:
@@ -85,7 +91,7 @@ pdf:
 	$(MAKE) -C "$(BUILDDIR)/latex" all-pdf
 	@echo "pdflatex finished; the PDF files are in $(BUILDDIR)/latex."
 
-.PHONY: help Makefile html html-strict html-venv docker-build clean clean-venv install install-venv serve serve-venv deploy deploy-venv linkcheck linkcheck-venv pdf
+.PHONY: help Makefile setup-and-serve local-setup html html-strict html-venv docker-build clean clean-venv install install-venv serve serve-venv deploy deploy-venv linkcheck linkcheck-venv pdf
 
 # Catch-all target: route all unknown targets to Sphinx using the new
 # "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).

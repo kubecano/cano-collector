@@ -7,7 +7,13 @@ function refreshCanoLogo(light)
   const logo = document.getElementById("__logo");
   const darkLogo = document.getElementById("__logo-dark");
 
-  var isLight = __md_get("__palette")?.color.scheme ?? true
+  var isLight = true; // domyślnie jasny motyw
+  const palette = __md_get("__palette");
+  if (palette && palette.color && palette.color.scheme) {
+    // Sprawdzamy czy to ciemny motyw - typowe wartości to "slate", "cyberpunk", "dracula" itp.
+    const darkThemes = ["slate", "cyberpunk", "dracula", "dark"];
+    isLight = !darkThemes.includes(palette.color.scheme);
+  }
   isLight = light ?? isLight;
 
   darkLogo.style.display = isLight ? "none" : "block";
