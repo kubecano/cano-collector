@@ -1,0 +1,19 @@
+<img src="{{ pathto('_static/logo_default.svg', 1) }}" id="__logo"  style="display:none"/>
+<img src="{{ pathto('_static/logo_default.svg', 1) }}" id="__logo-dark" style="display:none"/>
+<script>
+
+function refreshCanoLogo(light)
+{
+  const logo = document.getElementById("__logo");
+  const darkLogo = document.getElementById("__logo-dark");
+
+  var isLight = __md_get("__palette")?.color.scheme ?? true
+  isLight = light ?? isLight;
+
+  darkLogo.style.display = isLight ? "none" : "block";
+  logo.style.display = isLight ? "block" : "none";
+}
+
+refreshCanoLogo();
+
+</script> 

@@ -1,0 +1,220 @@
+/* Custom CSS for Cano-Collector documentation */
+
+/* Back to top button */
+.back-to-top {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: #007acc;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  font-size: 20px;
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s, visibility 0.3s;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.back-to-top.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.back-to-top:hover {
+  background-color: #005a9e;
+  color: white;
+}
+
+/* Success icon styling */
+.success-icon {
+  color: #28a745;
+  font-weight: bold;
+}
+
+/* Custom styling for code blocks */
+.highlight code {
+  font-size: 0.9em;
+}
+
+/* Custom styling for admonitions */
+.md-typeset .admonition {
+  border-radius: 8px;
+  margin: 1em 0;
+}
+
+.md-typeset .admonition-title {
+  font-weight: 600;
+  border-radius: 8px 8px 0 0;
+}
+
+/* Custom styling for buttons */
+.sd-btn-outline-primary {
+  border-color: #007acc;
+  color: #007acc;
+}
+
+.sd-btn-outline-primary:hover,
+.sd-btn-outline-primary:focus {
+  background-color: #007acc;
+  border-color: #007acc;
+  color: white;
+}
+
+/* Custom styling for cards */
+.sd-card {
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: box-shadow 0.3s ease;
+}
+
+.sd-card:hover {
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* Custom styling for tabs */
+.sd-tab-set > input:checked + label {
+  background-color: #007acc;
+  color: white;
+}
+
+.sd-tab-set > input:not(:checked) + label:hover {
+  background-color: #f8f9fa;
+}
+
+/* Custom styling for search */
+.md-search__form {
+  border-radius: 8px;
+}
+
+/* Custom styling for navigation */
+.md-nav__link:hover {
+  color: #007acc;
+}
+
+/* Custom styling for links */
+.md-typeset a {
+  color: #007acc;
+}
+
+.md-typeset a:hover {
+  color: #005a9e;
+  text-decoration: underline;
+}
+
+/* Custom styling for headers */
+h1, h2, h3, h4, h5, h6 {
+  color: #2c3e50;
+}
+
+/* Custom styling for tables */
+.md-typeset table {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.md-typeset table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+}
+
+/* Custom styling for code inline */
+.md-typeset code {
+  background-color: #f8f9fa;
+  color: #e83e8c;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+/* Custom styling for blockquotes */
+.md-typeset blockquote {
+  border-left: 4px solid #007acc;
+  background-color: #f8f9fa;
+  padding: 1em;
+  border-radius: 0 8px 8px 0;
+}
+
+/* Custom styling for lists */
+.md-typeset ul li {
+  margin-bottom: 0.5em;
+}
+
+/* Custom styling for definition lists */
+.md-typeset dl dt {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+/* Custom styling for footnotes */
+.md-typeset .footnote {
+  font-size: 0.9em;
+  color: #6c757d;
+}
+
+/* Custom styling for sidebar */
+.md-nav__title {
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+/* Custom styling for breadcrumbs */
+.md-breadcrumb {
+  font-size: 0.9em;
+}
+
+/* Custom styling for version selector */
+.md-version {
+  font-size: 0.8em;
+}
+
+/* Custom styling for social links */
+.md-social__link {
+  color: #6c757d;
+}
+
+.md-social__link:hover {
+  color: #007acc;
+}
+
+/* Custom styling for footer */
+.md-footer {
+  background-color: #f8f9fa;
+  border-top: 1px solid #dee2e6;
+}
+
+/* Custom styling for mobile */
+@media (max-width: 768px) {
+  .back-to-top {
+    bottom: 10px;
+    right: 10px;
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+  
+  .md-content {
+    margin-bottom: 100px;
+  }
+}
+
+/* Custom styling for dark mode */
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #007acc;
+  --md-primary-fg-color--light: #005a9e;
+  --md-primary-fg-color--dark: #004085;
+}
+
+[data-md-color-scheme="slate"] .back-to-top {
+  background-color: #007acc;
+}
+
+[data-md-color-scheme="slate"] .back-to-top:hover {
+  background-color: #005a9e;
+} 

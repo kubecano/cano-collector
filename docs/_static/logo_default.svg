@@ -1,0 +1,16 @@
+<svg width="200" height="50" viewBox="0 0 200 50" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#007acc;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#005a9e;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Cano icon -->
+  <circle cx="25" cy="25" r="20" fill="url(#logoGradient)" stroke="#ffffff" stroke-width="2"/>
+  <text x="25" y="30" font-family="Arial, sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="white">C</text>
+  
+  <!-- Collector text -->
+  <text x="55" y="20" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#2c3e50">Cano</text>
+  <text x="55" y="35" font-family="Arial, sans-serif" font-size="12" fill="#6c757d">Collector</text>
+</svg> 

@@ -1,0 +1,28 @@
+{% set class = "" %}
+
+<!-- Navigation tabs -->
+<nav
+  class="md-tabs"
+  aria-label="{{ lang.t('tabs.title') }}"
+  data-md-component="tabs"
+>
+  <div class="md-tabs__inner md-grid">
+    <ul class="md-tabs__list">
+      {% for nav_item in nav %}
+        <li class="md-tabs__item">
+          <a href="{{ nav_item.url | url }}" class="md-tabs__link">
+            {{ nav_item.title }}
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+    <div class="md-tabs__community">
+        <a href="https://github.com/kubecano/cano-collector/" target="_blank">
+            <span class="twemoji">
+                {% include ".icons/fontawesome/brands/github.svg" %} 
+            </span>
+            <span>GitHub</span>
+        </a>
+    </div>
+  </div>
+</nav> 

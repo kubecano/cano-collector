@@ -1,0 +1,49 @@
+{% extends '!base.html' %}
+{% block site_meta %}
+{{ super() }}
+<!-- Back to Top Button -->
+<a href="#" class="back-to-top" aria-label="Back to top">
+  <span>↑</span>
+</a>
+
+<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'GA_MEASUREMENT_ID');
+</script>
+
+<script>
+    window.addEventListener("DOMContentLoaded", function() {
+        trackPageViewEvent();
+        setupCopyListener();
+    }, false);
+</script>
+<script>
+  // Back to top button functionality
+  window.addEventListener("DOMContentLoaded", function() {
+    // Back to top button functionality
+    const backToTopButton = document.querySelector('.back-to-top');
+    
+    // Show button when page is scrolled down
+    window.addEventListener('scroll', function() {
+      if (window.pageYOffset > 300) {
+        backToTopButton.classList.add('visible');
+      } else {
+        backToTopButton.classList.remove('visible');
+      }
+    });
+    
+    // Smooth scroll to top when button is clicked
+    backToTopButton.addEventListener('click', function(e) {
+      e.preventDefault();
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    });
+  }, false);
+</script>
+{% endblock %} 
