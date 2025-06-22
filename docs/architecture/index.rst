@@ -9,11 +9,11 @@ Architecture
    patterns
    data_model
    flow
-   event_handler
-   event_types
-   event_enrichment
+   alert/index
+   event/index
    routing_comparison
    workflow
+   monitoring/index
    destination/overview
    sender/slack
    sender/msteams
