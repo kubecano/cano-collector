@@ -573,7 +573,7 @@ The alert processing pipeline is defined in `pkg/alert/alert_handler.go`:
             // Handle validation error
         }
 
-        // 3. TODO: Convert to Issue and process
+        // 3. Convert to Issue and process
         // This needs to be implemented
     }
 
