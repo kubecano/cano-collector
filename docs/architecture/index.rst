@@ -8,6 +8,9 @@ Architecture
    overview
    patterns
    data_model
+   flow
+   routing_comparison
+   workflow
    destination/overview
    sender/slack
    sender/msteams
