@@ -65,12 +65,9 @@ func (h *AlertHandler) HandleAlert(c *gin.Context) {
 	// Register received alert metric
 	h.metrics.ObserveAlert(alert.Receiver, alert.Status)
 
-	// Wrap the alert in EnrichedAlert for future extension
-	enrichedAlert := EnrichedAlert{Original: alert}
-
-	// TODO: Dispatch alert using different strategies (e.g., Slack, Teams, OpsGenie)
+	// TODO: Convert alert to Issue model and dispatch using routing engine
 	//  This will be implemented in the next tasks
 
-	h.logger.Info("Received alert: ", zap.Any("alert", enrichedAlert))
+	h.logger.Info("Received alert: ", zap.Any("alert", alert))
 	c.JSON(http.StatusOK, gin.H{"status": "alert received"})
 }
