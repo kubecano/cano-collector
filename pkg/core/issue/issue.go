@@ -10,10 +10,11 @@ import (
 type Severity string
 
 const (
-	SeverityDebug Severity = "DEBUG"
-	SeverityInfo  Severity = "INFO"
-	SeverityLow   Severity = "LOW"
-	SeverityHigh  Severity = "HIGH"
+	SeverityDebug    Severity = "DEBUG"
+	SeverityInfo     Severity = "INFO"
+	SeverityLow      Severity = "LOW"
+	SeverityHigh     Severity = "HIGH"
+	SeverityCritical Severity = "CRITICAL"
 )
 
 // Status defines the status of an issue.
