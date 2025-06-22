@@ -9,6 +9,9 @@ Architecture
    patterns
    data_model
    flow
+   event_handler
+   event_types
+   event_enrichment
    routing_comparison
    workflow
    destination/overview
