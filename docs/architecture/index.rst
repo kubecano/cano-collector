@@ -11,7 +11,7 @@ Architecture
    flow
    alert/index
    event/index
-   workflow
+   workflow/index
    destination/index
    sender/index 
    monitoring/index

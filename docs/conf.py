@@ -98,7 +98,7 @@ author = "Kubecano"
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**/*.inc.rst", "**/*.jinja"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**/*.inc.rst", "**/*.jinja", "venv", "README.md"]
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "witchhazel.WitchHazelStyle"
