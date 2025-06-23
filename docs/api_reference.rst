@@ -23,6 +23,7 @@ Handles incoming alerts from Alertmanager.
 - `HandleAlert(c *gin.Context)` - Processes HTTP requests from Alertmanager
 
 **Example Usage:**
+
 .. code-block:: go
 
     handler := alert.NewAlertHandler(logger, metrics)
@@ -45,6 +46,7 @@ Sends alerts to various notification destinations.
 - `Send(alert Alert) error` - Sends an alert to the destination
 
 **Example Usage:**
+
 .. code-block:: go
 
     sender := sender.NewSlackSender(webhookURL, logger, client)
@@ -75,6 +77,7 @@ Provides structured logging capabilities.
 - `Debug/Info/Warn/Error/Fatal/Panic(msg string, fields ...zap.Field)` - Log at different levels
 
 **Example Usage:**
+
 .. code-block:: go
 
     logger.Info("Alert processed", 
@@ -111,6 +114,7 @@ Collects and exposes application metrics.
 - `ObserveDestinationDuration(destination string, duration time.Duration)` - Record destination send time
 
 **Example Usage:**
+
 .. code-block:: go
 
     metrics.IncAlertReceived(alert.Receiver, alert.Status)
@@ -162,6 +166,7 @@ Central data structure for all alerts and events.
 - `EndsAt` - When the issue ended (nil if ongoing)
 
 **Example Usage:**
+
 .. code-block:: go
 
     issue := &issue.Issue{
@@ -389,6 +394,7 @@ Provides health status information.
 **Endpoint:** `GET /health`
 
 **Response:**
+
 .. code-block:: json
 
     {
@@ -398,6 +404,7 @@ Provides health status information.
 **Endpoint:** `GET /health/detailed`
 
 **Response:**
+
 .. code-block:: json
 
     {

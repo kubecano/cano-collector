@@ -17,7 +17,7 @@ Flow of an Issue
 
 1.  **Creation**: An issue is created by a detector component within the collector.
 2.  **Processing**: The issue is enriched with additional context (logs, resource status, etc.).
-3.  **Routing**: The collector determines which configured `Destination`(s) should receive this issue based on routing rules.
-4.  **Dispatching**: Each matched `Destination` uses its corresponding `Sender` to format and deliver the `Issue` to the external system.
+3.  **Routing**: The collector determines which configured Destination(s) should receive this issue based on routing rules.
+4.  **Dispatching**: Each matched Destination uses its corresponding Sender to format and deliver the Issue to the external system.
 
-This decoupled architecture allows for great flexibility. For instance, to support a new notification service, one only needs to implement a new `Sender` and a corresponding `Destination` configuration, without altering the core issue generation or enrichment logic. 
+This decoupled architecture allows for great flexibility. For instance, to support a new notification service, one only needs to implement a new Sender i odpowiednią konfigurację Destination, bez konieczności zmiany logiki generowania lub wzbogacania zgłoszeń. 

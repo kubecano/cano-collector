@@ -46,13 +46,6 @@ extensions = [
 
 suppress_warnings = ["autosectionlabel.*"]
 
-# sphinx redirects from old docs
-redirects = {
-    "installation.html": "/master/installation.html",
-    "quick-start.html": "/master/quick_start.html",
-    "api-reference.html": "/master/api_reference.html",
-}
-
 # for sphinx_jinja
 jinja_contexts = {}
 
