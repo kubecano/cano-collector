@@ -88,13 +88,13 @@ master_doc = "index"
 
 # General information about the project.
 project = "Cano-Collector"
-copyright = "2024, Sad-Shark-Dev"
-author = "Sad-Shark-Dev"
+copyright = "2025, Kubecano"
+author = "Kubecano"
 
 # The short X.Y version.
-version = "0.1.0"
+# version = "DOCS_VERSION_PLACEHOLDER"
 # The full version, including alpha/beta/rc tags.
-release = "0.1.0"
+# release = "DOCS_RELEASE_PLACEHOLDER"
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -185,7 +185,10 @@ def setup(app):
     app.add_css_file("custom.css")
     app.add_role('checkmark', checkmark_role)
 
-
-def checkmark_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
+def checkmark_role(name, rawtext, text, lineno, inliner, options=None, content=None):
+    if options is None:
+        options = {}
+    if content is None:
+        content = []
     node = nodes.inline(text='✓', classes=['success-icon'])
-    return [node], [] 
+    return [node], []

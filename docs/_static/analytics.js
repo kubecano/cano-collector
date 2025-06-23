@@ -41,4 +41,4 @@ function reportCopy(baseElement) {
     }
     trackEvent('copied from codeblock: ' + id_element.getAttribute('id'));
   }
-} 
+}

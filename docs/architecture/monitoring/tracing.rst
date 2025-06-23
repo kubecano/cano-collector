@@ -16,7 +16,7 @@ The tracing system is configured through environment variables:
 .. code-block:: yaml
 
     tracing:
-      mode: "disabled" | "local" | "remote"
+      mode: "disabled" # or "local", "remote"
       endpoint: "http://jaeger:14268/api/traces"  # For remote mode
 
 Tracing Modes

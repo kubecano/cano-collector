@@ -363,7 +363,7 @@ When working with workflows:
 Next Steps
 ----------
 
-- :ref:`Explore built-in workflows <workflows-index>`
-- :ref:`Learn about custom workflows <workflows-custom_workflows>`
-- :ref:`Configure workflows <workflow-configuration>`
-- :ref:`Deploy cano-collector <installation>` 
+- :doc:`/architecture/workflows/index`
+- :doc:`/architecture/workflows/custom_workflows`
+- :doc:`/configuration/index`
+- :doc:`/installation`
