@@ -169,7 +169,7 @@ html_css_files = [
 
 html_js_files = ["analytics.js", "ga-config.js"]
 
-html_favicon = "_static/favicon.svg"
+html_favicon = "_static/favicon.png"
 
 html_extra_path = ["robots.txt"]
 
