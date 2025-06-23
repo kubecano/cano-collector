@@ -7,239 +7,242 @@ Codebase Structure
 ------------------
 
 **Current Structure:**
-```
-cano-collector/
-├── main.go                 # Application entry point
-├── config/                 # Configuration management
-│   ├── config.go          # Main configuration structure
-│   ├── destination/       # Destination configuration
-│   └── team/             # Team configuration
-├── pkg/                   # Core packages
-│   ├── alert/            # Alert processing
-│   ├── core/             # Core data models
-│   │   └── issue/        # Issue and enrichment models
-│   ├── destination/      # Destination management
-│   ├── sender/           # Message senders
-│   ├── router/           # HTTP routing
-│   ├── logger/           # Logging
-│   ├── metric/           # Metrics collection
-│   ├── health/           # Health checks
-│   ├── tracer/           # Distributed tracing
-│   └── util/             # Utilities
-└── mocks/                # Generated mocks for testing
-```
+
+.. code-block:: text
+
+    cano-collector/
+    ├── main.go                 # Application entry point
+    ├── config/                 # Configuration management
+    │   ├── config.go          # Main configuration structure
+    │   ├── destination/       # Destination configuration
+    │   └── team/             # Team configuration
+    ├── pkg/                   # Core packages
+    │   ├── alert/            # Alert processing
+    │   ├── core/             # Core data models
+    │   │   └── issue/        # Issue and enrichment models
+    │   ├── destination/      # Destination management
+    │   ├── sender/           # Message senders
+    │   ├── router/           # HTTP routing
+    │   ├── logger/           # Logging
+    │   ├── metric/           # Metrics collection
+    │   ├── health/           # Health checks
+    │   ├── tracer/           # Distributed tracing
+    │   └── util/             # Utilities
+    └── mocks/                # Generated mocks for testing
+
 
 **Target Structure (After Implementation):**
-```
-cano-collector/
-├── main.go                           # Application entry point with dependency injection
-├── config/                           # Configuration management
-│   ├── config.go                    # Main configuration structure
-│   ├── destination/                 # Destination configuration
-│   │   ├── destinations_config.go   # Destination config loading
-│   │   ├── destinations_config_test.go
-│   │   └── types.go                 # Destination type definitions
-│   ├── team/                        # Team configuration
-│   │   ├── teams_config.go          # Team config loading
-│   │   ├── teams_config_test.go
-│   │   └── types.go                 # Team type definitions
-│   └── workflow/                    # Workflow configuration
-│       ├── workflow_config.go       # Workflow config loading
-│       ├── workflow_config_test.go
-│       └── types.go                 # Workflow type definitions
-├── pkg/                             # Core packages
-│   ├── alert/                       # Alert processing
-│   │   ├── alert_handler.go         # HTTP handler for alerts
-│   │   ├── alert_handler_test.go
-│   │   ├── converter.go             # Alert to Issue conversion
-│   │   ├── converter_test.go
-│   │   ├── deduplication.go         # Deduplication system
-│   │   ├── deduplication_test.go
-│   │   ├── queue.go                 # Async processing queue
-│   │   ├── queue_test.go
-│   │   ├── relabeling.go            # Alert relabeling
-│   │   ├── relabeling_test.go
-│   │   ├── processor.go             # Alert processor
-│   │   ├── processor_test.go
-│   │   └── types.go                 # Alert type definitions
-│   ├── core/                        # Core data models
-│   │   ├── issue/                   # Issue and enrichment models
-│   │   │   ├── issue.go             # Issue data structure
-│   │   │   ├── issue_test.go
-│   │   │   ├── blocks.go            # Enrichment blocks
-│   │   │   ├── blocks_test.go
-│   │   │   ├── builder.go           # Issue builder pattern
-│   │   │   ├── builder_test.go
-│   │   │   └── types.go             # Issue type definitions
-│   │   └── prometheus/              # Prometheus alert models
-│   │       ├── alert.go             # PrometheusAlert structure
-│   │       ├── alert_test.go
-│   │       └── types.go             # Prometheus type definitions
-│   ├── workflow/                    # Workflow processing
-│   │   ├── workflow.go              # Workflow definitions
-│   │   ├── workflow_test.go
-│   │   ├── processor.go             # Workflow processor
-│   │   ├── processor_test.go
-│   │   ├── actions/                 # Workflow actions
-│   │   │   ├── pod_logs.go          # Pod logs enrichment
-│   │   │   ├── pod_logs_test.go
-│   │   │   ├── resource_status.go   # Resource status enrichment
-│   │   │   ├── resource_status_test.go
-│   │   │   ├── pod_events.go        # Pod events enrichment
-│   │   │   ├── pod_events_test.go
-│   │   │   ├── node_metrics.go      # Node metrics enrichment
-│   │   │   ├── node_metrics_test.go
-│   │   │   ├── custom_script.go     # External TypeScript script execution
-│   │   │   ├── custom_script_test.go
-│   │   │   └── base.go              # Base action interface
-│   │   ├── triggers.go              # Workflow triggers
-│   │   ├── triggers_test.go
-│   │   └── types.go                 # Workflow type definitions
-│   ├── destination/                 # Destination management
-│   │   ├── router.go                # Destination routing
-│   │   ├── router_test.go
-│   │   ├── matcher.go               # Team/destination matching
-│   │   ├── matcher_test.go
-│   │   └── types.go                 # Destination type definitions
-│   ├── sender/                      # Message senders
-│   │   ├── sender.go                # Base sender interface
-│   │   ├── slack/                   # Slack sender
-│   │   │   ├── slack_sender.go
-│   │   │   ├── slack_sender_test.go
-│   │   │   └── blocks.go            # Slack block rendering
-│   │   ├── msteams/                 # MS Teams sender
-│   │   │   ├── msteams_sender.go
-│   │   │   ├── msteams_sender_test.go
-│   │   │   └── cards.go             # Adaptive card rendering
-│   │   ├── jira/                    # Jira sender
-│   │   │   ├── jira_sender.go
-│   │   │   ├── jira_sender_test.go
-│   │   │   └── fields.go            # Jira field mapping
-│   │   ├── servicenow/              # ServiceNow sender
-│   │   │   ├── servicenow_sender.go
-│   │   │   ├── servicenow_sender_test.go
-│   │   │   └── incidents.go         # Incident creation
-│   │   ├── datadog/                 # DataDog sender
-│   │   │   ├── datadog_sender.go
-│   │   │   ├── datadog_sender_test.go
-│   │   │   └── events.go            # Event creation
-│   │   ├── kafka/                   # Kafka sender
-│   │   │   ├── kafka_sender.go
-│   │   │   ├── kafka_sender_test.go
-│   │   │   └── messages.go          # Message serialization
-│   │   ├── webhook/                 # Generic webhook sender
-│   │   │   ├── webhook_sender.go
-│   │   │   ├── webhook_sender_test.go
-│   │   │   └── templates.go         # Template rendering
-│   │   ├── opsgenie/                # OpsGenie sender
-│   │   │   ├── opsgenie_sender.go
-│   │   │   ├── opsgenie_sender_test.go
-│   │   │   └── alerts.go            # Alert creation
-│   │   ├── pagerduty/               # PagerDuty sender
-│   │   │   ├── pagerduty_sender.go
-│   │   │   ├── pagerduty_sender_test.go
-│   │   │   └── incidents.go         # Incident creation
-│   │   └── common/                  # Common sender utilities
-│   │       ├── http_client.go       # HTTP client wrapper
-│   │       ├── retry.go             # Retry logic
-│   │       ├── rate_limiter.go      # Rate limiting
-│   │       └── validation.go        # Payload validation
-│   ├── router/                      # HTTP routing
-│   │   ├── router.go                # Router setup
-│   │   ├── router_test.go
-│   │   ├── middleware/              # HTTP middleware
-│   │   │   ├── logging.go           # Request logging
-│   │   │   ├── metrics.go           # Request metrics
-│   │   │   ├── tracing.go           # Request tracing
-│   │   │   ├── auth.go              # Authentication
-│   │   │   └── cors.go              # CORS handling
-│   │   └── handlers/                # HTTP handlers
-│   │       ├── alerts.go            # Alert endpoint handler
-│   │       ├── health.go            # Health check handler
-│   │       ├── metrics.go           # Metrics endpoint handler
-│   │       └── config.go            # Config endpoint handler
-│   ├── logger/                      # Logging
-│   │   ├── logger.go                # Logger interface and implementation
-│   │   ├── logger_test.go
-│   │   ├── formatters/              # Log formatters
-│   │   │   ├── json.go              # JSON formatter
-│   │   │   ├── text.go              # Text formatter
-│   │   │   └── structured.go        # Structured formatter
-│   │   └── levels.go                # Log level definitions
-│   ├── metric/                      # Metrics collection
-│   │   ├── metric.go                # Metrics interface
-│   │   ├── metric_test.go
-│   │   ├── prometheus/              # Prometheus metrics
-│   │   │   ├── collector.go         # Metrics collector
-│   │   │   ├── alerts.go            # Alert metrics
-│   │   │   ├── destinations.go      # Destination metrics
-│   │   │   └── system.go            # System metrics
-│   │   └── types.go                 # Metric type definitions
-│   ├── health/                      # Health checks
-│   │   ├── health.go                # Health interface
-│   │   ├── health_test.go
-│   │   ├── checks/                  # Health check implementations
-│   │   │   ├── config.go            # Configuration health check
-│   │   │   ├── destinations.go      # Destination health check
-│   │   │   ├── database.go          # Database health check
-│   │   │   └── external.go          # External service health check
-│   │   └── types.go                 # Health check type definitions
-│   ├── tracer/                      # Distributed tracing
-│   │   ├── tracer.go                # Tracer interface
-│   │   ├── tracer_test.go
-│   │   ├── otel/                    # OpenTelemetry implementation
-│   │   │   ├── tracer.go            # OTEL tracer
-│   │   │   ├── spans.go             # Span management
-│   │   │   └── propagation.go       # Context propagation
-│   │   └── types.go                 # Tracing type definitions
-│   └── util/                        # Utilities
-│       ├── http_client.go           # HTTP client utilities
-│       ├── http_client_test.go
-│       ├── crypto.go                # Cryptographic utilities
-│       ├── crypto_test.go
-│       ├── time.go                  # Time utilities
-│       ├── time_test.go
-│       └── validation.go            # Validation utilities
-├── mocks/                           # Generated mocks for testing
-│   ├── alert_handler_mock.go
-│   ├── destinations_loader_mock.go
-│   ├── fullconfig_loader_mock.go
-│   ├── health_mock.go
-│   ├── http_client_mock.go
-│   ├── logger_mock.go
-│   ├── metrics_mock.go
-│   ├── router_mock.go
-│   ├── teams_loader_mock.go
-│   └── tracer_mock.go
-├── helm/                            # Helm chart
-│   └── cano-collector/
-│       ├── Chart.yaml
-│       ├── values.yaml
-│       └── templates/
-│           ├── deployment.yaml
-│           ├── service.yaml
-│           ├── configmap.yaml
-│           ├── secret.yaml
-│           └── rbac.yaml
-├── docs/                            # Documentation
-│   ├── architecture/                # Architecture documentation
-│   ├── configuration/               # Configuration documentation
-│   ├── development_guide.rst        # This file
-│   ├── api_reference.rst            # API documentation
-│   └── implementation_tasks.rst     # Implementation tasks
-├── examples/                        # Example configurations
-│   ├── destinations.yaml            # Example destinations config
-│   ├── teams.yaml                   # Example teams config
-│   ├── workflows.yaml               # Example workflows config
-│   └── alertmanager.yaml            # Example Alertmanager config
-├── Dockerfile                       # Container build file
-├── go.mod                           # Go module file
-├── go.sum                           # Go module checksums
-├── Makefile                         # Build automation
-├── .gitignore                       # Git ignore rules
-├── README.md                        # Project README
-└── VERSION                          # Version file
-```
+
+.. code-block:: text
+
+    cano-collector/
+    ├── main.go                           # Application entry point with dependency injection
+    ├── config/                           # Configuration management
+    │   ├── config.go                    # Main configuration structure
+    │   ├── destination/                 # Destination configuration
+    │   │   ├── destinations_config.go   # Destination config loading
+    │   │   ├── destinations_config_test.go
+    │   │   └── types.go                 # Destination type definitions
+    │   ├── team/                        # Team configuration
+    │   │   ├── teams_config.go          # Team config loading
+    │   │   ├── teams_config_test.go
+    │   │   └── types.go                 # Team type definitions
+    │   └── workflow/                    # Workflow configuration
+    │       ├── workflow_config.go       # Workflow config loading
+    │       ├── workflow_config_test.go
+    │       └── types.go                 # Workflow type definitions
+    ├── pkg/                             # Core packages
+    │   ├── alert/                       # Alert processing
+    │   │   ├── alert_handler.go         # HTTP handler for alerts
+    │   │   ├── alert_handler_test.go
+    │   │   ├── converter.go             # Alert to Issue conversion
+    │   │   ├── converter_test.go
+    │   │   ├── deduplication.go         # Deduplication system
+    │   │   ├── deduplication_test.go
+    │   │   ├── queue.go                 # Async processing queue
+    │   │   ├── queue_test.go
+    │   │   ├── relabeling.go            # Alert relabeling
+    │   │   ├── relabeling_test.go
+    │   │   ├── processor.go             # Alert processor
+    │   │   ├── processor_test.go
+    │   │   └── types.go                 # Alert type definitions
+    │   ├── core/                        # Core data models
+    │   │   ├── issue/                   # Issue and enrichment models
+    │   │   │   ├── issue.go             # Issue data structure
+    │   │   │   ├── issue_test.go
+    │   │   │   ├── blocks.go            # Enrichment blocks
+    │   │   │   ├── blocks_test.go
+    │   │   │   ├── builder.go           # Issue builder pattern
+    │   │   │   ├── builder_test.go
+    │   │   │   └── types.go             # Issue type definitions
+    │   │   └── prometheus/              # Prometheus alert models
+    │   │       ├── alert.go             # PrometheusAlert structure
+    │   │       ├── alert_test.go
+    │   │       └── types.go             # Prometheus type definitions
+    │   ├── workflow/                    # Workflow processing
+    │   │   ├── workflow.go              # Workflow definitions
+    │   │   ├── workflow_test.go
+    │   │   ├── processor.go             # Workflow processor
+    │   │   ├── processor_test.go
+    │   │   ├── actions/                 # Workflow actions
+    │   │   │   ├── pod_logs.go          # Pod logs enrichment
+    │   │   │   ├── pod_logs_test.go
+    │   │   │   ├── resource_status.go   # Resource status enrichment
+    │   │   │   ├── resource_status_test.go
+    │   │   │   ├── pod_events.go        # Pod events enrichment
+    │   │   │   ├── pod_events_test.go
+    │   │   │   ├── node_metrics.go      # Node metrics enrichment
+    │   │   │   ├── node_metrics_test.go
+    │   │   │   ├── custom_script.go     # External TypeScript script execution
+    │   │   │   ├── custom_script_test.go
+    │   │   │   └── base.go              # Base action interface
+    │   │   ├── triggers.go              # Workflow triggers
+    │   │   ├── triggers_test.go
+    │   │   └── types.go                 # Workflow type definitions
+    │   ├── destination/                 # Destination management
+    │   │   ├── router.go                # Destination routing
+    │   │   ├── router_test.go
+    │   │   ├── matcher.go               # Team/destination matching
+    │   │   ├── matcher_test.go
+    │   │   └── types.go                 # Destination type definitions
+    │   ├── sender/                      # Message senders
+    │   │   ├── sender.go                # Base sender interface
+    │   │   ├── slack/                   # Slack sender
+    │   │   │   ├── slack_sender.go
+    │   │   │   ├── slack_sender_test.go
+    │   │   │   └── blocks.go            # Slack block rendering
+    │   │   ├── msteams/                 # MS Teams sender
+    │   │   │   ├── msteams_sender.go
+    │   │   │   ├── msteams_sender_test.go
+    │   │   │   └── cards.go             # Adaptive card rendering
+    │   │   ├── jira/                    # Jira sender
+    │   │   │   ├── jira_sender.go
+    │   │   │   ├── jira_sender_test.go
+    │   │   │   └── fields.go            # Jira field mapping
+    │   │   ├── servicenow/              # ServiceNow sender
+    │   │   │   ├── servicenow_sender.go
+    │   │   │   ├── servicenow_sender_test.go
+    │   │   │   └── incidents.go         # Incident creation
+    │   │   ├── datadog/                 # DataDog sender
+    │   │   │   ├── datadog_sender.go
+    │   │   │   ├── datadog_sender_test.go
+    │   │   │   └── events.go            # Event creation
+    │   │   ├── kafka/                   # Kafka sender
+    │   │   │   ├── kafka_sender.go
+    │   │   │   ├── kafka_sender_test.go
+    │   │   │   └── messages.go          # Message serialization
+    │   │   ├── webhook/                 # Generic webhook sender
+    │   │   │   ├── webhook_sender.go
+    │   │   │   ├── webhook_sender_test.go
+    │   │   │   └── templates.go         # Template rendering
+    │   │   ├── opsgenie/                # OpsGenie sender
+    │   │   │   ├── opsgenie_sender.go
+    │   │   │   ├── opsgenie_sender_test.go
+    │   │   │   └── alerts.go            # Alert creation
+    │   │   ├── pagerduty/               # PagerDuty sender
+    │   │   │   ├── pagerduty_sender.go
+    │   │   │   ├── pagerduty_sender_test.go
+    │   │   │   └── incidents.go         # Incident creation
+    │   │   └── common/                  # Common sender utilities
+    │   │       ├── http_client.go       # HTTP client wrapper
+    │   │       ├── retry.go             # Retry logic
+    │   │       ├── rate_limiter.go      # Rate limiting
+    │   │       └── validation.go        # Payload validation
+    │   ├── router/                      # HTTP routing
+    │   │   ├── router.go                # Router setup
+    │   │   ├── router_test.go
+    │   │   ├── middleware/              # HTTP middleware
+    │   │   │   ├── logging.go           # Request logging
+    │   │   │   ├── metrics.go           # Request metrics
+    │   │   │   ├── tracing.go           # Request tracing
+    │   │   │   ├── auth.go              # Authentication
+    │   │   │   └── cors.go              # CORS handling
+    │   │   └── handlers/                # HTTP handlers
+    │   │       ├── alerts.go            # Alert endpoint handler
+    │   │       ├── health.go            # Health check handler
+    │   │       ├── metrics.go           # Metrics endpoint handler
+    │   │       └── config.go            # Config endpoint handler
+    │   ├── logger/                      # Logging
+    │   │   ├── logger.go                # Logger interface and implementation
+    │   │   ├── logger_test.go
+    │   │   ├── formatters/              # Log formatters
+    │   │   │   ├── json.go              # JSON formatter
+    │   │   │   ├── text.go              # Text formatter
+    │   │   │   └── structured.go        # Structured formatter
+    │   │   └── levels.go                # Log level definitions
+    │   ├── metric/                      # Metrics collection
+    │   │   ├── metric.go                # Metrics interface
+    │   │   ├── metric_test.go
+    │   │   ├── prometheus/              # Prometheus metrics
+    │   │   │   ├── collector.go         # Metrics collector
+    │   │   │   ├── alerts.go            # Alert metrics
+    │   │   │   ├── destinations.go      # Destination metrics
+    │   │   │   └── system.go            # System metrics
+    │   │   └── types.go                 # Metric type definitions
+    │   ├── health/                      # Health checks
+    │   │   ├── health.go                # Health interface
+    │   │   ├── health_test.go
+    │   │   ├── checks/                  # Health check implementations
+    │   │   │   ├── config.go            # Configuration health check
+    │   │   │   ├── destinations.go      # Destination health check
+    │   │   │   ├── database.go          # Database health check
+    │   │   │   └── external.go          # External service health check
+    │   │   └── types.go                 # Health check type definitions
+    │   ├── tracer/                      # Distributed tracing
+    │   │   ├── tracer.go                # Tracer interface
+    │   │   ├── tracer_test.go
+    │   │   ├── otel/                    # OpenTelemetry implementation
+    │   │   │   ├── tracer.go            # OTEL tracer
+    │   │   │   ├── spans.go             # Span management
+    │   │   │   └── propagation.go       # Context propagation
+    │   │   └── types.go                 # Tracing type definitions
+    │   └── util/                        # Utilities
+    │       ├── http_client.go           # HTTP client utilities
+    │       ├── http_client_test.go
+    │       ├── crypto.go                # Cryptographic utilities
+    │       ├── crypto_test.go
+    │       ├── time.go                  # Time utilities
+    │       ├── time_test.go
+    │       └── validation.go            # Validation utilities
+    ├── mocks/                           # Generated mocks for testing
+    │   ├── alert_handler_mock.go
+    │   ├── destinations_loader_mock.go
+    │   ├── fullconfig_loader_mock.go
+    │   ├── health_mock.go
+    │   ├── http_client_mock.go
+    │   ├── logger_mock.go
+    │   ├── metrics_mock.go
+    │   ├── router_mock.go
+    │   ├── teams_loader_mock.go
+    │   └── tracer_mock.go
+    ├── helm/                            # Helm chart
+    │   └── cano-collector/
+    │       ├── Chart.yaml
+    │       ├── values.yaml
+    │       └── templates/
+    │           ├── deployment.yaml
+    │           ├── service.yaml
+    │           ├── configmap.yaml
+    │           ├── secret.yaml
+    │           └── rbac.yaml
+    ├── docs/                            # Documentation
+    │   ├── architecture/                # Architecture documentation
+    │   ├── configuration/               # Configuration documentation
+    │   ├── development_guide.rst        # This file
+    │   ├── api_reference.rst            # API documentation
+    │   └── implementation_tasks.rst     # Implementation tasks
+    ├── examples/                        # Example configurations
+    │   ├── destinations.yaml            # Example destinations config
+    │   ├── teams.yaml                   # Example teams config
+    │   ├── workflows.yaml               # Example workflows config
+    │   └── alertmanager.yaml            # Example Alertmanager config
+    ├── Dockerfile                       # Container build file
+    ├── go.mod                           # Go module file
+    ├── go.sum                           # Go module checksums
+    ├── Makefile                         # Build automation
+    ├── .gitignore                       # Git ignore rules
+    ├── README.md                        # Project README
+    └── VERSION                          # Version file
 
 **Key New Components:**
 
