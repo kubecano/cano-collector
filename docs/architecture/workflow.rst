@@ -3,6 +3,57 @@ Workflows
 
 Cano-collector provides a comprehensive set of workflows for Kubernetes monitoring and alerting. These workflows are designed to automatically enrich alerts with relevant context and perform automated actions based on Kubernetes events.
 
+Overview
+--------
+
+Workflows in cano-collector are automated processes that:
+
+- **Enrich alerts** with contextual information from Kubernetes resources
+- **Perform automated actions** based on specific triggers
+- **Provide debugging capabilities** for troubleshooting issues
+- **Monitor application health** and performance metrics
+- **Support custom logic** through TypeScript-based custom workflows
+
+A workflow in cano-collector consists of three main components:
+
+1. **Trigger** - The condition that activates the workflow (e.g., a Prometheus alert, pod crash, or resource change)
+2. **Actions** - The operations performed when the trigger fires (e.g., enriching data, creating findings, or sending notifications)
+3. **Output** - Where the results are sent (e.g., Slack, Teams, or other destinations)
+
+Workflows follow a pipeline pattern:
+
+1. Events come into cano-collector and are checked against triggers
+2. When there's a match, the trigger fires
+3. The relevant workflow runs
+4. All workflow actions execute, receiving the event as context
+5. Results are sent to configured destinations
+
+Key Features
+-----------
+
+- **Event-driven**: Workflows are triggered by Kubernetes events and alerts
+- **Context-aware**: Automatically gather relevant information from the cluster
+- **Extensible**: Support for custom workflows written in TypeScript
+- **Configurable**: Each workflow can be enabled/disabled and configured via Helm
+- **Multi-resource**: Support for pods, deployments, statefulsets, daemonsets, and more
+- **Language-specific**: Specialized workflows for Java, Go, and Python applications
+
+- **Event-driven automation** - Respond to Kubernetes events, Prometheus alerts, and custom triggers
+- **Rich data enrichment** - Add context, logs, metrics, and analysis to alerts and events
+- **Flexible output routing** - Send results to multiple destinations (Slack, Teams, PagerDuty, etc.)
+- **Custom workflows** - Create tailored workflows using TypeScript
+- **Built-in workflows** - Comprehensive set of pre-built workflows for common scenarios
+- **Configuration management** - Easy configuration through Helm values
+
+Usage
+-----
+
+Workflows are automatically executed when relevant events occur in the cluster. They can be configured through Helm values and custom workflows can be added by mounting TypeScript files as volumes.
+
+For more information about specific workflows, see the individual documentation pages above.
+
+Workflows are the core automation mechanism in cano-collector that define how the system responds to various events in your Kubernetes cluster. They provide a powerful and flexible way to automate monitoring, troubleshooting, and remediation tasks.
+
 Built-in Workflows
 -----------------
 
@@ -27,62 +78,6 @@ Built-in Workflows
    workflows/python_workflows
    workflows/statefulset_workflows
 
-Overview
---------
-
-Workflows in cano-collector are automated processes that:
-
-- **Enrich alerts** with contextual information from Kubernetes resources
-- **Perform automated actions** based on specific triggers
-- **Provide debugging capabilities** for troubleshooting issues
-- **Monitor application health** and performance metrics
-- **Support custom logic** through TypeScript-based custom workflows
-
-Key Features
------------
-
-- **Event-driven**: Workflows are triggered by Kubernetes events and alerts
-- **Context-aware**: Automatically gather relevant information from the cluster
-- **Extensible**: Support for custom workflows written in TypeScript
-- **Configurable**: Each workflow can be enabled/disabled and configured via Helm
-- **Multi-resource**: Support for pods, deployments, statefulsets, daemonsets, and more
-- **Language-specific**: Specialized workflows for Java, Go, and Python applications
-
-Usage
------
-
-Workflows are automatically executed when relevant events occur in the cluster. They can be configured through Helm values and custom workflows can be added by mounting TypeScript files as volumes.
-
-For more information about specific workflows, see the individual documentation pages above.
-
-Workflows are the core automation mechanism in cano-collector that define how the system responds to various events in your Kubernetes cluster. They provide a powerful and flexible way to automate monitoring, troubleshooting, and remediation tasks.
-
-Overview
---------
-
-A workflow in cano-collector consists of three main components:
-
-1. **Trigger** - The condition that activates the workflow (e.g., a Prometheus alert, pod crash, or resource change)
-2. **Actions** - The operations performed when the trigger fires (e.g., enriching data, creating findings, or sending notifications)
-3. **Output** - Where the results are sent (e.g., Slack, Teams, or other destinations)
-
-Workflows follow a pipeline pattern:
-
-1. Events come into cano-collector and are checked against triggers
-2. When there's a match, the trigger fires
-3. The relevant workflow runs
-4. All workflow actions execute, receiving the event as context
-5. Results are sent to configured destinations
-
-Key Features
------------
-
-- **Event-driven automation** - Respond to Kubernetes events, Prometheus alerts, and custom triggers
-- **Rich data enrichment** - Add context, logs, metrics, and analysis to alerts and events
-- **Flexible output routing** - Send results to multiple destinations (Slack, Teams, PagerDuty, etc.)
-- **Custom workflows** - Create tailored workflows using TypeScript
-- **Built-in workflows** - Comprehensive set of pre-built workflows for common scenarios
-- **Configuration management** - Easy configuration through Helm values
 
 Built-in Workflows
 -----------------

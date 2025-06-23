@@ -52,10 +52,3 @@ Cano-collector is a Kubernetes-native alert processing and notification system t
    troubleshooting
    monitoring
    maintenance
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
