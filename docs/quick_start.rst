@@ -1,10 +1,10 @@
 Quick Start Guide
-================
+=================
 
 This guide will help you get cano-collector up and running in under 10 minutes.
 
 Prerequisites
-------------
+-------------
 
 - Kubernetes cluster (local or remote)
 - Helm 3.x installed
@@ -20,7 +20,7 @@ Step 1: Add the Helm Repository
     helm repo update
 
 Step 2: Create Basic Configuration
----------------------------------
+----------------------------------
 
 Create a basic configuration file `values.yaml`:
 

@@ -40,7 +40,7 @@ Resource Events Diff
 **Output**: Resource diff report with detailed change analysis
 
 Change Tracking
---------------
+---------------
 
 **Purpose**: Maintains comprehensive audit trails of all resource changes in the cluster.
 
@@ -58,7 +58,7 @@ Change Tracking
 **Output**: Change tracking report with audit trail and history
 
 Resource Monitoring
-------------------
+-------------------
 
 **Purpose**: Provides continuous monitoring of resource health and status.
 
@@ -76,7 +76,7 @@ Resource Monitoring
 **Output**: Resource monitoring report with health status and metrics
 
 Event Tracking
--------------
+--------------
 
 **Purpose**: Tracks and analyzes Kubernetes events for patterns and issues.
 
@@ -94,7 +94,7 @@ Event Tracking
 **Output**: Event tracking report with analysis and patterns
 
 Audit Logging
-------------
+-------------
 
 **Purpose**: Provides comprehensive audit logging for compliance and security purposes.
 
@@ -112,7 +112,7 @@ Audit Logging
 **Output**: Audit log report with compliance and security information
 
 Configuration Tracking
----------------------
+----------------------
 
 **Purpose**: Tracks configuration changes and provides configuration drift analysis.
 

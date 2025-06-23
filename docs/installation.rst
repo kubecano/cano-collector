@@ -16,7 +16,7 @@ Helm Installation
 -----------------
 
 Prerequisites
-~~~~~~~~~~~~
+~~~~~~~~~~~~~
 
 - Kubernetes 1.19+
 - Helm 3.0+
@@ -24,7 +24,7 @@ Prerequisites
 - Alertmanager running
 
 Step 1: Add Helm Repository
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
@@ -32,7 +32,7 @@ Step 1: Add Helm Repository
     helm repo update
 
 Step 2: Create Configuration
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Create a `values.yaml` file with your configuration:
 
@@ -82,7 +82,7 @@ Create a `values.yaml` file with your configuration:
           - "alerts-dev"
 
 Step 3: Install the Chart
-~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
@@ -95,7 +95,7 @@ Step 3: Install the Chart
       --namespace monitoring
 
 Step 4: Verify Installation
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
@@ -109,12 +109,12 @@ Step 4: Verify Installation
     kubectl logs -n monitoring -l app=cano-collector
 
 Kubernetes Manifests Installation
---------------------------------
+---------------------------------
 
 If you prefer to use raw Kubernetes manifests:
 
 Step 1: Download Manifests
-~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
@@ -122,7 +122,7 @@ Step 1: Download Manifests
     cd cano-collector/helm/cano-collector/templates
 
 Step 2: Customize Configuration
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Edit the ConfigMap and Secret files with your configuration:
 
@@ -141,7 +141,7 @@ Edit the ConfigMap and Secret files with your configuration:
               webhookURL: "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
 
 Step 3: Apply Manifests
-~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
@@ -157,14 +157,14 @@ Docker Installation
 For local development or testing:
 
 Step 1: Build Image
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
     docker build -t cano-collector:latest .
 
 Step 2: Run Container
-~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
@@ -175,7 +175,7 @@ Step 2: Run Container
       cano-collector:latest
 
 Configuration Files
-------------------
+-------------------
 
 Cano-collector uses two main configuration files:
 
@@ -183,7 +183,7 @@ Cano-collector uses two main configuration files:
 2. **teams.yaml** - Defines team routing rules
 
 Example destinations.yaml:
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: yaml
 

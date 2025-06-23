@@ -1,5 +1,5 @@
 Maintenance Guide
-================
+=================
 
 This guide covers routine maintenance tasks and best practices for keeping cano-collector running smoothly in production.
 
@@ -7,7 +7,7 @@ Daily Maintenance
 -----------------
 
 Health Checks
-~~~~~~~~~~~~
+~~~~~~~~~~~~~
 
 Perform daily health checks:
 
@@ -27,7 +27,7 @@ Perform daily health checks:
     kubectl logs -n monitoring -l app=cano-collector --tail=100 | grep -i error
 
 Metrics Review
-~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
 
 Review key metrics daily:
 
@@ -46,7 +46,7 @@ Weekly Maintenance
 ------------------
 
 Configuration Review
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 Review and validate configuration:
 
@@ -78,7 +78,7 @@ Analyze logs for patterns and issues:
     kubectl logs -n monitoring -l app=cano-collector --since=7d | grep "failed to send"
 
 Resource Usage
-~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
 
 Monitor resource consumption:
 
@@ -97,7 +97,7 @@ Monthly Maintenance
 -------------------
 
 Security Review
-~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
 
 Review and rotate secrets:
 
@@ -115,7 +115,7 @@ Review and rotate secrets:
       --patch='{"data":{"slack-webhook":"new-base64-encoded-value"}}'
 
 Performance Analysis
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 Analyze performance trends:
 
@@ -149,7 +149,7 @@ Quarterly Maintenance
 ---------------------
 
 Comprehensive Review
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 Perform comprehensive system review:
 
@@ -209,30 +209,32 @@ Emergency Procedures
 --------------------
 
 Service Outage Response
-~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
 
 If cano-collector is down:
 
 1. **Immediate Actions:**
+
    .. code-block:: bash
 
-       # Check pod status
-       kubectl get pods -n monitoring -l app=cano-collector
+      # Check pod status
+      kubectl get pods -n monitoring -l app=cano-collector
 
-       # Check events
-       kubectl get events -n monitoring --sort-by='.lastTimestamp'
+      # Check events
+      kubectl get events -n monitoring --sort-by='.lastTimestamp'
 
-       # Check logs
-       kubectl logs -n monitoring -l app=cano-collector --previous
+      # Check logs
+      kubectl logs -n monitoring -l app=cano-collector --previous
 
 2. **Quick Recovery:**
+
    .. code-block:: bash
 
-       # Restart deployment
-       kubectl rollout restart deployment/cano-collector -n monitoring
+      # Restart deployment
+      kubectl rollout restart deployment/cano-collector -n monitoring
 
-       # Scale up if needed
-       kubectl scale deployment cano-collector --replicas=2 -n monitoring
+      # Scale up if needed
+      kubectl scale deployment cano-collector --replicas=2 -n monitoring
 
 3. **Fallback Plan:**
    - Configure Alertmanager to send to backup notification system
@@ -244,13 +246,14 @@ Configuration Emergency
 If configuration is corrupted:
 
 1. **Restore from Backup:**
+
    .. code-block:: bash
 
-       # Restore configuration
-       kubectl apply -f backup-$(date +%Y%m%d).yaml
+      # Restore configuration
+      kubectl apply -f backup-$(date +%Y%m%d).yaml
 
-       # Restart to reload configuration
-       kubectl rollout restart deployment/cano-collector -n monitoring
+      # Restart to reload configuration
+      kubectl rollout restart deployment/cano-collector -n monitoring
 
 2. **Emergency Configuration:**
    - Create minimal working configuration
@@ -262,14 +265,15 @@ Performance Emergency
 If performance is degraded:
 
 1. **Immediate Actions:**
+
    .. code-block:: bash
 
-       # Scale up
-       kubectl scale deployment cano-collector --replicas=3 -n monitoring
+      # Scale up
+      kubectl scale deployment cano-collector --replicas=3 -n monitoring
 
-       # Increase resource limits
-       kubectl patch deployment cano-collector -n monitoring \
-         --patch='{"spec":{"template":{"spec":{"containers":[{"name":"cano-collector","resources":{"limits":{"memory":"1Gi","cpu":"1000m"}}}]}}}}'
+      # Increase resource limits
+      kubectl patch deployment cano-collector -n monitoring \
+        --patch='{"spec":{"template":{"spec":{"containers":[{"name":"cano-collector","resources":{"limits":{"memory":"1Gi","cpu":"1000m"}}}]}}}}'
 
 2. **Investigation:**
    - Check for resource constraints
@@ -349,7 +353,7 @@ Daily Checklist
 - [ ] Check metrics
 
 Weekly Checklist
-~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
 - [ ] Backup configuration
 - [ ] Analyze logs

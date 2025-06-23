@@ -4,7 +4,7 @@ OOM Killer Workflows
 OOM (Out of Memory) killer workflows analyze and provide insights into memory-related issues in Kubernetes clusters, helping identify the root causes of OOM events.
 
 Pod OOM Killer Enricher
-----------------------
+-----------------------
 
 **Purpose**: Analyzes pods that have been killed by the OOM killer to understand memory usage patterns and resource allocation.
 
@@ -22,7 +22,7 @@ Pod OOM Killer Enricher
 **Output**: Detailed analysis of OOM killed containers with memory usage data and recommendations
 
 OOM Killer Enricher
-------------------
+-------------------
 
 **Purpose**: Analyzes node-level OOM killer events to understand cluster-wide memory pressure.
 
@@ -40,7 +40,7 @@ OOM Killer Enricher
 **Output**: Node-level OOM analysis with affected pods and memory pressure insights
 
 OOM Killed Container Graph Enricher
-----------------------------------
+-----------------------------------
 
 **Purpose**: Generates detailed memory usage graphs for containers that were killed by the OOM killer.
 
@@ -58,7 +58,7 @@ OOM Killed Container Graph Enricher
 **Output**: Memory usage graphs showing container memory patterns before OOM kill
 
 Memory Analysis
---------------
+---------------
 
 **Purpose**: Provides comprehensive memory analysis for OOM events including root cause identification.
 
@@ -76,7 +76,7 @@ Memory Analysis
 **Output**: Comprehensive memory analysis with optimization recommendations
 
 DMESG Log Enricher
------------------
+------------------
 
 **Purpose**: Captures and analyzes kernel dmesg logs related to OOM events for deeper investigation.
 

@@ -1,5 +1,5 @@
 Monitoring and Operations
-=========================
+========================
 
 This guide covers monitoring cano-collector in production and operational best practices.
 
@@ -9,7 +9,7 @@ Metrics and Monitoring
 Cano-collector exposes Prometheus metrics for monitoring:
 
 Metrics Endpoint
-~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
@@ -110,7 +110,7 @@ Health Checks
 Cano-collector provides health check endpoints:
 
 Basic Health Check
-~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
@@ -119,13 +119,14 @@ Basic Health Check
 Response: `{"status":"ok"}`
 
 Detailed Health Check
-~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
     curl http://cano-collector.monitoring.svc.cluster.local:8080/health/detailed
 
 Response:
+
 .. code-block:: json
 
     {
@@ -168,7 +169,7 @@ Logging
 -------
 
 Log Configuration
-~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
 
 Configure log levels and format:
 
@@ -181,7 +182,7 @@ Configure log levels and format:
         value: "json"  # json, text
 
 Log Aggregation
-~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
 
 For production environments, configure log aggregation:
 
@@ -215,7 +216,7 @@ Backup and Recovery
 -------------------
 
 Configuration Backup
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 Backup your configuration regularly:
 
@@ -231,20 +232,22 @@ Backup your configuration regularly:
     helm get values cano-collector -n monitoring > backup-values.yaml
 
 Recovery Procedures
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~
 
 1. **Configuration Recovery:**
+
    .. code-block:: bash
 
-       kubectl apply -f backup-destinations.yaml
-       kubectl apply -f backup-secrets.yaml
+      kubectl apply -f backup-destinations.yaml
+      kubectl apply -f backup-secrets.yaml
 
 2. **Application Recovery:**
+
    .. code-block:: bash
 
-       helm upgrade cano-collector cano-collector/cano-collector \
-         --values backup-values.yaml \
-         --namespace monitoring
+      helm upgrade cano-collector cano-collector/cano-collector \
+        --values backup-values.yaml \
+        --namespace monitoring
 
 3. **Data Recovery:**
    - Cano-collector is stateless, no data recovery needed
@@ -254,7 +257,7 @@ Performance Tuning
 ------------------
 
 Resource Limits
-~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
 
 Adjust resource limits based on load:
 
@@ -286,7 +289,7 @@ Scale horizontally for high load:
       -n monitoring
 
 Network Optimization
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 Optimize network settings:
 
@@ -303,7 +306,7 @@ Security
 --------
 
 Network Policies
-~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
 Restrict network access:
 
@@ -364,30 +367,34 @@ Regular Maintenance Tasks
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 1. **Update cano-collector:**
+
    .. code-block:: bash
 
-       helm upgrade cano-collector cano-collector/cano-collector \
-         --namespace monitoring
+      helm upgrade cano-collector cano-collector/cano-collector \
+        --namespace monitoring
 
 2. **Rotate secrets:**
+
    .. code-block:: bash
 
-       # Update webhook URLs and API tokens
-       kubectl patch secret cano-collector-secrets -n monitoring \
-         --patch='{"data":{"slack-webhook":"new-base64-encoded-value"}}'
+      # Update webhook URLs and API tokens
+      kubectl patch secret cano-collector-secrets -n monitoring \
+        --patch='{"data":{"slack-webhook":"new-base64-encoded-value"}}'
 
 3. **Clean up old logs:**
+
    .. code-block:: bash
 
-       # Configure log rotation in deployment
-       kubectl patch deployment cano-collector -n monitoring \
-         --patch='{"spec":{"template":{"spec":{"containers":[{"name":"cano-collector","volumeMounts":[{"name":"logs","mountPath":"/var/log"}]}]}}}}'
+      # Configure log rotation in deployment
+      kubectl patch deployment cano-collector -n monitoring \
+        --patch='{"spec":{"template":{"spec":{"containers":[{"name":"cano-collector","volumeMounts":[{"name":"logs","mountPath":"/var/log"}]}]}}}}'
 
 4. **Monitor resource usage:**
+
    .. code-block:: bash
 
-       # Check resource usage
-       kubectl top pods -n monitoring -l app=cano-collector
+      # Check resource usage
+      kubectl top pods -n monitoring -l app=cano-collector
 
-       # Check disk usage
-       kubectl exec -n monitoring deployment/cano-collector -- df -h 
+      # Check disk usage
+      kubectl exec -n monitoring deployment/cano-collector -- df -h 

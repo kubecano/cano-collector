@@ -1,10 +1,10 @@
 Cano-collector Flow Architecture
-===============================
+================================
 
 This document describes the detailed flow of how cano-collector processes alerts from reception to notification delivery, providing a comprehensive understanding of the internal architecture and data flow.
 
 Alert Processing Flow
---------------------
+---------------------
 
 1. **Alert Reception**
    
@@ -71,7 +71,7 @@ Alert Processing Flow
    - Response handling and error management
 
 Configuration Flow
------------------
+------------------
 
 1. **Startup Configuration Loading**
    
@@ -102,7 +102,7 @@ Configuration Flow
    - Teams made available to routing engine
 
 Data Flow Architecture
----------------------
+----------------------
 
 ```
 Alertmanager → AlertHandler → Issue → Team Router → Destinations → Senders → External APIs
@@ -112,7 +112,7 @@ Alertmanager → AlertHandler → Issue → Team Router → Destinations → Sen
 ```
 
 Key Components in Flow
----------------------
+----------------------
 
 1. **AlertHandler**
    - Entry point for alert processing
@@ -142,7 +142,7 @@ Key Components in Flow
    - Manages API-specific requirements
 
 Error Handling
--------------
+--------------
 
 1. **Alert Reception Errors**
    - Invalid JSON: HTTP 400 with parsing error
@@ -164,7 +164,7 @@ Error Handling
    - Invalid destination references: Configuration validation error
 
 Metrics and Observability
-------------------------
+-------------------------
 
 1. **Alert Metrics**
    - Alerts received per receiver
@@ -182,7 +182,7 @@ Metrics and Observability
    - Fallback usage metrics
 
 Future Enhancements
-------------------
+-------------------
 
 1. **Async Processing**
    - Implement message queue for alert processing

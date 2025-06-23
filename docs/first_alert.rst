@@ -4,14 +4,14 @@ Your First Alert
 This guide will help you configure and test your first alert with cano-collector.
 
 Prerequisites
-------------
+-------------
 
 - Cano-collector installed and running
 - Alertmanager configured to send alerts to cano-collector
 - At least one destination configured (Slack, MS Teams, etc.)
 
 Step 1: Verify Cano-collector is Running
-----------------------------------------
+-----------------------------------------
 
 .. code-block:: bash
 
@@ -26,7 +26,7 @@ Step 1: Verify Cano-collector is Running
     curl http://localhost:8080/health
 
 Step 2: Create a Test Alert Rule
---------------------------------
+---------------------------------
 
 Create a simple Prometheus alert rule for testing:
 
@@ -58,7 +58,7 @@ Apply the rule:
     kubectl apply -f test-alert.yaml
 
 Step 3: Configure Alertmanager
-------------------------------
+-------------------------------
 
 Ensure Alertmanager is configured to send alerts to cano-collector:
 
@@ -110,7 +110,7 @@ If you don't see the alert, check the logs:
     kubectl logs -n monitoring -l app=alertmanager -f
 
 Step 5: Create a Real Alert
----------------------------
+----------------------------
 
 Now let's create a more realistic alert. Create a pod that will fail:
 

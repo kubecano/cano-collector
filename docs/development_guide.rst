@@ -346,7 +346,7 @@ The `PrometheusAlert` structure for handling Alertmanager webhooks:
     }
 
 Workflow Models
-~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
 
 Workflow processing structures:
 

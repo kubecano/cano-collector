@@ -29,7 +29,7 @@ Workflows follow a pipeline pattern:
 5. Results are sent to configured destinations
 
 Key Features
------------
+------------
 
 - **Event-driven**: Workflows are triggered by Kubernetes events and alerts
 - **Context-aware**: Automatically gather relevant information from the cluster
@@ -39,7 +39,7 @@ Key Features
 - **Language-specific**: Specialized workflows for Java, Go, and Python applications
 
 Built-in Workflows
------------------
+------------------
 
 Built-in workflows are pre-configured automation rules that come with cano-collector. These workflows provide comprehensive coverage for common Kubernetes monitoring and troubleshooting scenarios:
 
@@ -60,7 +60,7 @@ Built-in workflows are pre-configured automation rules that come with cano-colle
 Built-in workflows are automatically available and can be enabled/disabled through Helm configuration.
 
 Custom Workflows
----------------
+----------------
 
 Custom workflows allow you to extend cano-collector's capabilities by creating tailored automation rules for your specific use cases and requirements. There are two main approaches:
 
@@ -80,7 +80,7 @@ Usage
 Workflows are automatically executed when relevant events occur in the cluster. They can be configured through Helm values and custom workflows can be added by mounting TypeScript files as volumes.
 
 Built-in Workflows
------------------
+------------------
 
 .. toctree::
    :maxdepth: 2
