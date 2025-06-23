@@ -1,5 +1,5 @@
 Application Metrics
-==================
+===================
 
 This document describes the metrics exposed by cano-collector at the `/metrics` endpoint, including existing metrics and planned business metrics for comprehensive monitoring.
 
@@ -24,7 +24,7 @@ HTTP Request Metrics
      - Total number of HTTP requests processed
 
 Alert Processing Metrics
-~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. list-table::
    :header-rows: 1
@@ -113,7 +113,7 @@ Alert Processing Metrics
      - High
 
 Workflow Processing Metrics
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. list-table::
    :header-rows: 1
@@ -236,7 +236,7 @@ Resource Usage Metrics
      - Low
 
 Configuration Metrics
-~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 
 .. list-table::
    :header-rows: 1
@@ -258,7 +258,7 @@ Configuration Metrics
      - High
 
 Implementation Example
----------------------
+----------------------
 
 Example implementation of the metrics collector:
 
@@ -410,7 +410,7 @@ Recommended Prometheus alerting rules for cano-collector:
               description: "Cano-collector has more than 1000 active goroutines"
 
 Grafana Dashboard
-----------------
+-----------------
 
 A comprehensive Grafana dashboard should include:
 

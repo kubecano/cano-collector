@@ -1,5 +1,5 @@
 ServiceNow Destination
-=====================
+======================
 
 The ServiceNow destination allows cano-collector to create and manage incidents in ServiceNow.
 

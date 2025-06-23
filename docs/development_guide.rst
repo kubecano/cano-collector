@@ -420,7 +420,7 @@ Destination management structures:
     }
 
 Configuration Models
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 Enhanced configuration structures:
 
@@ -469,7 +469,7 @@ Enhanced configuration structures:
     }
 
 Cache Models
-~~~~~~~~~~~
+~~~~~~~~~~~~
 
 Caching layer for performance and deduplication:
 
@@ -555,7 +555,7 @@ Alert Processing Pipeline
 -------------------------
 
 Current Implementation
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
 
 The alert processing pipeline is defined in `pkg/alert/alert_handler.go`:
 
@@ -578,7 +578,7 @@ The alert processing pipeline is defined in `pkg/alert/alert_handler.go`:
     }
 
 Required Implementation
-~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
 
 The following components need to be implemented:
 
@@ -652,7 +652,7 @@ The following components need to be implemented:
     }
 
 Key Component Implementations
-----------------------------
+-----------------------------
 
 Workflow Processor
 ~~~~~~~~~~~~~~~~~~
@@ -1156,7 +1156,7 @@ Unit Testing
     }
 
 Integration Testing
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~
 
 1. **Test with real HTTP server:**
 
@@ -1210,7 +1210,7 @@ Development Workflow
     # Update architecture diagrams
 
 Code Quality Standards
----------------------
+----------------------
 
 1. **Error Handling:**
    - Always check errors
@@ -1233,7 +1233,7 @@ Code Quality Standards
    - Document all configuration options
 
 Performance Considerations
--------------------------
+--------------------------
 
 1. **Memory Management:**
    - Reuse objects where possible
@@ -1414,7 +1414,7 @@ Testing Guidelines
     mockery --dir pkg/destination --name DestinationRouter --output mocks
 
 Configuration Examples
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
 
 1. **Workflow Configuration:**
 
@@ -1643,7 +1643,7 @@ Configuration Examples
             value: "production"
 
 Build and Deployment
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 1. **Makefile Targets:**
 
@@ -1774,7 +1774,7 @@ Build and Deployment
       targetCPUUtilizationPercentage: 80
 
 Performance Considerations
-~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 1. **Memory Management:**
    - Use object pools for frequently allocated structures
@@ -1797,7 +1797,7 @@ Performance Considerations
    - Alert on processing failures
 
 Security Considerations
-~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
 
 1. **Authentication:**
    - Implement API key authentication

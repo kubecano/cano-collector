@@ -1,10 +1,10 @@
 DaemonSet Workflows
-==================
+===================
 
 DaemonSet workflows provide comprehensive monitoring and management capabilities for Kubernetes DaemonSets, including status analysis, scheduling monitoring, and troubleshooting.
 
 DaemonSet Status Enricher
-------------------------
+-------------------------
 
 **Purpose**: Provides detailed analysis of DaemonSet status and scheduling.
 
@@ -22,7 +22,7 @@ DaemonSet Status Enricher
 **Output**: DaemonSet status report with detailed analysis
 
 DaemonSet Misscheduled Analysis
-------------------------------
+-------------------------------
 
 **Purpose**: Analyzes DaemonSet pods that are misscheduled on nodes.
 
@@ -40,7 +40,7 @@ DaemonSet Misscheduled Analysis
 **Output**: DaemonSet misscheduling analysis report with troubleshooting information
 
 DaemonSet Pod Analysis
----------------------
+----------------------
 
 **Purpose**: Analyzes pods managed by DaemonSets.
 
@@ -58,7 +58,7 @@ DaemonSet Pod Analysis
 **Output**: DaemonSet pod analysis report with pod details
 
 DaemonSet Rollout Monitor
-------------------------
+-------------------------
 
 **Purpose**: Monitors DaemonSet rollouts and provides progress updates.
 
@@ -76,7 +76,7 @@ DaemonSet Rollout Monitor
 **Output**: DaemonSet rollout progress report with status updates
 
 DaemonSet Health Analysis
-------------------------
+-------------------------
 
 **Purpose**: Analyzes DaemonSet health and identifies potential issues.
 

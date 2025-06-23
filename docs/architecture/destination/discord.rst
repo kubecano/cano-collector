@@ -1,5 +1,5 @@
 Discord Destination
-==================
+===================
 
 The Discord Destination prepares data for Discord webhook communication, focusing on creating rich, embed-based messages for Discord channels.
 

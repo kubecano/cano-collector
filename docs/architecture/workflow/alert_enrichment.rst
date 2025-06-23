@@ -4,7 +4,7 @@ Alert Enrichment Workflows
 Alert enrichment workflows enhance Prometheus alerts with additional context, making them more actionable and informative.
 
 Default Alert Enricher
----------------------
+----------------------
 
 **Purpose**: Provides basic enrichment for all Prometheus alerts with essential information.
 
@@ -20,7 +20,7 @@ Default Alert Enricher
 **Output**: Enhanced alert with basic context and metadata
 
 Graph Enricher
--------------
+--------------
 
 **Purpose**: Adds resource graphs to alerts showing historical metrics data.
 
@@ -36,7 +36,7 @@ Graph Enricher
 **Output**: Alert with embedded graphs showing resource trends
 
 Custom Graph Enricher
---------------------
+---------------------
 
 **Purpose**: Adds custom Prometheus queries as graphs to alerts.
 
@@ -52,7 +52,7 @@ Custom Graph Enricher
 **Output**: Alert with custom metric graphs
 
 Alert Explanation Enricher
--------------------------
+--------------------------
 
 **Purpose**: Adds human-readable explanations and recommended resolutions to alerts.
 
@@ -68,7 +68,7 @@ Alert Explanation Enricher
 **Output**: Alert with explanation and resolution guidance
 
 Stack Overflow Enricher
-----------------------
+-----------------------
 
 **Purpose**: Automatically searches Stack Overflow for solutions related to the alert.
 
@@ -84,7 +84,7 @@ Stack Overflow Enricher
 **Output**: Alert with links to relevant Stack Overflow discussions
 
 Template Enricher
-----------------
+-----------------
 
 **Purpose**: Adds custom templated content to alerts using variables.
 
@@ -100,7 +100,7 @@ Template Enricher
 **Output**: Alert with custom templated content
 
 Mention Enricher
----------------
+----------------
 
 **Purpose**: Adds user mentions to notifications based on alert labels or static configuration.
 

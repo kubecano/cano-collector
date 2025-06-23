@@ -174,7 +174,7 @@ Example configuration:
         operation: "add"
 
 Asynchronous Processing Queue
-----------------------------
+-----------------------------
 
 The asynchronous processing queue ensures non-blocking alert reception and reliable processing:
 

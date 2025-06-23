@@ -4,7 +4,7 @@ Monitoring and Tracking Workflows
 Monitoring and tracking workflows provide capabilities for tracking changes, monitoring resources, and maintaining audit trails in Kubernetes clusters.
 
 Resource Babysitter
-------------------
+-------------------
 
 **Purpose**: Tracks changes to Kubernetes resources and provides detailed change analysis.
 
@@ -22,7 +22,7 @@ Resource Babysitter
 **Output**: Resource change report with detailed diff and analysis
 
 Resource Events Diff
--------------------
+--------------------
 
 **Purpose**: Provides detailed diff analysis of resource changes with before/after comparisons.
 

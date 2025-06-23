@@ -4,7 +4,7 @@ Pod Enrichment Workflows
 Pod enrichment workflows provide comprehensive analysis and enrichment capabilities for Kubernetes pods, including status analysis, resource monitoring, and troubleshooting.
 
 Pod Investigator Enricher
-------------------------
+-------------------------
 
 **Purpose**: Provides comprehensive investigation capabilities for pods with issues.
 
@@ -22,7 +22,7 @@ Pod Investigator Enricher
 **Output**: Comprehensive pod investigation report with analysis and recommendations
 
 Pod Enrichments
---------------
+---------------
 
 **Purpose**: Provides basic pod information and status analysis.
 
@@ -40,7 +40,7 @@ Pod Enrichments
 **Output**: Pod information report with status and configuration details
 
 Pod Evicted Enrichments
-----------------------
+-----------------------
 
 **Purpose**: Analyzes pods that have been evicted from nodes.
 
@@ -58,7 +58,7 @@ Pod Evicted Enrichments
 **Output**: Pod eviction analysis report with root cause information
 
 Image Pull Backoff Enricher
---------------------------
+---------------------------
 
 **Purpose**: Analyzes pods with image pull backoff issues.
 
@@ -76,7 +76,7 @@ Image Pull Backoff Enricher
 **Output**: Image pull backoff analysis report with troubleshooting information
 
 Restart Loop Reporter
---------------------
+---------------------
 
 **Purpose**: Monitors and reports on pods in restart loops.
 
@@ -94,7 +94,7 @@ Restart Loop Reporter
 **Output**: Restart loop analysis report with troubleshooting guidance
 
 Pod Actions
-----------
+-----------
 
 **Purpose**: Provides basic pod management actions.
 

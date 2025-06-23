@@ -1,5 +1,5 @@
 API Reference
-============
+=============
 
 This document provides detailed API documentation for cano-collector's internal interfaces and data structures.
 
@@ -54,7 +54,7 @@ Sends alerts to various notification destinations.
     })
 
 LoggerInterface
-~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
 
 Provides structured logging capabilities.
 
@@ -228,7 +228,7 @@ Additional context data for an issue.
 - `Annotations` - Metadata for senders
 
 BaseBlock Interface
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~
 
 Interface for all content blocks.
 
@@ -301,7 +301,7 @@ Main application configuration.
 - `Teams` - Team configurations
 
 DestinationsConfig
-~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~
 
 Configuration for notification destinations.
 
@@ -342,7 +342,7 @@ HTTP Endpoints
 --------------
 
 Alert Endpoint
-~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
 
 Receives alerts from Alertmanager.
 
@@ -381,7 +381,7 @@ Receives alerts from Alertmanager.
 - `500 Internal Server Error` - Processing error
 
 Health Endpoint
-~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
 
 Provides health status information.
 
@@ -410,7 +410,7 @@ Provides health status information.
     }
 
 Metrics Endpoint
-~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
 Exposes Prometheus metrics.
 
@@ -434,7 +434,7 @@ Error Handling
 --------------
 
 Error Types
-~~~~~~~~~~
+~~~~~~~~~~~
 
 Common error types and their handling:
 
@@ -454,7 +454,7 @@ Common error types and their handling:
    - Destination send failures
 
 Error Response Format
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 
 All error responses follow this format:
 
@@ -473,7 +473,7 @@ Logging
 -------
 
 Log Levels
-~~~~~~~~~
+~~~~~~~~~~
 
 - `DEBUG` - Detailed debugging information
 - `INFO` - General information about application flow
@@ -483,7 +483,7 @@ Log Levels
 - `PANIC` - Panic messages for unrecoverable errors
 
 Structured Logging
-~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~
 
 All logs use structured logging with zap fields:
 
@@ -498,7 +498,7 @@ All logs use structured logging with zap fields:
     )
 
 Common Log Fields
-~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
 
 - `alert_name` - Name of the alert
 - `severity` - Alert severity level
@@ -513,7 +513,7 @@ Metrics
 -------
 
 Alert Metrics
-~~~~~~~~~~~~
+~~~~~~~~~~~~~
 
 - `cano_alerts_received_total` - Total alerts received
 - `cano_alerts_processed_total` - Total alerts processed
@@ -521,21 +521,21 @@ Alert Metrics
 - `cano_alerts_processing_duration_seconds` - Processing time histogram
 
 Destination Metrics
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~
 
 - `cano_destination_sent_total` - Messages sent per destination
 - `cano_destination_errors_total` - Send errors per destination
 - `cano_destination_duration_seconds` - Send duration per destination
 
 System Metrics
-~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
 
 - `cano_http_requests_total` - HTTP request count
 - `cano_http_request_duration_seconds` - HTTP request duration
 - `cano_config_reloads_total` - Configuration reload count
 
 Metric Labels
-~~~~~~~~~~~~
+~~~~~~~~~~~~~
 
 - `receiver` - Alertmanager receiver name
 - `status` - Alert status (firing, resolved)

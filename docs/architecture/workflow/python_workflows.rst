@@ -1,10 +1,10 @@
 Python Workflows
-===============
+================
 
 Python workflows provide comprehensive debugging and analysis capabilities for Python applications running in Kubernetes pods, including profiling, memory analysis, and debugging tools.
 
 Python Process Inspector
-----------------------
+------------------------
 
 **Purpose**: Displays all Python debugging options for every Python process in a pod.
 
@@ -22,7 +22,7 @@ Python Process Inspector
 **Output**: Python process inspection report with debugging options
 
 Python Profiling
----------------
+----------------
 
 **Purpose**: Runs Python profiling tools (cProfile, line_profiler) on Python processes.
 
@@ -40,7 +40,7 @@ Python Profiling
 **Output**: Python profiling report with performance insights
 
 Python Memory Analysis
----------------------
+----------------------
 
 **Purpose**: Provides comprehensive memory analysis for Python applications.
 
@@ -58,7 +58,7 @@ Python Memory Analysis
 **Output**: Python memory analysis report with optimization recommendations
 
 Python Thread Analysis
----------------------
+----------------------
 
 **Purpose**: Analyzes Python thread usage and identifies potential issues.
 
@@ -76,7 +76,7 @@ Python Thread Analysis
 **Output**: Python thread analysis report with health status
 
 Python Debugger
---------------
+---------------
 
 **Purpose**: Attaches debugger to Python processes for interactive debugging.
 
@@ -94,7 +94,7 @@ Python Debugger
 **Output**: Python debugging session with interactive capabilities
 
 Python Interpreter Analysis
--------------------------
+---------------------------
 
 **Purpose**: Analyzes Python interpreter configuration and provides optimization recommendations.
 
@@ -112,7 +112,7 @@ Python Interpreter Analysis
 **Output**: Python interpreter analysis report with recommendations
 
 Python Application Health Check
------------------------------
+-------------------------------
 
 **Purpose**: Performs comprehensive health checks for Python applications.
 
@@ -130,7 +130,7 @@ Python Application Health Check
 **Output**: Python application health check report with status information
 
 Python Package Analysis
----------------------
+-----------------------
 
 **Purpose**: Analyzes Python package dependencies and versions.
 
@@ -148,7 +148,7 @@ Python Package Analysis
 **Output**: Python package analysis report with dependency information
 
 Python Virtual Environment Analysis
----------------------------------
+-----------------------------------
 
 **Purpose**: Analyzes Python virtual environment configuration.
 
@@ -166,7 +166,7 @@ Python Virtual Environment Analysis
 **Output**: Python virtual environment analysis report with configuration details
 
 Python Async Analysis
--------------------
+---------------------
 
 **Purpose**: Analyzes Python async/await code and event loops.
 

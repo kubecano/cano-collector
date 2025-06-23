@@ -1,5 +1,5 @@
 Alert Processing
-===============
+================
 
 This section describes the alert processing architecture in cano-collector, including alert parsing, workflow processing, and destination registration.
 

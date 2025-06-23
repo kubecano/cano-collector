@@ -1,10 +1,10 @@
 Installation Guide
-=================
+==================
 
 This guide provides detailed instructions for installing cano-collector in different environments.
 
 Installation Methods
--------------------
+--------------------
 
 Cano-collector can be installed using:
 
@@ -183,7 +183,7 @@ Cano-collector uses two main configuration files:
 2. **teams.yaml** - Defines team routing rules
 
 Example destinations.yaml:
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: yaml
 
@@ -208,7 +208,7 @@ Example destinations.yaml:
           issueType: "Incident"
 
 Example teams.yaml:
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: yaml
 
@@ -224,7 +224,7 @@ Example teams.yaml:
           - "alerts-dev"
 
 Alertmanager Integration
------------------------
+------------------------
 
 Configure Alertmanager to send alerts to cano-collector:
 
@@ -245,10 +245,10 @@ Configure Alertmanager to send alerts to cano-collector:
       repeat_interval: 4h
 
 Troubleshooting Installation
----------------------------
+----------------------------
 
 Common Issues
-~~~~~~~~~~~~
+~~~~~~~~~~~~~
 
 1. **Pod not starting**
    - Check resource limits
@@ -266,7 +266,7 @@ Common Issues
    - Validate webhook URLs
 
 Debug Commands
-~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
 
 .. code-block:: bash
 

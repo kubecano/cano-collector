@@ -1,5 +1,5 @@
 Implementation Tasks
-===================
+====================
 
 This document outlines the specific implementation tasks needed to complete cano-collector according to the architecture documentation.
 
@@ -24,7 +24,7 @@ Current State Analysis
 - ❌ Additional senders (Jira, ServiceNow, etc.)
 
 Implementation Tasks
--------------------
+--------------------
 
 Task 1: Alert to Issue Conversion
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -82,7 +82,7 @@ Task 1: Alert to Issue Conversion
 - Test subject extraction
 
 Task 2: Deduplication System
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Priority:** High
 **Estimated Time:** 1-2 days
@@ -537,7 +537,7 @@ Unit Tests
 - Test edge cases
 
 Integration Tests
-~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
 
 - Test component interactions
 - Test with real HTTP servers
@@ -545,7 +545,7 @@ Integration Tests
 - Test end-to-end flows
 
 Performance Tests
-~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
 
 - Test alert processing throughput
 - Test memory usage
@@ -579,7 +579,7 @@ Acceptance Criteria
 - ✅ Error handling for all failure modes
 
 Implementation Timeline
-----------------------
+-----------------------
 
 **Week 1:**
 - Task 1: Alert to Issue Conversion

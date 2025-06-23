@@ -1,5 +1,5 @@
 Troubleshooting Guide
-====================
+=====================
 
 This guide helps you diagnose and fix common issues with cano-collector.
 
@@ -207,7 +207,7 @@ Adjust log verbosity for debugging:
         value: "debug"  # Options: debug, info, warn, error
 
 Common Log Messages
-------------------
+-------------------
 
 **Normal Operation:**
 - `"Starting cano-collector"`

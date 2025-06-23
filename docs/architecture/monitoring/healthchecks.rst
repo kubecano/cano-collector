@@ -1,10 +1,10 @@
 Health Checks
-============
+=============
 
 This document describes the health check architecture in cano-collector, including application health checks and destination health monitoring that doesn't affect Kubernetes readiness/liveness probes.
 
 Current Health Check Implementation
-----------------------------------
+-----------------------------------
 
 Cano-collector currently implements basic health checks with the following endpoints:
 
@@ -186,7 +186,7 @@ Destination Health Monitoring
 Destination health checks should be implemented separately from Kubernetes probes to avoid affecting application availability:
 
 Destination Health Checker
-~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: go
 
@@ -502,7 +502,7 @@ Health check configuration:
           expectedStatus: [200, 201, 202]
 
 Kubernetes Probe Configuration
------------------------------
+------------------------------
 
 Kubernetes probe configuration that separates application health from destination health:
 

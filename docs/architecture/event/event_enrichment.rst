@@ -1,5 +1,5 @@
 Event Enrichment and Finding Creation
-====================================
+=====================================
 
 This document describes how cano-collector converts Kubernetes events into actionable findings and how these findings are enriched by workflows to provide comprehensive context for operators and automated systems.
 

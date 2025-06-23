@@ -1,5 +1,5 @@
 Monitoring and Operations
-========================
+=========================
 
 This guide covers monitoring cano-collector in production and operational best practices.
 
@@ -36,7 +36,7 @@ Key Metrics
 - `cano_config_reloads_total` - Configuration reload count
 
 Example Prometheus Queries
-~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: promql
 
@@ -141,7 +141,7 @@ Response:
     }
 
 Kubernetes Health Checks
-~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 Configure health checks in deployment:
 
@@ -364,7 +364,7 @@ Maintenance
 -----------
 
 Regular Maintenance Tasks
-~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 1. **Update cano-collector:**
 

@@ -1,5 +1,5 @@
 Jira Destination
-===============
+================
 
 The Jira destination allows cano-collector to create and update Jira issues for alerts and findings.
 

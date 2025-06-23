@@ -1,10 +1,10 @@
 Event Enrichment Workflows
-=========================
+==========================
 
 Event enrichment workflows provide comprehensive analysis and enrichment capabilities for Kubernetes events, helping to understand the context and impact of various cluster events.
 
 Event Enrichments
-----------------
+-----------------
 
 **Purpose**: Provides comprehensive analysis of Kubernetes events.
 
@@ -22,7 +22,7 @@ Event Enrichments
 **Output**: Event analysis report with timeline and correlation
 
 Resource Events Enricher
------------------------
+------------------------
 
 **Purpose**: Enriches events with related resource information.
 
@@ -40,7 +40,7 @@ Resource Events Enricher
 **Output**: Resource event report with related resource information
 
 Event Resource Events
---------------------
+---------------------
 
 **Purpose**: Provides comprehensive event analysis for specific resources.
 
@@ -58,7 +58,7 @@ Event Resource Events
 **Output**: Resource-specific event analysis report
 
 Event Timeline Analysis
-----------------------
+-----------------------
 
 **Purpose**: Provides timeline analysis of related events.
 
@@ -76,7 +76,7 @@ Event Timeline Analysis
 **Output**: Event timeline report with correlation analysis
 
 Event Pattern Recognition
-------------------------
+-------------------------
 
 **Purpose**: Identifies patterns in Kubernetes events.
 

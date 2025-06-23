@@ -4,7 +4,7 @@ Pod Troubleshooting Workflows
 Pod troubleshooting workflows provide deep diagnostic capabilities for investigating issues with Kubernetes pods, including process analysis, debugging, and performance profiling.
 
 Python Profiler
---------------
+---------------
 
 **Purpose**: Attaches a Python profiler to running Python processes in pods to analyze performance bottlenecks.
 
@@ -21,7 +21,7 @@ Python Profiler
 **Output**: Profiling reports showing CPU usage patterns and performance bottlenecks
 
 Pod Process List
----------------
+----------------
 
 **Purpose**: Displays a list of all running processes in a pod for process analysis.
 
@@ -37,7 +37,7 @@ Pod Process List
 **Output**: Table showing all processes with their details
 
 Python Memory Analysis
----------------------
+----------------------
 
 **Purpose**: Monitors Python processes for memory allocation patterns and potential memory leaks.
 
@@ -54,7 +54,7 @@ Python Memory Analysis
 **Output**: Memory analysis report with allocation patterns and leak detection
 
 Debugger Stack Trace
--------------------
+--------------------
 
 **Purpose**: Captures stack traces from Python processes for debugging purposes.
 
@@ -71,7 +71,7 @@ Debugger Stack Trace
 **Output**: Stack trace information for debugging Python applications
 
 Python Process Inspector
------------------------
+------------------------
 
 **Purpose**: Provides comprehensive inspection of Python processes including loaded modules and debugging information.
 
@@ -88,7 +88,7 @@ Python Process Inspector
 **Output**: Comprehensive Python process inspection report
 
 Python Debugger
---------------
+---------------
 
 **Purpose**: Attaches a full Python debugger to running processes for interactive debugging.
 
