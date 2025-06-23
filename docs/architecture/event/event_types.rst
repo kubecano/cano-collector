@@ -29,6 +29,7 @@ Pods are the fundamental units of deployment in Kubernetes and are critical for 
 - **Unknown**: WARNING - Pod status unclear
 
 **Example Event Processing:**
+
 .. code-block:: go
 
     func processPodEvent(event *KubernetesEvent) *Issue {
@@ -84,6 +85,7 @@ Deployments manage the desired state for Pods and ReplicaSets, providing declara
 - **RolloutFailed**: HIGH - Rolling update failed
 
 **Example Event Processing:**
+
 .. code-block:: go
 
     func processDeploymentEvent(event *KubernetesEvent) *Issue {
@@ -144,6 +146,7 @@ Services provide stable endpoints for accessing Pods and enable load balancing.
 - **EndpointUpdate**: INFO - Endpoints changed
 
 **Example Event Processing:**
+
 .. code-block:: go
 
     func processServiceEvent(event *KubernetesEvent) *Issue {

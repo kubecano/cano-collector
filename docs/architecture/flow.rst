@@ -104,12 +104,12 @@ Configuration Flow
 Data Flow Architecture
 ----------------------
 
-```
-Alertmanager → AlertHandler → Issue → Team Router → Destinations → Senders → External APIs
-     ↓              ↓          ↓         ↓              ↓           ↓
-  template.Data  Validation  Issue    Team Match   Destination   Sender    HTTP Request
-                                      Resolution   Resolution    Format
-```
+::
+
+    Alertmanager → AlertHandler → Issue → Team Router → Destinations → Senders → External APIs
+         ↓              ↓          ↓         ↓              ↓           ↓
+      template.Data  Validation  Issue    Team Match   Destination   Sender    HTTP Request
+                                          Resolution   Resolution    Format
 
 Key Components in Flow
 ----------------------

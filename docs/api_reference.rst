@@ -250,6 +250,7 @@ Interface for all content blocks.
 - `LinksBlock` - Clickable links
 
 **Example Usage:**
+
 .. code-block:: go
 
     enrichment := issue.Enrichment{
