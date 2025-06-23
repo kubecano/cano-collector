@@ -1,7 +1,7 @@
 .. _kafka-destination:
 
 Kafka Destination Configuration
-==============================
+===============================
 
 The Kafka destination allows cano-collector to publish alerts and findings to Kafka topics for downstream processing.
 

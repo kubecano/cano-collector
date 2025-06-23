@@ -1,5 +1,5 @@
 Destination Registration Architecture
-====================================
+=====================================
 
 This document explains cano-collector's static destination registration approach and its benefits for reliability and simplicity.
 
@@ -76,7 +76,7 @@ Advantages
 - **Security**: Configuration controlled through GitOps
 
 Disadvantages
-~~~~~~~~~~~~
+~~~~~~~~~~~~~
 
 - **No Runtime Updates**: Requires restart for configuration changes
 - **Limited Flexibility**: Cannot add destinations dynamically

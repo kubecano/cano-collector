@@ -4,7 +4,7 @@ Job Workflows
 Job workflows provide comprehensive monitoring and management capabilities for Kubernetes jobs, including failure analysis, restart capabilities, and performance monitoring.
 
 Job Failure Reporter
--------------------
+--------------------
 
 **Purpose**: Monitors and reports on failed Kubernetes jobs with detailed analysis.
 
@@ -22,7 +22,7 @@ Job Failure Reporter
 **Output**: Job failure report with analysis and troubleshooting information
 
 Job Info Enricher
-----------------
+-----------------
 
 **Purpose**: Provides comprehensive information about Kubernetes jobs including status and configuration.
 
@@ -40,7 +40,7 @@ Job Info Enricher
 **Output**: Job information report with comprehensive job details
 
 Job Events Enricher
-------------------
+-------------------
 
 **Purpose**: Captures and analyzes events related to Kubernetes jobs.
 
@@ -58,7 +58,7 @@ Job Events Enricher
 **Output**: Job event report with timeline and analysis
 
 Job Pod Enricher
----------------
+----------------
 
 **Purpose**: Analyzes pods created by Kubernetes jobs to understand job execution.
 
@@ -76,7 +76,7 @@ Job Pod Enricher
 **Output**: Job pod analysis report with pod details and status
 
 Job Restart
-----------
+-----------
 
 **Purpose**: Provides capability to restart failed or completed jobs.
 
@@ -94,7 +94,7 @@ Job Restart
 **Output**: Job restart status and progress information
 
 Job Delete
----------
+----------
 
 **Purpose**: Provides capability to delete Kubernetes jobs and their associated resources.
 
@@ -112,7 +112,7 @@ Job Delete
 **Output**: Job deletion status and confirmation
 
 Job Performance Analysis
------------------------
+------------------------
 
 **Purpose**: Analyzes job performance and execution patterns.
 

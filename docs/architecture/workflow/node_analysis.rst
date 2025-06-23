@@ -1,10 +1,10 @@
 Node Analysis Workflows
-======================
+=======================
 
 Node analysis workflows provide comprehensive insights into Kubernetes node health, performance, and resource utilization.
 
 Node CPU Analysis
-----------------
+-----------------
 
 **Purpose**: Analyzes CPU usage patterns and performance on Kubernetes nodes.
 
@@ -22,7 +22,7 @@ Node CPU Analysis
 **Output**: CPU analysis report with performance insights and optimization recommendations
 
 Node Disk Analysis
------------------
+------------------
 
 **Purpose**: Analyzes disk usage and performance on Kubernetes nodes.
 
@@ -40,7 +40,7 @@ Node Disk Analysis
 **Output**: Disk analysis report with usage patterns and optimization recommendations
 
 Node Memory Analysis
--------------------
+--------------------
 
 **Purpose**: Analyzes memory usage and patterns on Kubernetes nodes.
 
@@ -58,7 +58,7 @@ Node Memory Analysis
 **Output**: Memory analysis report with usage patterns and optimization recommendations
 
 Node Status Enricher
--------------------
+--------------------
 
 **Purpose**: Provides comprehensive node status information including conditions and capacity.
 
@@ -76,7 +76,7 @@ Node Status Enricher
 **Output**: Node status report with comprehensive node information
 
 Node Running Pods Enricher
--------------------------
+--------------------------
 
 **Purpose**: Lists and analyzes pods running on specific nodes.
 
@@ -94,7 +94,7 @@ Node Running Pods Enricher
 **Output**: Node pod report with running pods and their status
 
 Node Allocatable Resources Enricher
-----------------------------------
+-----------------------------------
 
 **Purpose**: Analyzes allocatable resources on nodes for capacity planning.
 
@@ -112,7 +112,7 @@ Node Allocatable Resources Enricher
 **Output**: Node resource allocation report with capacity insights
 
 Node DMESG Enricher
-------------------
+-------------------
 
 **Purpose**: Captures and analyzes kernel dmesg logs from nodes for system-level issues.
 

@@ -1,10 +1,10 @@
 Golang Workflows
-===============
+================
 
 Golang workflows provide comprehensive debugging and analysis capabilities for Go applications running in Kubernetes pods, including profiling, memory analysis, and debugging tools.
 
 Go Process Inspector
-------------------
+--------------------
 
 **Purpose**: Displays all Go debugging options for every Go process in a pod.
 
@@ -22,7 +22,7 @@ Go Process Inspector
 **Output**: Go process inspection report with debugging options
 
 Go Profiling
------------
+------------
 
 **Purpose**: Runs Go profiling tools (pprof) on Go processes to analyze performance.
 
@@ -40,7 +40,7 @@ Go Profiling
 **Output**: Go profiling report with performance insights
 
 Go Memory Analysis
------------------
+------------------
 
 **Purpose**: Provides comprehensive memory analysis for Go applications.
 
@@ -58,7 +58,7 @@ Go Memory Analysis
 **Output**: Go memory analysis report with optimization recommendations
 
 Go Goroutine Analysis
---------------------
+---------------------
 
 **Purpose**: Analyzes goroutine usage and identifies potential issues.
 
@@ -76,7 +76,7 @@ Go Goroutine Analysis
 **Output**: Go goroutine analysis report with health status
 
 Go Debugger
-----------
+-----------
 
 **Purpose**: Attaches debugger to Go processes for interactive debugging.
 
@@ -94,7 +94,7 @@ Go Debugger
 **Output**: Go debugging session with interactive capabilities
 
 Go Runtime Analysis
------------------
+-------------------
 
 **Purpose**: Analyzes Go runtime configuration and provides optimization recommendations.
 
@@ -112,7 +112,7 @@ Go Runtime Analysis
 **Output**: Go runtime analysis report with recommendations
 
 Go Application Health Check
--------------------------
+---------------------------
 
 **Purpose**: Performs comprehensive health checks for Go applications.
 
@@ -130,7 +130,7 @@ Go Application Health Check
 **Output**: Go application health check report with status information
 
 Go Build Information
--------------------
+--------------------
 
 **Purpose**: Extracts and displays Go build information from binaries.
 
@@ -148,7 +148,7 @@ Go Build Information
 **Output**: Go build information report with version details
 
 Go Module Analysis
------------------
+------------------
 
 **Purpose**: Analyzes Go module dependencies and versions.
 

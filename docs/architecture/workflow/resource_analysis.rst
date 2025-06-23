@@ -4,7 +4,7 @@ Resource Analysis Workflows
 Resource analysis workflows provide comprehensive analysis of Kubernetes cluster resources, helping optimize resource usage and identify potential issues.
 
 KRR (Kubernetes Resource Recommender) Scan
------------------------------------------
+------------------------------------------
 
 **Purpose**: Analyzes Kubernetes resource requests and limits to provide optimization recommendations.
 
@@ -22,7 +22,7 @@ KRR (Kubernetes Resource Recommender) Scan
 **Output**: Comprehensive resource optimization report with recommendations
 
 Popeye Scan
-----------
+-----------
 
 **Purpose**: Performs cluster health analysis to identify potential issues and best practice violations.
 
@@ -40,7 +40,7 @@ Popeye Scan
 **Output**: Cluster health report with issues and recommendations
 
 Resource Usage Analysis
-----------------------
+-----------------------
 
 **Purpose**: Analyzes current resource usage patterns across the cluster.
 
@@ -58,7 +58,7 @@ Resource Usage Analysis
 **Output**: Resource usage analysis with optimization recommendations
 
 Capacity Planning
-----------------
+-----------------
 
 **Purpose**: Provides insights for cluster capacity planning and resource allocation.
 
@@ -76,7 +76,7 @@ Capacity Planning
 **Output**: Capacity planning report with scaling recommendations
 
 Resource Optimization
---------------------
+---------------------
 
 **Purpose**: Provides specific recommendations for optimizing resource allocation.
 

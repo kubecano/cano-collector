@@ -1,5 +1,5 @@
 Event Types and Resource Monitoring
-==================================
+===================================
 
 This document provides a comprehensive overview of all Kubernetes resource types that cano-collector monitors, including their event characteristics, severity levels, and monitoring considerations.
 
@@ -7,7 +7,7 @@ Core Resource Types
 -------------------
 
 **Pods**
-~~~~~~~~~
+~~~~~~~~
 
 Pods are the fundamental units of deployment in Kubernetes and are critical for application monitoring.
 
@@ -29,6 +29,7 @@ Pods are the fundamental units of deployment in Kubernetes and are critical for 
 - **Unknown**: WARNING - Pod status unclear
 
 **Example Event Processing:**
+
 .. code-block:: go
 
     func processPodEvent(event *KubernetesEvent) *Issue {
@@ -84,6 +85,7 @@ Deployments manage the desired state for Pods and ReplicaSets, providing declara
 - **RolloutFailed**: HIGH - Rolling update failed
 
 **Example Event Processing:**
+
 .. code-block:: go
 
     func processDeploymentEvent(event *KubernetesEvent) *Issue {
@@ -144,6 +146,7 @@ Services provide stable endpoints for accessing Pods and enable load balancing.
 - **EndpointUpdate**: INFO - Endpoints changed
 
 **Example Event Processing:**
+
 .. code-block:: go
 
     func processServiceEvent(event *KubernetesEvent) *Issue {
@@ -173,7 +176,7 @@ Workload Controllers
 --------------------
 
 **ReplicaSets**
-~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
 
 ReplicaSets ensure a specified number of Pod replicas are running at any given time.
 
@@ -193,7 +196,7 @@ ReplicaSets ensure a specified number of Pod replicas are running at any given t
 - **TemplateUpdate**: WARNING - Pod template modified
 
 **DaemonSets**
-~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
 
 DaemonSets ensure all (or some) nodes run a copy of a Pod.
 
@@ -215,7 +218,7 @@ DaemonSets ensure all (or some) nodes run a copy of a Pod.
 - **NodeRemoval**: WARNING - Node removed from cluster
 
 **StatefulSets**
-~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
 StatefulSets manage stateful applications with stable network identities and persistent storage.
 
@@ -261,7 +264,7 @@ Configuration and Storage
 -------------------------
 
 **ConfigMaps**
-~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
 
 ConfigMaps store non-confidential configuration data.
 
@@ -280,7 +283,7 @@ ConfigMaps store non-confidential configuration data.
 - **ConfigCreation**: INFO - New configuration created
 
 **Secrets**
-~~~~~~~~~~
+~~~~~~~~~~~
 
 Secrets store sensitive information like passwords and tokens.
 
@@ -402,7 +405,7 @@ RBAC resources for cluster-wide permissions.
 - **BindingUpdate**: WARNING - Role binding changed
 
 Event Filtering and Configuration
---------------------------------
+---------------------------------
 
 **Resource-Specific Filters:**
 Each resource type can have specific filtering rules:
@@ -508,7 +511,7 @@ Support for custom resource definitions (CRDs):
           CustomInfo: "INFO"
 
 Event Processing Configuration
------------------------------
+------------------------------
 
 **Resource-Specific Processing:**
 Configure how each resource type is processed:

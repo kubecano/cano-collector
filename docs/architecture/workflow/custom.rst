@@ -1,5 +1,5 @@
 Custom Workflows
-===============
+================
 
 Custom workflows allow you to extend cano-collector's capabilities by creating tailored automation rules for your specific use cases and requirements.
 
@@ -17,7 +17,7 @@ TypeScript custom workflows are designed for:
 - **Local deployment** - Workflows that remain within your cluster and aren't contributed back to the project
 
 Contributing Workflows
----------------------
+----------------------
 
 You can contribute new workflows to the cano-collector project by:
 
@@ -32,7 +32,7 @@ This approach is ideal for:
 - Workflows that need to be part of the core distribution
 
 TypeScript Custom Workflows
--------------------------
+---------------------------
 
 TypeScript custom workflows provide a flexible way to create organization-specific workflows without modifying the core codebase. These workflows are:
 
@@ -235,7 +235,7 @@ When creating custom workflows:
    }
 
 Integration with Built-in Workflows
-----------------------------------
+-----------------------------------
 
 Custom workflows can integrate with built-in workflows by:
 

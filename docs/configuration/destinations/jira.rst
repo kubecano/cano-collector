@@ -1,7 +1,7 @@
 .. _jira-destination:
 
 Jira Destination Configuration
-=============================
+==============================
 
 The Jira destination allows cano-collector to create and manage Jira issues for alerts and findings.
 

@@ -1,10 +1,10 @@
 Application Tracing
-==================
+===================
 
 This document describes the tracing architecture in cano-collector, including current implementation and planned enhancements for comprehensive distributed tracing.
 
 Current Tracing Implementation
------------------------------
+------------------------------
 
 Cano-collector currently implements basic OpenTelemetry tracing with the following components:
 
@@ -16,7 +16,7 @@ The tracing system is configured through environment variables:
 .. code-block:: yaml
 
     tracing:
-      mode: "disabled" | "local" | "remote"
+      mode: "disabled" # or "local", "remote"
       endpoint: "http://jaeger:14268/api/traces"  # For remote mode
 
 Tracing Modes
@@ -27,7 +27,7 @@ Tracing Modes
 3. **Remote Mode**: Traces are exported to a configured endpoint (Jaeger, Zipkin, etc.)
 
 Current Trace Points
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 .. list-table::
    :header-rows: 1
@@ -68,7 +68,7 @@ Example Trace Structure
     }
 
 Planned Tracing Enhancements
----------------------------
+----------------------------
 
 The following tracing enhancements should be implemented to provide comprehensive observability:
 
@@ -233,7 +233,7 @@ Workflow Tracing
     }
 
 Complete Trace Flow
-------------------
+-------------------
 
 A complete trace flow for alert processing would look like:
 
@@ -317,7 +317,7 @@ A complete trace flow for alert processing would look like:
     }
 
 Trace Attributes and Events
---------------------------
+---------------------------
 
 Key attributes to include in traces:
 
@@ -384,7 +384,7 @@ Key events to include in traces:
      - destination_name, status
 
 OpenTelemetry Configuration
---------------------------
+---------------------------
 
 Complete OpenTelemetry setup:
 
@@ -446,7 +446,7 @@ Complete OpenTelemetry setup:
     }
 
 Tracing Best Practices
----------------------
+----------------------
 
 1. **Span Naming**: Use descriptive, hierarchical names (e.g., "alert.processing", "workflow.execution")
 2. **Attribute Selection**: Include relevant business context without high cardinality
@@ -456,7 +456,7 @@ Tracing Best Practices
 6. **Sampling**: Use appropriate sampling strategies for production
 
 Example Jaeger Query
--------------------
+--------------------
 
 Useful Jaeger queries for debugging:
 

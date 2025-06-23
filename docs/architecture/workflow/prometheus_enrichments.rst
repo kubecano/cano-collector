@@ -1,10 +1,10 @@
 Prometheus Enrichment Workflows
-==============================
+===============================
 
 Prometheus enrichment workflows provide advanced capabilities for enriching alerts and events with Prometheus metrics, graphs, and analysis.
 
 Prometheus Enrichments
----------------------
+----------------------
 
 **Purpose**: Provides comprehensive Prometheus metric enrichment for alerts and events.
 
@@ -22,7 +22,7 @@ Prometheus Enrichments
 **Output**: Prometheus metric enrichment with graphs and analysis
 
 Prometheus Simulation
---------------------
+---------------------
 
 **Purpose**: Simulates Prometheus queries and provides testing capabilities.
 
@@ -40,7 +40,7 @@ Prometheus Simulation
 **Output**: Prometheus simulation report with performance analysis
 
 Target Down Enrichment
----------------------
+----------------------
 
 **Purpose**: Analyzes Prometheus target down scenarios.
 
@@ -58,7 +58,7 @@ Target Down Enrichment
 **Output**: Target down analysis report with troubleshooting information
 
 CPU Throttling Analysis
-----------------------
+-----------------------
 
 **Purpose**: Analyzes CPU throttling issues in containers.
 
@@ -76,7 +76,7 @@ CPU Throttling Analysis
 **Output**: CPU throttling analysis report with optimization recommendations
 
 Overcommit Enrichments
----------------------
+----------------------
 
 **Purpose**: Analyzes resource overcommit scenarios.
 

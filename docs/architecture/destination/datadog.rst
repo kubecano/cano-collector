@@ -1,5 +1,5 @@
 DataDog Destination
-==================
+===================
 
 The DataDog destination allows cano-collector to send alerts and findings to DataDog as events.
 

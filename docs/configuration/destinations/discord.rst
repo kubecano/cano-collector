@@ -25,7 +25,7 @@ Parameter Reference
   *(Required)* The Discord webhook URL. This URL includes the webhook ID and token that determine which channel receives the messages.
 
 Getting a Discord Webhook URL
-----------------------------
+-----------------------------
 
 1. Open the Discord channel where you want to receive notifications
 2. Go to **Channel Settings** → **Integrations** → **Webhooks**

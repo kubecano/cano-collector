@@ -1,10 +1,10 @@
 StatefulSet Workflows
-====================
+=====================
 
 StatefulSet workflows provide comprehensive monitoring and management capabilities for Kubernetes StatefulSets, including status analysis, scaling monitoring, and troubleshooting.
 
 StatefulSet Replicas Enricher
-----------------------------
+-----------------------------
 
 **Purpose**: Analyzes StatefulSet replica configuration and scaling patterns.
 
@@ -22,7 +22,7 @@ StatefulSet Replicas Enricher
 **Output**: StatefulSet replica analysis report with scaling insights
 
 StatefulSet Status Analysis
---------------------------
+---------------------------
 
 **Purpose**: Provides detailed analysis of StatefulSet status and health.
 
@@ -40,7 +40,7 @@ StatefulSet Status Analysis
 **Output**: StatefulSet status report with detailed analysis
 
 StatefulSet Pod Analysis
------------------------
+------------------------
 
 **Purpose**: Analyzes pods managed by StatefulSets.
 
@@ -58,7 +58,7 @@ StatefulSet Pod Analysis
 **Output**: StatefulSet pod analysis report with pod details
 
 StatefulSet Scaling Monitor
---------------------------
+---------------------------
 
 **Purpose**: Monitors StatefulSet scaling operations and provides progress updates.
 
@@ -76,7 +76,7 @@ StatefulSet Scaling Monitor
 **Output**: StatefulSet scaling progress report with status updates
 
 StatefulSet Health Analysis
---------------------------
+---------------------------
 
 **Purpose**: Analyzes StatefulSet health and identifies potential issues.
 

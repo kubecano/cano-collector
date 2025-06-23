@@ -1,10 +1,10 @@
 Java Workflows
-=============
+==============
 
 Java workflows provide comprehensive debugging and analysis capabilities for Java applications running in Kubernetes pods, including JVM profiling, memory analysis, and debugging tools.
 
 Java Process Inspector
---------------------
+----------------------
 
 **Purpose**: Displays all Java debugging options for every Java process in a pod.
 
@@ -22,7 +22,7 @@ Java Process Inspector
 **Output**: Java process inspection report with debugging options
 
 Pod JMap PID
------------
+------------
 
 **Purpose**: Runs jmap on a specific Java process to analyze memory usage.
 
@@ -40,7 +40,7 @@ Pod JMap PID
 **Output**: JMap analysis report with memory usage details
 
 Pod JStack PID
--------------
+--------------
 
 **Purpose**: Runs jstack on a specific Java process to capture thread dumps.
 
@@ -58,7 +58,7 @@ Pod JStack PID
 **Output**: JStack analysis report with thread dump details
 
 Java Memory Analysis
--------------------
+--------------------
 
 **Purpose**: Provides comprehensive memory analysis for Java applications.
 
@@ -76,7 +76,7 @@ Java Memory Analysis
 **Output**: Java memory analysis report with optimization recommendations
 
 Java Performance Profiling
--------------------------
+--------------------------
 
 **Purpose**: Provides performance profiling for Java applications.
 
@@ -94,7 +94,7 @@ Java Performance Profiling
 **Output**: Java performance profiling report with optimization insights
 
 Java Debugger
-------------
+-------------
 
 **Purpose**: Attaches debugger to Java processes for interactive debugging.
 
@@ -112,7 +112,7 @@ Java Debugger
 **Output**: Java debugging session with interactive capabilities
 
 JVM Configuration Analysis
--------------------------
+--------------------------
 
 **Purpose**: Analyzes JVM configuration and provides optimization recommendations.
 
@@ -130,7 +130,7 @@ JVM Configuration Analysis
 **Output**: JVM configuration analysis report with recommendations
 
 Java Application Health Check
----------------------------
+-----------------------------
 
 **Purpose**: Performs comprehensive health checks for Java applications.
 

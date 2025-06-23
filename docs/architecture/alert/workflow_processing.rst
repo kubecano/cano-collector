@@ -1,10 +1,10 @@
 Workflow Processing and Issue Creation
-=====================================
+======================================
 
 This document describes how cano-collector processes alerts through workflows, creates Issue objects with enrichment blocks, and the architectural considerations for workflow handling.
 
 Workflow Selection and Processing
---------------------------------
+---------------------------------
 
 Workflows in cano-collector provide a flexible mechanism for alert enrichment and processing. The workflow selection process determines which workflows should be applied to a specific alert.
 
@@ -339,12 +339,12 @@ The following enrichment features are planned:
 6. **Recommendation Engine**: Provide actionable recommendations
 
 WorkflowHandler vs AlertHandler
-------------------------------
+-------------------------------
 
 Currently, cano-collector uses `AlertHandler` for processing alerts, but there's a consideration to rename it to `WorkflowHandler` to better reflect its responsibilities.
 
 Current AlertHandler Responsibilities
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The current `AlertHandler` handles:
 
@@ -354,7 +354,7 @@ The current `AlertHandler` handles:
 4. **Metrics Recording**: Tracks alert processing metrics
 
 Proposed WorkflowHandler Responsibilities
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A `WorkflowHandler` would be responsible for:
 
@@ -366,7 +366,7 @@ A `WorkflowHandler` would be responsible for:
 6. **Error Handling**: Handle workflow execution failures
 
 Benefits of WorkflowHandler
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - **Clearer Naming**: Better reflects the actual functionality
 - **Separation of Concerns**: Distinguishes from simple alert handling
@@ -374,7 +374,7 @@ Benefits of WorkflowHandler
 - **Consistency**: Aligns with workflow-centric architecture
 
 Example WorkflowHandler Implementation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: go
 
@@ -424,7 +424,7 @@ Example WorkflowHandler Implementation
     }
 
 Configuration Example
---------------------
+---------------------
 
 Workflow configuration example:
 
