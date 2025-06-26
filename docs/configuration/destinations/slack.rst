@@ -105,6 +105,11 @@ Then reference it in your Helm values:
           slack_channel: "#prod-alerts"
           grouping_interval: 30
 
+.. important::
+
+   The external Kubernetes Secret **must be in the same namespace** where you install the Helm chart. 
+   If the secret is in a different namespace, Helm will fail to resolve the API key during template rendering.
+
 **Method 4: Slack Incoming Webhook (Limited Features)**
 
 For simple notifications without advanced features:
