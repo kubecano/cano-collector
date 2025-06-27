@@ -22,7 +22,7 @@ image:
 
 destinations:
   # Slack destinations configuration
-  # Each destination must have exactly one of: api_key, api_key_value_from, or webhookURL
+  # Each destination must have exactly one of: api_key or api_key_value_from
   slack: 
     # - name: "prod-slack"
     #   # Option 1: Direct API key (for development/testing)
@@ -32,9 +32,6 @@ destinations:
     #   api_key_value_from:
     #     secretName: "kubecano-slack-api-keys"
     #     secretKey: "prod-slack"
-    #   
-    #   # Option 3: Slack Incoming Webhook (limited features)
-    #   webhookURL: "https://hooks.slack.com/services/..."
     #   
     #   slack_channel: "#prod-alerts"
     #   grouping_interval: 30

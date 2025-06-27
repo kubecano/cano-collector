@@ -57,15 +57,13 @@ Validate Slack destination configuration
 {{- $destination := . -}}
 {{- $hasApiKey := hasKey $destination "api_key" -}}
 {{- $hasApiKeyValueFrom := hasKey $destination "api_key_value_from" -}}
-{{- $hasWebhookURL := hasKey $destination "webhookURL" -}}
 {{- $authMethods := 0 -}}
 {{- if $hasApiKey }}{{ $authMethods = add $authMethods 1 }}{{ end -}}
 {{- if $hasApiKeyValueFrom }}{{ $authMethods = add $authMethods 1 }}{{ end -}}
-{{- if $hasWebhookURL }}{{ $authMethods = add $authMethods 1 }}{{ end -}}
 {{- if eq $authMethods 0 -}}
-{{- fail (printf "Slack destination '%s' must have exactly one of: api_key, api_key_value_from, or webhookURL" $destination.name) -}}
+{{- fail (printf "Slack destination '%s' must have exactly one of: api_key or api_key_value_from" $destination.name) -}}
 {{- else if gt $authMethods 1 -}}
-{{- fail (printf "Slack destination '%s' cannot have multiple authentication methods. Use only one of: api_key, api_key_value_from, or webhookURL" $destination.name) -}}
+{{- fail (printf "Slack destination '%s' cannot have multiple authentication methods. Use only one of: api_key or api_key_value_from" $destination.name) -}}
 {{- end -}}
 {{- if $hasApiKeyValueFrom -}}
 {{- if not (hasKey $destination.api_key_value_from "secretName") -}}

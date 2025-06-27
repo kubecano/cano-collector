@@ -22,45 +22,77 @@ func setupTest(t *testing.T) (*SenderFactory, *gomock.Controller) {
 	return NewSenderFactory(mockLogger, mockClient), ctrl
 }
 
-func TestSenderFactory_Create_Slack(t *testing.T) {
+func TestSenderFactory_CreateSender_Slack(t *testing.T) {
 	factory, ctrl := setupTest(t)
 	defer ctrl.Finish()
 
-	dest := destination.Destination{
-		Name:       "slack",
-		WebhookURL: "https://hooks.slack.com/services/XXXX/XXXX",
+	dest := destination.SlackDestination{
+		Name:         "test-slack",
+		APIKey:       "xoxb-test-token",
+		SlackChannel: "#test-channel",
 	}
 
-	sender, err := factory.Create(dest)
+	sender, err := factory.CreateSender(dest)
 	require.NoError(t, err)
-	assert.IsType(t, &SlackSender{}, sender)
+	assert.NotNil(t, sender)
+
+	// Test that sender implements DestinationSender interface
+	_, ok := sender.(DestinationSender)
+	assert.True(t, ok)
 }
 
-func TestSenderFactory_Create_MSTeams(t *testing.T) {
+func TestSenderFactory_CreateSender_Slack_MissingAPIKey(t *testing.T) {
 	factory, ctrl := setupTest(t)
 	defer ctrl.Finish()
 
-	dest := destination.Destination{
+	dest := destination.SlackDestination{
+		Name:         "test-slack",
+		SlackChannel: "#test-channel",
+		// Missing APIKey
+	}
+
+	sender, err := factory.CreateSender(dest)
+	require.Error(t, err)
+	assert.Nil(t, sender)
+	assert.Contains(t, err.Error(), "must have api_key")
+}
+
+func TestSenderFactory_CreateSender_Teams(t *testing.T) {
+	factory, ctrl := setupTest(t)
+	defer ctrl.Finish()
+
+	dest := destination.TeamsDestination{
 		Name:       "teams",
 		WebhookURL: "https://outlook.office.com/webhook/XXXX",
 	}
 
-	sender, err := factory.Create(dest)
+	sender, err := factory.CreateSender(dest)
 	require.NoError(t, err)
 	assert.IsType(t, &MSTeamsSender{}, sender)
 }
 
-func TestSenderFactory_Create_UnsupportedType(t *testing.T) {
+func TestSenderFactory_CreateSender_Teams_NoWebhookURL(t *testing.T) {
 	factory, ctrl := setupTest(t)
 	defer ctrl.Finish()
 
-	dest := destination.Destination{
-		Name:       "pagerduty",
-		WebhookURL: "https://events.pagerduty.com/...",
+	dest := destination.TeamsDestination{
+		Name: "teams",
 	}
 
-	sender, err := factory.Create(dest)
+	sender, err := factory.CreateSender(dest)
 	assert.Nil(t, sender)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unsupported destination type: pagerduty")
+	assert.Contains(t, err.Error(), "must have webhookURL")
+}
+
+func TestSenderFactory_CreateSender_UnsupportedType(t *testing.T) {
+	factory, ctrl := setupTest(t)
+	defer ctrl.Finish()
+
+	unsupportedDest := "not a destination"
+
+	sender, err := factory.CreateSender(unsupportedDest)
+	require.Error(t, err)
+	assert.Nil(t, sender)
+	assert.Contains(t, err.Error(), "unsupported destination type")
 }

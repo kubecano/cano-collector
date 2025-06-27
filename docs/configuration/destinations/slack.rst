@@ -23,7 +23,6 @@ To use Slack integration, you need to create a Slack App and obtain an API key. 
    - `chat:write` - Send messages to channels
    - `chat:write.public` - Send messages to public channels
    - `files:write` - Upload files (for log attachments)
-   - `incoming-webhook` - Post messages via webhook (if using webhook method)
 
 3. **Install App to Workspace**
    
@@ -110,19 +109,6 @@ Then reference it in your Helm values:
    The external Kubernetes Secret **must be in the same namespace** where you install the Helm chart. 
    If the secret is in a different namespace, Helm will fail to resolve the API key during template rendering.
 
-**Method 4: Slack Incoming Webhook (Limited Features)**
-
-For simple notifications without advanced features:
-
-.. code-block:: yaml
-
-    # values.yaml
-    destinations:
-      slack:
-        - name: "simple-slack-destination"
-          webhookURL: "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"
-          slack_channel: "#alerts"
-
 .. note::
 
    The destinations configuration is stored in a Kubernetes Secret and mounted as a YAML file inside the cano-collector pod. This ensures secure handling of sensitive configuration data.
@@ -133,11 +119,11 @@ Parameters
 -   **`name`** (string, required)
     A unique name for this destination instance.
 
--   **`api_key`** (string, required - mutually exclusive with `api_key_value_from` and `webhookURL`)
-    The Slack Bot User OAuth Token, starting with `xoxb-`. This is required for advanced features like file uploads, message updates, and interactivity. You must provide either `api_key`, `api_key_value_from`, or `webhookURL` - but only one of them.
+-   **`api_key`** (string, required - mutually exclusive with `api_key_value_from`)
+    The Slack Bot User OAuth Token, starting with `xoxb-`. This is required for all Slack features including file uploads, message updates, and interactivity. You must provide either `api_key` or `api_key_value_from`.
 
--   **`api_key_value_from`** (object, required - mutually exclusive with `api_key` and `webhookURL`)
-    Reference to a Kubernetes Secret containing the Slack API key. Use this instead of `api_key` when you want to store the token in a separate secret. You must provide either `api_key`, `api_key_value_from`, or `webhookURL` - but only one of them.
+-   **`api_key_value_from`** (object, required - mutually exclusive with `api_key`)
+    Reference to a Kubernetes Secret containing the Slack API key. Use this instead of `api_key` when you want to store the token in a separate secret. You must provide either `api_key` or `api_key_value_from`.
     
     .. code-block:: yaml
     
@@ -162,9 +148,6 @@ Parameters
 
 -   **`unfurl_links`** (boolean, optional)
     Default: `true`. If `true`, links in the notification will be unfurled by Slack to show a preview. Set to `false` to disable this.
-
--   **`webhookURL`** (string, required - mutually exclusive with `api_key` and `api_key_value_from`)
-    For simple, non-interactive notifications, you can use a traditional Slack Incoming Webhook URL. If you use this, functionality will be limited (e.g., no file uploads, no grouping, no message updates). You must provide either `api_key`, `api_key_value_from`, or `webhookURL` - but only one of them. It is highly recommended to use the `api_key` method for the best experience.
 
 Security Best Practices
 -----------------------
