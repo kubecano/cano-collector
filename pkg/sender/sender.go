@@ -1,6 +1,8 @@
 package sender
 
 import (
+	"context"
+
 	"github.com/kubecano/cano-collector/pkg/logger"
 	"github.com/kubecano/cano-collector/pkg/util"
 )
@@ -11,9 +13,9 @@ type Alert struct {
 	Message string
 }
 
-// DestinationSender defines the interface for sending alerts to various destinations
+// DestinationSender defines the interface for sending notifications to various destinations
 type DestinationSender interface {
-	Send(alert Alert) error
+	Send(ctx context.Context, message string) error
 }
 
 // Option defines a function signature for configuring the sender

@@ -21,11 +21,17 @@ func setupTestLoader(t *testing.T) (Config, error) {
 
 	destinationsConfig := destination.DestinationsConfig{
 		Destinations: struct {
-			Slack []destination.Destination `yaml:"slack"`
-			Teams []destination.Destination `yaml:"teams"`
+			Slack []destination.SlackDestination `yaml:"slack"`
+			Teams []destination.TeamsDestination `yaml:"teams"`
 		}{
-			Slack: []destination.Destination{{Name: "alerts", WebhookURL: "https://slack.example.com"}},
-			Teams: []destination.Destination{},
+			Slack: []destination.SlackDestination{
+				{
+					Name:         "alerts",
+					APIKey:       "xoxb-slack-token",
+					SlackChannel: "#alerts",
+				},
+			},
+			Teams: []destination.TeamsDestination{},
 		},
 	}
 	mockDestinations := mocks.NewMockDestinationsLoader(ctrl)

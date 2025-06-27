@@ -10,12 +10,22 @@ import (
 
 type DestinationsConfig struct {
 	Destinations struct {
-		Slack []Destination `yaml:"slack"`
-		Teams []Destination `yaml:"teams"`
+		Slack []SlackDestination `yaml:"slack"`
+		Teams []TeamsDestination `yaml:"teams"`
 	} `yaml:"destinations"`
 }
 
-type Destination struct {
+// SlackDestination represents a Slack notification destination
+type SlackDestination struct {
+	Name             string `yaml:"name"`
+	APIKey           string `yaml:"api_key"`
+	SlackChannel     string `yaml:"slack_channel"`
+	GroupingInterval int    `yaml:"grouping_interval,omitempty"`
+	UnfurlLinks      *bool  `yaml:"unfurl_links,omitempty"`
+}
+
+// TeamsDestination represents a Microsoft Teams notification destination
+type TeamsDestination struct {
 	Name       string `yaml:"name"`
 	WebhookURL string `yaml:"webhookURL"`
 }
@@ -53,12 +63,50 @@ func parseDestinationsYAML(r io.Reader) (*DestinationsConfig, error) {
 		return nil, fmt.Errorf("failed to decode destinations YAML: %w", err)
 	}
 
-	// Optional: Add basic validation
-	for _, d := range append(config.Destinations.Slack, config.Destinations.Teams...) {
-		if d.Name == "" || d.WebhookURL == "" {
-			return nil, fmt.Errorf("invalid destination entry: name and webhookURL must be set")
+	// Validate Slack destinations
+	for _, d := range config.Destinations.Slack {
+		if err := validateSlackDestination(d); err != nil {
+			return nil, fmt.Errorf("invalid Slack destination '%s': %w", d.Name, err)
+		}
+	}
+
+	// Validate Teams destinations
+	for _, d := range config.Destinations.Teams {
+		if err := validateTeamsDestination(d); err != nil {
+			return nil, fmt.Errorf("invalid Teams destination '%s': %w", d.Name, err)
 		}
 	}
 
 	return &config, nil
+}
+
+func validateSlackDestination(d SlackDestination) error {
+	if d.Name == "" {
+		return fmt.Errorf("name is required")
+	}
+
+	if d.SlackChannel == "" {
+		return fmt.Errorf("slack_channel is required")
+	}
+
+	if d.APIKey == "" {
+		return fmt.Errorf("api_key is required")
+	}
+
+	// Validate grouping_interval if provided
+	if d.GroupingInterval < 0 {
+		return fmt.Errorf("grouping_interval must be non-negative")
+	}
+
+	return nil
+}
+
+func validateTeamsDestination(d TeamsDestination) error {
+	if d.Name == "" {
+		return fmt.Errorf("name is required")
+	}
+	if d.WebhookURL == "" {
+		return fmt.Errorf("webhookURL is required")
+	}
+	return nil
 }

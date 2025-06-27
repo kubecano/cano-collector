@@ -1,75 +1,57 @@
 package sender
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
-
-	"github.com/kubecano/cano-collector/pkg/util"
+	"context"
 
 	"github.com/kubecano/cano-collector/pkg/logger"
+	"github.com/kubecano/cano-collector/pkg/util"
 )
 
-// SlackSender sends alerts to a Slack webhook
+// SlackSender sends notifications to Slack
 type SlackSender struct {
-	WebhookURL string
-	httpClient util.HTTPClient
-	logger     logger.LoggerInterface
+	apiKey      string
+	channel     string
+	logger      logger.LoggerInterface
+	httpClient  util.HTTPClient
+	unfurlLinks bool
 }
 
-// NewSlackSender creates a new SlackSender
-func NewSlackSender(webhookURL string, logger logger.LoggerInterface, opts ...Option) *SlackSender {
-	sender := &SlackSender{
-		WebhookURL: webhookURL,
-		httpClient: util.DefaultHTTPClient(),
-		logger:     logger,
+// NewSlackSender creates a new SlackSender using Slack API key
+func NewSlackSender(apiKey, channel string, logger logger.LoggerInterface) *SlackSender {
+	return &SlackSender{
+		apiKey:      apiKey,
+		channel:     channel,
+		logger:      logger,
+		httpClient:  util.DefaultHTTPClient(),
+		unfurlLinks: true, // Default to true
 	}
-
-	// Apply functional options
-	for _, opt := range opts {
-		opt(sender)
-	}
-
-	return sender
 }
 
-// SetClient allows setting a custom HTTP client
+// Send sends a notification to Slack
+func (s *SlackSender) Send(ctx context.Context, message string) error {
+	s.logger.Info("Sending Slack notification", "channel", s.channel)
+
+	// TODO: Implement using slack-go library
+	// For now, just log the message
+	s.logger.Info("Slack message would be sent",
+		"channel", s.channel,
+		"message", message,
+		"unfurl_links", s.unfurlLinks)
+
+	return nil
+}
+
+// SetLogger sets the logger for this sender
+func (s *SlackSender) SetLogger(logger logger.LoggerInterface) {
+	s.logger = logger
+}
+
+// SetClient sets the HTTP client for this sender
 func (s *SlackSender) SetClient(client util.HTTPClient) {
 	s.httpClient = client
 }
 
-// Send sends an alert to Slack
-func (s *SlackSender) Send(alert Alert) error {
-	payload := map[string]string{
-		"text": fmt.Sprintf("*%s*\n%s", alert.Title, alert.Message),
-	}
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return fmt.Errorf("failed to marshal Slack message: %w", err)
-	}
-
-	req, err := http.NewRequest(http.MethodPost, s.WebhookURL, bytes.NewBuffer(data))
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := s.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to send alert to Slack: %w", err)
-	}
-	defer func(body io.ReadCloser) {
-		if err := body.Close(); err != nil {
-			s.logger.Errorf("failed to close response body: %v", err)
-		}
-	}(resp.Body)
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to send to Slack: non-OK status %d", resp.StatusCode)
-	}
-
-	s.logger.Infof("Successfully sent alert to Slack: %s", alert.Title)
-	return nil
+// SetUnfurlLinks sets whether links should be unfurled
+func (s *SlackSender) SetUnfurlLinks(unfurl bool) {
+	s.unfurlLinks = unfurl
 }

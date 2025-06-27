@@ -26,17 +26,25 @@ func NewSenderFactory(logger logger.LoggerInterface, client util.HTTPClient) *Se
 	}
 }
 
-// Create creates a DestinationSender based on destination type
-func (f *SenderFactory) Create(destination destination.Destination, opts ...Option) (DestinationSender, error) {
+// CreateSender creates appropriate DestinationSender based on destination configuration
+func (f *SenderFactory) CreateSender(dest interface{}, opts ...Option) (DestinationSender, error) {
 	var sender DestinationSender
 
-	switch destination.Name {
-	case "slack":
-		sender = NewSlackSender(destination.WebhookURL, f.logger)
-	case "teams":
-		sender = NewMSTeamsSender(destination.WebhookURL, f.logger)
+	switch d := dest.(type) {
+	case destination.SlackDestination:
+		if d.APIKey == "" {
+			return nil, fmt.Errorf("slack destination '%s' must have api_key", d.Name)
+		}
+		sender = NewSlackSender(d.APIKey, d.SlackChannel, f.logger)
+
+	case destination.TeamsDestination:
+		if d.WebhookURL == "" {
+			return nil, fmt.Errorf("teams destination '%s' must have webhookURL", d.Name)
+		}
+		sender = NewMSTeamsSender(d.WebhookURL, f.logger)
+
 	default:
-		return nil, fmt.Errorf("unsupported destination type: %s", destination.Name)
+		return nil, fmt.Errorf("unsupported destination type: %T", dest)
 	}
 
 	// Apply default logger and client if not overridden

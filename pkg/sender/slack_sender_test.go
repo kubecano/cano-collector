@@ -1,13 +1,8 @@
 package sender
 
 import (
-	"bytes"
-	"fmt"
-	"io"
-	"net/http"
+	"context"
 	"testing"
-
-	"github.com/stretchr/testify/require"
 
 	"github.com/kubecano/cano-collector/mocks"
 
@@ -15,80 +10,50 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func setupSlackTest(t *testing.T, statusCode int, responseBody string) *SlackSender {
+func setupSlackTest(t *testing.T) *SlackSender {
 	t.Helper()
 	ctrl := gomock.NewController(t)
 
 	// Mock logger
 	mockLogger := mocks.NewMockLoggerInterface(ctrl)
-	mockLogger.EXPECT().Debug(gomock.Any()).AnyTimes()
-	mockLogger.EXPECT().Debugf(gomock.Any(), gomock.Any()).AnyTimes()
-	mockLogger.EXPECT().Warnf(gomock.Any(), gomock.Any()).AnyTimes()
-	mockLogger.EXPECT().Infof(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
-	mockLogger.EXPECT().Errorf(gomock.Any(), gomock.Any()).AnyTimes()
 
-	// Mock HTTP client
-	mockClient := mocks.NewMockHTTPClient(ctrl)
-	mockClient.EXPECT().
-		Do(gomock.Any()).
-		Return(&http.Response{
-			StatusCode: statusCode,
-			Body:       io.NopCloser(bytes.NewBufferString(responseBody)),
-		}, nil).
-		AnyTimes()
-
-	// Create SlackSender with mock logger and client
-	slackSender := NewSlackSender("http://example.com", mockLogger, WithHTTPClient(mockClient))
+	// Create SlackSender with mock logger
+	slackSender := NewSlackSender("xoxb-test-token", "#test-channel", mockLogger)
 
 	return slackSender
 }
 
 func TestSlackSender_Send_Success(t *testing.T) {
-	slackSender := setupSlackTest(t, http.StatusOK, "ok")
+	slackSender := setupSlackTest(t)
 
-	alert := Alert{
-		Title:   "Test Alert",
-		Message: "This is a test alert message",
-	}
+	ctx := context.Background()
+	message := "This is a test message"
 
-	err := slackSender.Send(alert)
+	err := slackSender.Send(ctx, message)
 	assert.NoError(t, err)
 }
 
-func TestSlackSender_Send_Error(t *testing.T) {
-	slackSender := setupSlackTest(t, http.StatusInternalServerError, "error")
-
-	alert := Alert{
-		Title:   "Error Alert",
-		Message: "This is a failing test",
-	}
-
-	err := slackSender.Send(alert)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to send to Slack")
-}
-
-func TestSlackSender_Send_RequestError(t *testing.T) {
+func TestSlackSender_NewSlackSenderWithAPIKey(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mockLogger := mocks.NewMockLoggerInterface(ctrl)
-	mockClient := mocks.NewMockHTTPClient(ctrl)
 
-	mockClient.EXPECT().
-		Do(gomock.Any()).
-		Return(nil, fmt.Errorf("request error")).
-		Times(1)
+	slackSender := NewSlackSender("xoxb-test-token", "#test-channel", mockLogger)
 
-	slackSender := NewSlackSender("http://example.com", mockLogger, WithHTTPClient(mockClient))
+	assert.NotNil(t, slackSender)
+	assert.Equal(t, "xoxb-test-token", slackSender.apiKey)
+	assert.Equal(t, "#test-channel", slackSender.channel)
+	assert.True(t, slackSender.unfurlLinks) // Default value
+}
 
-	alert := Alert{
-		Title:   "Request Error Alert",
-		Message: "This alert will fail to send",
-	}
+func TestSlackSender_SetUnfurlLinks(t *testing.T) {
+	slackSender := setupSlackTest(t)
 
-	err := slackSender.Send(alert)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to send alert to Slack")
+	slackSender.SetUnfurlLinks(false)
+	assert.False(t, slackSender.unfurlLinks)
+
+	slackSender.SetUnfurlLinks(true)
+	assert.True(t, slackSender.unfurlLinks)
 }

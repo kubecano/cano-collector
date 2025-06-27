@@ -2,6 +2,7 @@ package sender
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -39,17 +40,17 @@ func (s *MSTeamsSender) SetClient(client util.HTTPClient) {
 	s.httpClient = client
 }
 
-// Send sends an alert to Microsoft Teams
-func (s *MSTeamsSender) Send(alert Alert) error {
+// Send sends a message to Microsoft Teams
+func (s *MSTeamsSender) Send(ctx context.Context, message string) error {
 	payload := map[string]string{
-		"text": fmt.Sprintf("**%s**\n%s", alert.Title, alert.Message),
+		"text": message,
 	}
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("failed to marshal MS Teams message: %w", err)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, s.WebhookURL, bytes.NewBuffer(data))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.WebhookURL, bytes.NewBuffer(data))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -57,7 +58,7 @@ func (s *MSTeamsSender) Send(alert Alert) error {
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to send alert to MS Teams: %w", err)
+		return fmt.Errorf("failed to send message to MS Teams: %w", err)
 	}
 	defer func(body io.ReadCloser) {
 		if err := body.Close(); err != nil {
@@ -69,6 +70,6 @@ func (s *MSTeamsSender) Send(alert Alert) error {
 		return fmt.Errorf("failed to send to Microsoft Teams: non-OK status %d", resp.StatusCode)
 	}
 
-	s.logger.Infof("Successfully sent alert to MS Teams: %s", alert.Title)
+	s.logger.Infof("Successfully sent message to MS Teams")
 	return nil
 }
