@@ -2,10 +2,9 @@ package sender
 
 import (
 	"context"
-	"net/http"
-	"time"
 
 	"github.com/kubecano/cano-collector/pkg/logger"
+	"github.com/kubecano/cano-collector/pkg/util"
 )
 
 // SlackSender sends notifications to Slack
@@ -13,17 +12,17 @@ type SlackSender struct {
 	apiKey      string
 	channel     string
 	logger      logger.LoggerInterface
-	httpClient  *http.Client
+	httpClient  util.HTTPClient
 	unfurlLinks bool
 }
 
-// NewSlackSenderWithAPIKey creates a new SlackSender using Slack API key
-func NewSlackSenderWithAPIKey(apiKey, channel string, logger logger.LoggerInterface) *SlackSender {
+// NewSlackSender creates a new SlackSender using Slack API key
+func NewSlackSender(apiKey, channel string, logger logger.LoggerInterface) *SlackSender {
 	return &SlackSender{
 		apiKey:      apiKey,
 		channel:     channel,
 		logger:      logger,
-		httpClient:  &http.Client{Timeout: 30 * time.Second},
+		httpClient:  util.DefaultHTTPClient(),
 		unfurlLinks: true, // Default to true
 	}
 }
@@ -47,8 +46,8 @@ func (s *SlackSender) SetLogger(logger logger.LoggerInterface) {
 	s.logger = logger
 }
 
-// SetHTTPClient sets the HTTP client for this sender
-func (s *SlackSender) SetHTTPClient(client *http.Client) {
+// SetClient sets the HTTP client for this sender
+func (s *SlackSender) SetClient(client util.HTTPClient) {
 	s.httpClient = client
 }
 

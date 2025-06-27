@@ -19,7 +19,7 @@ func setupSlackTest(t *testing.T) *SlackSender {
 	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
 
 	// Create SlackSender with mock logger
-	slackSender := NewSlackSenderWithAPIKey("xoxb-test-token", "#test-channel", mockLogger)
+	slackSender := NewSlackSender("xoxb-test-token", "#test-channel", mockLogger)
 
 	return slackSender
 }
@@ -40,7 +40,7 @@ func TestSlackSender_NewSlackSenderWithAPIKey(t *testing.T) {
 
 	mockLogger := mocks.NewMockLoggerInterface(ctrl)
 
-	slackSender := NewSlackSenderWithAPIKey("xoxb-test-token", "#test-channel", mockLogger)
+	slackSender := NewSlackSender("xoxb-test-token", "#test-channel", mockLogger)
 
 	assert.NotNil(t, slackSender)
 	assert.Equal(t, "xoxb-test-token", slackSender.apiKey)

@@ -35,7 +35,7 @@ func (f *SenderFactory) CreateSender(dest interface{}, opts ...Option) (Destinat
 		if d.APIKey == "" {
 			return nil, fmt.Errorf("slack destination '%s' must have api_key", d.Name)
 		}
-		sender = NewSlackSenderWithAPIKey(d.APIKey, d.SlackChannel, f.logger)
+		sender = NewSlackSender(d.APIKey, d.SlackChannel, f.logger)
 
 	case destination.TeamsDestination:
 		if d.WebhookURL == "" {
