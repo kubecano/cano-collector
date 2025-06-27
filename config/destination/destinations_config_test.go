@@ -87,7 +87,7 @@ func TestValidateSlackDestination_MissingName(t *testing.T) {
 		SlackChannel: "#test",
 	}
 	err := validateSlackDestination(dest)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "name is required")
 }
 
@@ -97,7 +97,7 @@ func TestValidateSlackDestination_MissingChannel(t *testing.T) {
 		APIKey: "xoxb-token",
 	}
 	err := validateSlackDestination(dest)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "slack_channel is required")
 }
 
@@ -107,7 +107,7 @@ func TestValidateSlackDestination_MissingAPIKey(t *testing.T) {
 		SlackChannel: "#test",
 	}
 	err := validateSlackDestination(dest)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "api_key is required")
 }
 
@@ -119,7 +119,7 @@ func TestValidateSlackDestination_NegativeGroupingInterval(t *testing.T) {
 		GroupingInterval: -1,
 	}
 	err := validateSlackDestination(dest)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "grouping_interval must be non-negative")
 }
 
@@ -137,7 +137,7 @@ func TestValidateTeamsDestination_MissingName(t *testing.T) {
 		WebhookURL: "https://outlook.office.com/webhook/XXX",
 	}
 	err := validateTeamsDestination(dest)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "name is required")
 }
 
@@ -146,6 +146,6 @@ func TestValidateTeamsDestination_MissingWebhookURL(t *testing.T) {
 		Name: "test",
 	}
 	err := validateTeamsDestination(dest)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "webhookURL is required")
 }

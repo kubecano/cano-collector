@@ -35,10 +35,6 @@ func TestSenderFactory_CreateSender_Slack(t *testing.T) {
 	sender, err := factory.CreateSender(dest)
 	require.NoError(t, err)
 	assert.NotNil(t, sender)
-
-	// Test that sender implements DestinationSender interface
-	_, ok := sender.(DestinationSender)
-	assert.True(t, ok)
 }
 
 func TestSenderFactory_CreateSender_Slack_MissingAPIKey(t *testing.T) {
