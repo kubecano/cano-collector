@@ -8,7 +8,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	destination "github.com/kubecano/cano-collector/config/config_destination"
+	config_destination "github.com/kubecano/cano-collector/config/destination"
 )
 
 // MockDestinationsLoader is a mock of DestinationsLoader interface.
@@ -35,10 +35,10 @@ func (m *MockDestinationsLoader) EXPECT() *MockDestinationsLoaderMockRecorder {
 }
 
 // Load mocks base method.
-func (m *MockDestinationsLoader) Load() (*destination.DestinationsConfig, error) {
+func (m *MockDestinationsLoader) Load() (*config_destination.DestinationsConfig, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Load")
-	ret0, _ := ret[0].(*destination.DestinationsConfig)
+	ret0, _ := ret[0].(*config_destination.DestinationsConfig)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
