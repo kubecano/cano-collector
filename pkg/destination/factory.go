@@ -43,7 +43,7 @@ func (f *DestinationFactory) createSlackDestination(d *config_destination.Destin
 		APIKey:           d.APIKey,
 		SlackChannel:     d.SlackChannel,
 		GroupingInterval: d.GroupingInterval,
-		UnfurlLinks:      d.UnfurlLinks != nil && *d.UnfurlLinks,
+		UnfurlLinks:      d.UnfurlLinks == nil || *d.UnfurlLinks,
 	}
 	return destslack.NewDestinationSlack(cfg, f.logger, f.httpClient), nil
 }
