@@ -10,22 +10,25 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func setupSlackTest(t *testing.T) *SlackSender {
+func setupSenderSlackTest(t *testing.T) *SenderSlack {
 	t.Helper()
 	ctrl := gomock.NewController(t)
 
-	// Mock logger
 	mockLogger := mocks.NewMockLoggerInterface(ctrl)
 	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
+	mockClient := mocks.NewMockHTTPClient(ctrl)
 
-	// Create SlackSender with mock logger
-	slackSender := NewSlackSender("xoxb-test-token", "#test-channel", mockLogger)
+	cfg := SenderSlackConfig{
+		APIKey:      "xoxb-test-token",
+		Channel:     "#test-channel",
+		UnfurlLinks: true,
+	}
 
-	return slackSender
+	return NewSenderSlack(cfg, mockLogger, mockClient)
 }
 
-func TestSlackSender_Send_Success(t *testing.T) {
-	slackSender := setupSlackTest(t)
+func TestSenderSlack_Send_Success(t *testing.T) {
+	slackSender := setupSenderSlackTest(t)
 
 	ctx := context.Background()
 	message := "This is a test message"
@@ -34,13 +37,18 @@ func TestSlackSender_Send_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestSlackSender_NewSlackSenderWithAPIKey(t *testing.T) {
+func TestSenderSlack_Config(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mockLogger := mocks.NewMockLoggerInterface(ctrl)
-
-	slackSender := NewSlackSender("xoxb-test-token", "#test-channel", mockLogger)
+	mockClient := mocks.NewMockHTTPClient(ctrl)
+	cfg := SenderSlackConfig{
+		APIKey:      "xoxb-test-token",
+		Channel:     "#test-channel",
+		UnfurlLinks: false,
+	}
+	slackSender := NewSenderSlack(cfg, mockLogger, mockClient)
 
 	assert.NotNil(t, slackSender)
 	assert.Equal(t, "xoxb-test-token", slackSender.apiKey)
@@ -49,7 +57,7 @@ func TestSlackSender_NewSlackSenderWithAPIKey(t *testing.T) {
 }
 
 func TestSlackSender_SetUnfurlLinks(t *testing.T) {
-	slackSender := setupSlackTest(t)
+	slackSender := setupSenderSlackTest(t)
 
 	slackSender.SetUnfurlLinks(false)
 	assert.False(t, slackSender.unfurlLinks)
