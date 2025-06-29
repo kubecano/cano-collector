@@ -4,28 +4,25 @@ import (
 	"context"
 	"testing"
 
-	"github.com/kubecano/cano-collector/mocks"
-
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/kubecano/cano-collector/mocks"
 )
 
-func setupSlackTest(t *testing.T) *SlackSender {
+func setupSenderSlackTest(t *testing.T) *SenderSlack {
 	t.Helper()
 	ctrl := gomock.NewController(t)
 
-	// Mock logger
 	mockLogger := mocks.NewMockLoggerInterface(ctrl)
 	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
+	mockClient := mocks.NewMockHTTPClient(ctrl)
 
-	// Create SlackSender with mock logger
-	slackSender := NewSlackSender("xoxb-test-token", "#test-channel", mockLogger)
-
-	return slackSender
+	return NewSenderSlack("xoxb-test-token", "#test-channel", true, mockLogger, mockClient)
 }
 
-func TestSlackSender_Send_Success(t *testing.T) {
-	slackSender := setupSlackTest(t)
+func TestSenderSlack_Send_Success(t *testing.T) {
+	slackSender := setupSenderSlackTest(t)
 
 	ctx := context.Background()
 	message := "This is a test message"
@@ -34,22 +31,19 @@ func TestSlackSender_Send_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestSlackSender_NewSlackSenderWithAPIKey(t *testing.T) {
+func TestSenderSlack_Config(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-
 	mockLogger := mocks.NewMockLoggerInterface(ctrl)
-
-	slackSender := NewSlackSender("xoxb-test-token", "#test-channel", mockLogger)
-
-	assert.NotNil(t, slackSender)
+	mockClient := mocks.NewMockHTTPClient(ctrl)
+	slackSender := NewSenderSlack("xoxb-test-token", "#test-channel", false, mockLogger, mockClient)
 	assert.Equal(t, "xoxb-test-token", slackSender.apiKey)
 	assert.Equal(t, "#test-channel", slackSender.channel)
-	assert.True(t, slackSender.unfurlLinks) // Default value
+	assert.False(t, slackSender.unfurlLinks)
 }
 
 func TestSlackSender_SetUnfurlLinks(t *testing.T) {
-	slackSender := setupSlackTest(t)
+	slackSender := setupSenderSlackTest(t)
 
 	slackSender.SetUnfurlLinks(false)
 	assert.False(t, slackSender.unfurlLinks)

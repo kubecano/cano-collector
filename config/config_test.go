@@ -6,8 +6,8 @@ import (
 
 	"github.com/golang/mock/gomock"
 
-	"github.com/kubecano/cano-collector/config/destination"
-	"github.com/kubecano/cano-collector/config/team"
+	config_destination "github.com/kubecano/cano-collector/config/destination"
+	config_team "github.com/kubecano/cano-collector/config/team"
 	"github.com/kubecano/cano-collector/mocks"
 
 	"github.com/stretchr/testify/assert"
@@ -19,26 +19,24 @@ func setupTestLoader(t *testing.T) (Config, error) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	destinationsConfig := destination.DestinationsConfig{
+	destinationsConfig := config_destination.DestinationsConfig{
 		Destinations: struct {
-			Slack []destination.SlackDestination `yaml:"slack"`
-			Teams []destination.TeamsDestination `yaml:"teams"`
+			Slack []config_destination.DestinationSlack `yaml:"slack"`
 		}{
-			Slack: []destination.SlackDestination{
+			Slack: []config_destination.DestinationSlack{
 				{
 					Name:         "alerts",
 					APIKey:       "xoxb-slack-token",
 					SlackChannel: "#alerts",
 				},
 			},
-			Teams: []destination.TeamsDestination{},
 		},
 	}
 	mockDestinations := mocks.NewMockDestinationsLoader(ctrl)
 	mockDestinations.EXPECT().Load().AnyTimes().Return(&destinationsConfig, nil)
 
-	teamsConfig := team.TeamsConfig{
-		Teams: []team.Team{
+	teamsConfig := config_team.TeamsConfig{
+		Teams: []config_team.Team{
 			{Name: "devops", Destinations: []string{"alerts"}},
 		},
 	}
@@ -127,7 +125,7 @@ func TestLoadConfigWithLoader_Error(t *testing.T) {
 	mockErr := assert.AnError
 
 	mockLoader := mocks.NewMockFullConfigLoader(ctrl)
-	mockLoader.EXPECT().Load().AnyTimes().Return(destination.DestinationsConfig{}, team.TeamsConfig{}, mockErr)
+	mockLoader.EXPECT().Load().AnyTimes().Return(config_destination.DestinationsConfig{}, config_team.TeamsConfig{}, mockErr)
 
 	cfg, err := LoadConfigWithLoader(mockLoader)
 

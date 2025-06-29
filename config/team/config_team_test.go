@@ -1,4 +1,4 @@
-package team
+package config_team
 
 import (
 	"os"

@@ -8,8 +8,8 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	destination "github.com/kubecano/cano-collector/config/destination"
-	team "github.com/kubecano/cano-collector/config/team"
+	config_destination "github.com/kubecano/cano-collector/config/destination"
+	config_team "github.com/kubecano/cano-collector/config/team"
 )
 
 // MockFullConfigLoader is a mock of FullConfigLoader interface.
@@ -36,11 +36,11 @@ func (m *MockFullConfigLoader) EXPECT() *MockFullConfigLoaderMockRecorder {
 }
 
 // Load mocks base method.
-func (m *MockFullConfigLoader) Load() (destination.DestinationsConfig, team.TeamsConfig, error) {
+func (m *MockFullConfigLoader) Load() (config_destination.DestinationsConfig, config_team.TeamsConfig, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Load")
-	ret0, _ := ret[0].(destination.DestinationsConfig)
-	ret1, _ := ret[1].(team.TeamsConfig)
+	ret0, _ := ret[0].(config_destination.DestinationsConfig)
+	ret1, _ := ret[1].(config_team.TeamsConfig)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }

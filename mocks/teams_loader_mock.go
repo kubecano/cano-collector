@@ -8,7 +8,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	team "github.com/kubecano/cano-collector/config/team"
+	config_team "github.com/kubecano/cano-collector/config/team"
 )
 
 // MockTeamsLoader is a mock of TeamsLoader interface.
@@ -35,10 +35,10 @@ func (m *MockTeamsLoader) EXPECT() *MockTeamsLoaderMockRecorder {
 }
 
 // Load mocks base method.
-func (m *MockTeamsLoader) Load() (*team.TeamsConfig, error) {
+func (m *MockTeamsLoader) Load() (*config_team.TeamsConfig, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Load")
-	ret0, _ := ret[0].(*team.TeamsConfig)
+	ret0, _ := ret[0].(*config_team.TeamsConfig)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

@@ -4,8 +4,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/kubecano/cano-collector/config/destination"
-	"github.com/kubecano/cano-collector/config/team"
+	config_destination "github.com/kubecano/cano-collector/config/destination"
+	config_team "github.com/kubecano/cano-collector/config/team"
 )
 
 type Config struct {
@@ -17,13 +17,13 @@ type Config struct {
 	TracingEndpoint string
 	SentryDSN       string
 	SentryEnabled   bool
-	Destinations    destination.DestinationsConfig
-	Teams           team.TeamsConfig
+	Destinations    config_destination.DestinationsConfig
+	Teams           config_team.TeamsConfig
 }
 
 //go:generate mockgen -destination=../mocks/fullconfig_loader_mock.go -package=mocks github.com/kubecano/cano-collector/config FullConfigLoader
 type FullConfigLoader interface {
-	Load() (destination.DestinationsConfig, team.TeamsConfig, error)
+	Load() (config_destination.DestinationsConfig, config_team.TeamsConfig, error)
 }
 
 // LoadConfigWithLoader reads the Config from the provided loader
@@ -56,18 +56,18 @@ func NewFileConfigLoader(destinationsPath, teamsPath string) FullConfigLoader {
 	return &fileConfigLoader{destinationsPath: destinationsPath, teamsPath: teamsPath}
 }
 
-func (f *fileConfigLoader) Load() (destination.DestinationsConfig, team.TeamsConfig, error) {
-	destLoader := destination.NewFileDestinationsLoader(f.destinationsPath)
-	teamLoader := team.NewFileTeamsLoader(f.teamsPath)
+func (f *fileConfigLoader) Load() (config_destination.DestinationsConfig, config_team.TeamsConfig, error) {
+	destLoader := config_destination.NewFileDestinationsLoader(f.destinationsPath)
+	teamLoader := config_team.NewFileTeamsLoader(f.teamsPath)
 
 	d, err := destLoader.Load()
 	if err != nil {
-		return destination.DestinationsConfig{}, team.TeamsConfig{}, err
+		return config_destination.DestinationsConfig{}, config_team.TeamsConfig{}, err
 	}
 
 	t, err := teamLoader.Load()
 	if err != nil {
-		return destination.DestinationsConfig{}, team.TeamsConfig{}, err
+		return config_destination.DestinationsConfig{}, config_team.TeamsConfig{}, err
 	}
 
 	return *d, *t, nil

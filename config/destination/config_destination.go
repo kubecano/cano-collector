@@ -1,4 +1,4 @@
-package destination
+package config_destination
 
 import (
 	"fmt"
@@ -10,24 +10,17 @@ import (
 
 type DestinationsConfig struct {
 	Destinations struct {
-		Slack []SlackDestination `yaml:"slack"`
-		Teams []TeamsDestination `yaml:"teams"`
+		Slack []DestinationSlack `yaml:"slack"`
 	} `yaml:"destinations"`
 }
 
 // SlackDestination represents a Slack notification destination
-type SlackDestination struct {
+type DestinationSlack struct {
 	Name             string `yaml:"name"`
 	APIKey           string `yaml:"api_key"`
 	SlackChannel     string `yaml:"slack_channel"`
 	GroupingInterval int    `yaml:"grouping_interval,omitempty"`
 	UnfurlLinks      *bool  `yaml:"unfurl_links,omitempty"`
-}
-
-// TeamsDestination represents a Microsoft Teams notification destination
-type TeamsDestination struct {
-	Name       string `yaml:"name"`
-	WebhookURL string `yaml:"webhookURL"`
 }
 
 //go:generate mockgen -destination=../../mocks/destinations_loader_mock.go -package=mocks github.com/kubecano/cano-collector/config/destination DestinationsLoader
@@ -70,17 +63,10 @@ func parseDestinationsYAML(r io.Reader) (*DestinationsConfig, error) {
 		}
 	}
 
-	// Validate Teams destinations
-	for _, d := range config.Destinations.Teams {
-		if err := validateTeamsDestination(d); err != nil {
-			return nil, fmt.Errorf("invalid Teams destination '%s': %w", d.Name, err)
-		}
-	}
-
 	return &config, nil
 }
 
-func validateSlackDestination(d SlackDestination) error {
+func validateSlackDestination(d DestinationSlack) error {
 	if d.Name == "" {
 		return fmt.Errorf("name is required")
 	}
@@ -98,15 +84,5 @@ func validateSlackDestination(d SlackDestination) error {
 		return fmt.Errorf("grouping_interval must be non-negative")
 	}
 
-	return nil
-}
-
-func validateTeamsDestination(d TeamsDestination) error {
-	if d.Name == "" {
-		return fmt.Errorf("name is required")
-	}
-	if d.WebhookURL == "" {
-		return fmt.Errorf("webhookURL is required")
-	}
 	return nil
 }
