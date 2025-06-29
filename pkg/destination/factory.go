@@ -24,7 +24,7 @@ func NewDestinationFactory(logger logger.LoggerInterface, httpClient util.HTTPCl
 	}
 }
 
-// config: może być np. config_destination.SlackDestination
+// config: can be e.g. config_destination.SlackDestination
 func (f *DestinationFactory) CreateDestination(config interface{}) (interface{}, error) {
 	switch d := config.(type) {
 	case config_destination.DestinationSlack:
