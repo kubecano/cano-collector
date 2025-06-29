@@ -4,10 +4,11 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/kubecano/cano-collector/mocks"
-	destination_config "github.com/kubecano/cano-collector/pkg/config/destination"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	destination_config "github.com/kubecano/cano-collector/config/destination"
+	"github.com/kubecano/cano-collector/mocks"
 )
 
 func setupTest(t *testing.T) (*DestinationFactory, *gomock.Controller) {
@@ -31,7 +32,7 @@ func TestDestinationFactory_CreateDestinationSlack(t *testing.T) {
 	}
 
 	d, err := factory.CreateDestination(dest)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, d)
 }
 

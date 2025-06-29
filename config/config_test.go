@@ -5,7 +5,8 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	config_destination "github.com/kubecano/cano-collector/config/config_destination"
+
+	config_destination "github.com/kubecano/cano-collector/config/destination"
 	config_team "github.com/kubecano/cano-collector/config/team"
 	"github.com/kubecano/cano-collector/mocks"
 

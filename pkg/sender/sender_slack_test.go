@@ -5,8 +5,9 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/kubecano/cano-collector/mocks"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/kubecano/cano-collector/mocks"
 )
 
 func setupSenderSlackTest(t *testing.T) *SenderSlack {

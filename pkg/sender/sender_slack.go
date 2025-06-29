@@ -7,7 +7,6 @@ import (
 	"github.com/kubecano/cano-collector/pkg/util"
 )
 
-//go:generate mockgen -destination=../../mocks/sender_slack_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/sender SenderSlack
 type SenderSlack struct {
 	apiKey      string
 	channel     string

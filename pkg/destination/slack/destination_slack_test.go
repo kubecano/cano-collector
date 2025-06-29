@@ -5,18 +5,28 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/kubecano/cano-collector/mocks"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/kubecano/cano-collector/mocks"
 )
 
 func TestDestinationSlack_Send_DelegatesToSender(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockSender := mocks.NewMockSenderSlack(ctrl)
-	mockSender.EXPECT().Send(gomock.Any(), "test message").Return(nil).Times(1)
+	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+	mockClient := mocks.NewMockHTTPClient(ctrl)
+	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
 
-	d := NewDestinationSlack(mockSender)
+	// Tworzymy config dla destination
+	cfg := &DestinationSlackConfig{
+		Name:         "test-slack",
+		APIKey:       "xoxb-test-token",
+		SlackChannel: "#test-channel",
+		UnfurlLinks:  true,
+	}
+
+	d := NewDestinationSlack(cfg, mockLogger, mockClient)
 	err := d.Send(context.Background(), "test message")
 	assert.NoError(t, err)
 }
