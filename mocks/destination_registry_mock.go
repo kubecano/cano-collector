@@ -8,6 +8,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	config_destination "github.com/kubecano/cano-collector/config/destination"
 	destination "github.com/kubecano/cano-collector/pkg/destination"
 )
 
@@ -62,6 +63,20 @@ func (m *MockDestinationRegistryInterface) GetDestinations(arg0 []string) ([]des
 func (mr *MockDestinationRegistryInterfaceMockRecorder) GetDestinations(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDestinations", reflect.TypeOf((*MockDestinationRegistryInterface)(nil).GetDestinations), arg0)
+}
+
+// LoadFromConfig mocks base method.
+func (m *MockDestinationRegistryInterface) LoadFromConfig(arg0 config_destination.DestinationsConfig) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LoadFromConfig", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// LoadFromConfig indicates an expected call of LoadFromConfig.
+func (mr *MockDestinationRegistryInterfaceMockRecorder) LoadFromConfig(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadFromConfig", reflect.TypeOf((*MockDestinationRegistryInterface)(nil).LoadFromConfig), arg0)
 }
 
 // RegisterDestination mocks base method.

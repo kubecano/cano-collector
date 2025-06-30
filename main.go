@@ -64,7 +64,8 @@ func main() {
 			return alert.NewTeamResolver(teams, log)
 		},
 		AlertDispatcherFactory: func(registry destination.DestinationRegistryInterface, log logger.LoggerInterface) alert.AlertDispatcherInterface {
-			return alert.NewAlertDispatcher(registry, log)
+			formatter := alert.NewAlertFormatter()
+			return alert.NewAlertDispatcher(registry, formatter, log)
 		},
 		AlertHandlerFactory: func(log logger.LoggerInterface, m metric.MetricsInterface, tr alert.TeamResolverInterface, ad alert.AlertDispatcherInterface) alert.AlertHandlerInterface {
 			return alert.NewAlertHandler(log, m, tr, ad)
@@ -99,7 +100,7 @@ func run(cfg config.Config, deps AppDependencies) error {
 	destinationRegistry := deps.DestinationRegistry(destinationFactory, log)
 
 	// Load destinations from config
-	if err := destinationRegistry.(*destination.DestinationRegistry).LoadFromConfig(cfg.Destinations); err != nil {
+	if err := destinationRegistry.LoadFromConfig(cfg.Destinations); err != nil {
 		log.Fatalf("Failed to load destinations from config: %v", err)
 		return err
 	}

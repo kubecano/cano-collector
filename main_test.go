@@ -72,6 +72,8 @@ func TestRun_WithMocks(t *testing.T) {
 	mockTracer.EXPECT().InitTracer(gomock.Any()).Return(nil).Times(1)
 	mockTracer.EXPECT().ShutdownTracer(gomock.Any()).Return(nil).Times(1)
 
+	mockDestinationRegistry.EXPECT().LoadFromConfig(gomock.Any()).Return(nil).Times(1)
+
 	g := gin.New()
 	mockRouter.EXPECT().SetupRouter().Return(g).Times(1)
 	mockRouter.EXPECT().StartServer(g).Times(1)

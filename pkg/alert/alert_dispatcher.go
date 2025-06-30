@@ -20,13 +20,15 @@ type AlertDispatcherInterface interface {
 // AlertDispatcher dispatches alerts to team destinations
 type AlertDispatcher struct {
 	destinationRegistry destination.DestinationRegistryInterface
+	alertFormatter      AlertFormatterInterface
 	logger              logger.LoggerInterface
 }
 
 // NewAlertDispatcher creates a new alert dispatcher
-func NewAlertDispatcher(registry destination.DestinationRegistryInterface, logger logger.LoggerInterface) *AlertDispatcher {
+func NewAlertDispatcher(registry destination.DestinationRegistryInterface, formatter AlertFormatterInterface, logger logger.LoggerInterface) *AlertDispatcher {
 	return &AlertDispatcher{
 		destinationRegistry: registry,
+		alertFormatter:      formatter,
 		logger:              logger,
 	}
 }
@@ -49,8 +51,8 @@ func (d *AlertDispatcher) DispatchAlert(ctx context.Context, alert template.Data
 		return fmt.Errorf("failed to get destinations for team '%s': %w", team.Name, err)
 	}
 
-	// Convert alert to message format
-	message := d.formatAlertMessage(alert)
+	// Convert alert to message format using formatter
+	message := d.alertFormatter.FormatAlert(alert)
 
 	// Send to all destinations
 	var errors []string
@@ -72,37 +74,4 @@ func (d *AlertDispatcher) DispatchAlert(ctx context.Context, alert template.Data
 	}
 
 	return nil
-}
-
-// formatAlertMessage converts alertmanager alert to a readable message
-func (d *AlertDispatcher) formatAlertMessage(alert template.Data) string {
-	var messages []string
-
-	messages = append(messages, fmt.Sprintf("🚨 **Alert: %s**", alert.Status))
-
-	if alert.GroupLabels != nil {
-		for key, value := range alert.GroupLabels {
-			messages = append(messages, fmt.Sprintf("**%s:** %s", key, value))
-		}
-	}
-
-	messages = append(messages, "")
-
-	for _, alertItem := range alert.Alerts {
-		messages = append(messages, fmt.Sprintf("**Alert:** %s", alertItem.Labels["alertname"]))
-		messages = append(messages, fmt.Sprintf("**Status:** %s", alertItem.Status))
-		messages = append(messages, fmt.Sprintf("**Severity:** %s", alertItem.Labels["severity"]))
-
-		if alertItem.Annotations["summary"] != "" {
-			messages = append(messages, fmt.Sprintf("**Summary:** %s", alertItem.Annotations["summary"]))
-		}
-
-		if alertItem.Annotations["description"] != "" {
-			messages = append(messages, fmt.Sprintf("**Description:** %s", alertItem.Annotations["description"]))
-		}
-
-		messages = append(messages, "")
-	}
-
-	return strings.Join(messages, "\n")
 }

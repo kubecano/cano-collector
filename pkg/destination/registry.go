@@ -13,6 +13,7 @@ type DestinationRegistryInterface interface {
 	GetDestination(name string) (DestinationInterface, error)
 	GetDestinations(names []string) ([]DestinationInterface, error)
 	RegisterDestination(name string, destination DestinationInterface)
+	LoadFromConfig(config config_destination.DestinationsConfig) error
 }
 
 // DestinationRegistry manages a registry of destinations
