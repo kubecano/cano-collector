@@ -20,13 +20,25 @@ type AlertHandlerInterface interface {
 
 // AlertHandler handles incoming alerts from Alertmanager
 type AlertHandler struct {
-	logger  logger.LoggerInterface
-	metrics metric.MetricsInterface
+	logger          logger.LoggerInterface
+	metrics         metric.MetricsInterface
+	teamResolver    TeamResolverInterface
+	alertDispatcher AlertDispatcherInterface
 }
 
 // NewAlertHandler creates a new handler with dependencies
-func NewAlertHandler(logger logger.LoggerInterface, metrics metric.MetricsInterface) *AlertHandler {
-	return &AlertHandler{logger: logger, metrics: metrics}
+func NewAlertHandler(
+	logger logger.LoggerInterface,
+	metrics metric.MetricsInterface,
+	teamResolver TeamResolverInterface,
+	alertDispatcher AlertDispatcherInterface,
+) *AlertHandler {
+	return &AlertHandler{
+		logger:          logger,
+		metrics:         metrics,
+		teamResolver:    teamResolver,
+		alertDispatcher: alertDispatcher,
+	}
 }
 
 // HandleAlert processes alerts
@@ -65,9 +77,42 @@ func (h *AlertHandler) HandleAlert(c *gin.Context) {
 	// Register received alert metric
 	h.metrics.ObserveAlert(alert.Receiver, alert.Status)
 
-	// TODO: Convert alert to Issue model and dispatch using routing engine
-	//  This will be implemented in the next tasks
+	// Resolve which team should handle this alert
+	team, err := h.teamResolver.ResolveTeam(alert)
+	if err != nil {
+		h.logger.Error("Failed to resolve team for alert", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to resolve team"})
+		return
+	}
 
-	h.logger.Info("Received alert: ", zap.Any("alert", alert))
-	c.JSON(http.StatusOK, gin.H{"status": "alert received"})
+	// Dispatch alert to team destinations
+	ctx := c.Request.Context()
+	dispatchErr := h.alertDispatcher.DispatchAlert(ctx, alert, team)
+	if dispatchErr != nil {
+		h.logger.Error("Failed to dispatch alert", zap.Error(dispatchErr))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to dispatch alert"})
+		return
+	}
+
+	if team == nil {
+		h.logger.Warn("Alert received but no team resolved - alert not processed",
+			zap.String("receiver", alert.Receiver),
+			zap.String("status", alert.Status),
+			zap.Int("alerts_count", len(alert.Alerts)))
+	} else if len(team.Destinations) == 0 {
+		h.logger.Warn("Alert received for team, but team has no destinations - alert not processed",
+			zap.String("receiver", alert.Receiver),
+			zap.String("status", alert.Status),
+			zap.Int("alerts_count", len(alert.Alerts)),
+			zap.String("team", team.Name))
+	} else {
+		h.logger.Info("Alert processed successfully",
+			zap.String("receiver", alert.Receiver),
+			zap.String("status", alert.Status),
+			zap.Int("alerts_count", len(alert.Alerts)),
+			zap.String("team", team.Name))
+	}
+
+	h.logger.Info("Processed alert: ", zap.Any("alert", alert))
+	c.JSON(http.StatusOK, gin.H{"status": "alert processed"})
 }

@@ -10,8 +10,10 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/kubecano/cano-collector/config"
+	config_team "github.com/kubecano/cano-collector/config/team"
 	"github.com/kubecano/cano-collector/mocks"
 	"github.com/kubecano/cano-collector/pkg/alert"
+	"github.com/kubecano/cano-collector/pkg/destination"
 	"github.com/kubecano/cano-collector/pkg/health"
 	"github.com/kubecano/cano-collector/pkg/logger"
 	"github.com/kubecano/cano-collector/pkg/metric"
@@ -55,6 +57,10 @@ func TestRun_WithMocks(t *testing.T) {
 	mockMetrics := mocks.NewMockMetricsInterface(ctrl)
 	mockAlerts := mocks.NewMockAlertHandlerInterface(ctrl)
 	mockRouter := mocks.NewMockRouterInterface(ctrl)
+	mockDestinationFactory := &destination.DestinationFactory{}
+	mockDestinationRegistry := mocks.NewMockDestinationRegistryInterface(ctrl)
+	mockTeamResolver := mocks.NewMockTeamResolverInterface(ctrl)
+	mockAlertDispatcher := mocks.NewMockAlertDispatcherInterface(ctrl)
 
 	// Mock zachowania
 	mockLogger.EXPECT().Debug(gomock.Any()).AnyTimes()
@@ -75,7 +81,17 @@ func TestRun_WithMocks(t *testing.T) {
 		HealthCheckerFactory: func(cfg config.Config, log logger.LoggerInterface) health.HealthInterface { return mockHealth },
 		TracerManagerFactory: func(cfg config.Config, log logger.LoggerInterface) tracer.TracerInterface { return mockTracer },
 		MetricsFactory:       func(log logger.LoggerInterface) metric.MetricsInterface { return mockMetrics },
-		AlertHandlerFactory: func(log logger.LoggerInterface, m metric.MetricsInterface) alert.AlertHandlerInterface {
+		DestinationFactory:   func(log logger.LoggerInterface) *destination.DestinationFactory { return mockDestinationFactory },
+		DestinationRegistry: func(factory *destination.DestinationFactory, log logger.LoggerInterface) destination.DestinationRegistryInterface {
+			return mockDestinationRegistry
+		},
+		TeamResolverFactory: func(teams config_team.TeamsConfig, log logger.LoggerInterface) alert.TeamResolverInterface {
+			return mockTeamResolver
+		},
+		AlertDispatcherFactory: func(registry destination.DestinationRegistryInterface, log logger.LoggerInterface) alert.AlertDispatcherInterface {
+			return mockAlertDispatcher
+		},
+		AlertHandlerFactory: func(log logger.LoggerInterface, m metric.MetricsInterface, tr alert.TeamResolverInterface, ad alert.AlertDispatcherInterface) alert.AlertHandlerInterface {
 			return mockAlerts
 		},
 		RouterManagerFactory: func(cfg config.Config, log logger.LoggerInterface, t tracer.TracerInterface, m metric.MetricsInterface, h health.HealthInterface, a alert.AlertHandlerInterface) router.RouterInterface {
