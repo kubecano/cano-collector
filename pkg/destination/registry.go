@@ -5,20 +5,21 @@ import (
 	"sync"
 
 	config_destination "github.com/kubecano/cano-collector/config/destination"
+	"github.com/kubecano/cano-collector/pkg/interfaces"
 	"github.com/kubecano/cano-collector/pkg/logger"
 )
 
 //go:generate mockgen -destination=../../mocks/destination_registry_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/destination DestinationRegistryInterface
 type DestinationRegistryInterface interface {
-	GetDestination(name string) (DestinationInterface, error)
-	GetDestinations(names []string) ([]DestinationInterface, error)
-	RegisterDestination(name string, destination DestinationInterface)
+	GetDestination(name string) (interfaces.DestinationInterface, error)
+	GetDestinations(names []string) ([]interfaces.DestinationInterface, error)
+	RegisterDestination(name string, destination interfaces.DestinationInterface)
 	LoadFromConfig(config config_destination.DestinationsConfig) error
 }
 
 // DestinationRegistry manages a registry of destinations
 type DestinationRegistry struct {
-	destinations map[string]DestinationInterface
+	destinations map[string]interfaces.DestinationInterface
 	factory      *DestinationFactory
 	logger       logger.LoggerInterface
 	mu           sync.RWMutex
@@ -27,7 +28,7 @@ type DestinationRegistry struct {
 // NewDestinationRegistry creates a new destination registry
 func NewDestinationRegistry(factory *DestinationFactory, logger logger.LoggerInterface) *DestinationRegistry {
 	return &DestinationRegistry{
-		destinations: make(map[string]DestinationInterface),
+		destinations: make(map[string]interfaces.DestinationInterface),
 		factory:      factory,
 		logger:       logger,
 	}
@@ -45,7 +46,7 @@ func (r *DestinationRegistry) LoadFromConfig(config config_destination.Destinati
 			return fmt.Errorf("failed to create slack destination '%s': %w", slackConfig.Name, err)
 		}
 
-		if dest, ok := destination.(DestinationInterface); ok {
+		if dest, ok := destination.(interfaces.DestinationInterface); ok {
 			r.destinations[slackConfig.Name] = dest
 			r.logger.Info("Registered destination", "name", slackConfig.Name, "type", "slack")
 		} else {
@@ -57,7 +58,7 @@ func (r *DestinationRegistry) LoadFromConfig(config config_destination.Destinati
 }
 
 // GetDestination returns a destination by name
-func (r *DestinationRegistry) GetDestination(name string) (DestinationInterface, error) {
+func (r *DestinationRegistry) GetDestination(name string) (interfaces.DestinationInterface, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -70,8 +71,8 @@ func (r *DestinationRegistry) GetDestination(name string) (DestinationInterface,
 }
 
 // GetDestinations returns multiple destinations by names
-func (r *DestinationRegistry) GetDestinations(names []string) ([]DestinationInterface, error) {
-	var destinations []DestinationInterface
+func (r *DestinationRegistry) GetDestinations(names []string) ([]interfaces.DestinationInterface, error) {
+	var destinations []interfaces.DestinationInterface
 
 	for _, name := range names {
 		destination, err := r.GetDestination(name)
@@ -85,7 +86,7 @@ func (r *DestinationRegistry) GetDestinations(names []string) ([]DestinationInte
 }
 
 // RegisterDestination manually registers a destination
-func (r *DestinationRegistry) RegisterDestination(name string, destination DestinationInterface) {
+func (r *DestinationRegistry) RegisterDestination(name string, destination interfaces.DestinationInterface) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 

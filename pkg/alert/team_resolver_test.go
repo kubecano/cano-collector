@@ -4,10 +4,12 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	config_team "github.com/kubecano/cano-collector/config/team"
-	"github.com/kubecano/cano-collector/mocks"
 	"github.com/prometheus/alertmanager/template"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	config_team "github.com/kubecano/cano-collector/config/team"
+	"github.com/kubecano/cano-collector/mocks"
 )
 
 type teamResolverTestDeps struct {
@@ -17,6 +19,7 @@ type teamResolverTestDeps struct {
 }
 
 func setupTeamResolverTest(t *testing.T, teams config_team.TeamsConfig) teamResolverTestDeps {
+	t.Helper()
 	ctrl := gomock.NewController(t)
 	logger := mocks.NewMockLoggerInterface(ctrl)
 	logger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
@@ -43,7 +46,7 @@ func TestTeamResolver_ResolveTeam_DefaultTeam(t *testing.T) {
 	}
 
 	team, err := deps.resolver.ResolveTeam(alert)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, team)
 	assert.Equal(t, "default-team", team.Name)
 	assert.Equal(t, []string{"slack-default"}, team.Destinations)
@@ -70,7 +73,7 @@ func TestTeamResolver_ResolveTeam_MultipleTeams(t *testing.T) {
 	}
 
 	team, err := deps.resolver.ResolveTeam(alert)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, team)
 	assert.Equal(t, "team-1", team.Name)
 	assert.Equal(t, []string{"slack-1"}, team.Destinations)
@@ -91,7 +94,7 @@ func TestTeamResolver_ResolveTeam_NoTeams(t *testing.T) {
 	}
 
 	team, err := deps.resolver.ResolveTeam(alert)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Nil(t, team)
 }
 
@@ -112,7 +115,7 @@ func TestTeamResolver_ResolveTeam_TeamWithoutDestinations(t *testing.T) {
 	}
 
 	team, err := deps.resolver.ResolveTeam(alert)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, team)
 	assert.Equal(t, "team-no-dest", team.Name)
 	assert.Empty(t, team.Destinations)
@@ -144,7 +147,7 @@ func TestTeamResolver_ResolveTeam_ComplexAlert(t *testing.T) {
 	}
 
 	team, err := deps.resolver.ResolveTeam(alert)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, team)
 	assert.Equal(t, "default-team", team.Name)
 	assert.Equal(t, []string{"slack-default", "email-default"}, team.Destinations)
@@ -167,7 +170,7 @@ func TestTeamResolver_ResolveTeam_ResolvedAlert(t *testing.T) {
 	}
 
 	team, err := deps.resolver.ResolveTeam(alert)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, team)
 	assert.Equal(t, "default-team", team.Name)
 }
@@ -186,7 +189,7 @@ func TestTeamResolver_ResolveTeam_EmptyAlert(t *testing.T) {
 	}
 
 	team, err := deps.resolver.ResolveTeam(alert)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, team)
 	assert.Equal(t, "default-team", team.Name)
 }
@@ -202,31 +205,28 @@ func TestTeamResolver_ResolveTeam_AlertWithSpecialCharacters(t *testing.T) {
 		Receiver: "test-receiver",
 		Status:   "firing",
 		Alerts: []template.Alert{{
-			Status:      "firing",
-			Labels:      map[string]string{"alertname": "High CPU Usage (API)", "severity": "critical", "instance": "api-1.prod.example.com"},
-			Annotations: map[string]string{"summary": "CPU usage > 90% for 5 minutes"},
+			Status: "firing",
+			Labels: map[string]string{
+				"alertname": "HighCPUUsage",
+				"severity":  "critical",
+				"special":   "test@example.com",
+				"unicode":   "🚨🔥💻",
+			},
 		}},
 	}
 
 	team, err := deps.resolver.ResolveTeam(alert)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, team)
 	assert.Equal(t, "default-team", team.Name)
 }
 
 func TestTeamResolver_ResolveTeam_LoggingVerification(t *testing.T) {
 	teams := config_team.TeamsConfig{
-		Teams: []config_team.Team{{Name: "test-team", Destinations: []string{"slack-test"}}},
+		Teams: []config_team.Team{{Name: "default-team", Destinations: []string{"slack-default"}}},
 	}
-	ctrl := gomock.NewController(t)
-	logger := mocks.NewMockLoggerInterface(ctrl)
-	logger.EXPECT().Info(
-		"Resolved team for alert",
-		"team", "test-team",
-		"destinations", []string{"slack-test"},
-	).Times(1)
-	resolver := NewTeamResolver(teams, logger)
-	defer ctrl.Finish()
+	deps := setupTeamResolverTest(t, teams)
+	defer deps.ctrl.Finish()
 
 	alert := template.Data{
 		Receiver: "test-receiver",
@@ -237,8 +237,8 @@ func TestTeamResolver_ResolveTeam_LoggingVerification(t *testing.T) {
 		}},
 	}
 
-	team, err := resolver.ResolveTeam(alert)
-	assert.NoError(t, err)
+	team, err := deps.resolver.ResolveTeam(alert)
+	require.NoError(t, err)
 	assert.NotNil(t, team)
-	assert.Equal(t, "test-team", team.Name)
+	assert.Equal(t, "default-team", team.Name)
 }

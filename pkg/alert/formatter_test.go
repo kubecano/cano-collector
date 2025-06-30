@@ -318,9 +318,24 @@ func TestAlertFormatter_FormatAlert_MessageStructure(t *testing.T) {
 	// First line should be header
 	assert.Contains(t, lines[0], "🚨 **Alert: firing**")
 
-	// Should be empty line after group labels
-	assert.Equal(t, "", lines[2])
+	// Second line should be group label
+	assert.Contains(t, lines[1], "**namespace:** prod")
 
-	// Should be empty line before alerts
-	assert.Equal(t, "", lines[4])
+	// Third line should be empty (separator)
+	assert.Empty(t, lines[2])
+
+	// Fourth line should be alert name
+	assert.Contains(t, lines[3], "**Alert:** TestAlert")
+
+	// Fifth line should be status
+	assert.Contains(t, lines[4], "**Status:** firing")
+
+	// Sixth line should be severity
+	assert.Contains(t, lines[5], "**Severity:** critical")
+
+	// Seventh line should be summary
+	assert.Contains(t, lines[6], "**Summary:** Test summary")
+
+	// Eighth line should be empty (separator)
+	assert.Empty(t, lines[7])
 }

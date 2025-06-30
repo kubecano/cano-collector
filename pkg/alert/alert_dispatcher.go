@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/prometheus/alertmanager/template"
+	"go.uber.org/zap"
+
 	config_team "github.com/kubecano/cano-collector/config/team"
 	"github.com/kubecano/cano-collector/pkg/destination"
 	"github.com/kubecano/cano-collector/pkg/logger"
-	"github.com/prometheus/alertmanager/template"
-	"go.uber.org/zap"
 )
 
 //go:generate mockgen -destination=../../mocks/alert_dispatcher_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/alert AlertDispatcherInterface

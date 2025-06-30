@@ -1,9 +1,10 @@
 package alert
 
 import (
+	"github.com/prometheus/alertmanager/template"
+
 	config_team "github.com/kubecano/cano-collector/config/team"
 	"github.com/kubecano/cano-collector/pkg/logger"
-	"github.com/prometheus/alertmanager/template"
 )
 
 //go:generate mockgen -destination=../../mocks/team_resolver_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/alert TeamResolverInterface

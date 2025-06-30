@@ -9,7 +9,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	config_destination "github.com/kubecano/cano-collector/config/destination"
-	destination "github.com/kubecano/cano-collector/pkg/destination"
+	interfaces "github.com/kubecano/cano-collector/pkg/interfaces"
 )
 
 // MockDestinationRegistryInterface is a mock of DestinationRegistryInterface interface.
@@ -36,10 +36,10 @@ func (m *MockDestinationRegistryInterface) EXPECT() *MockDestinationRegistryInte
 }
 
 // GetDestination mocks base method.
-func (m *MockDestinationRegistryInterface) GetDestination(arg0 string) (destination.DestinationInterface, error) {
+func (m *MockDestinationRegistryInterface) GetDestination(arg0 string) (interfaces.DestinationInterface, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetDestination", arg0)
-	ret0, _ := ret[0].(destination.DestinationInterface)
+	ret0, _ := ret[0].(interfaces.DestinationInterface)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -51,10 +51,10 @@ func (mr *MockDestinationRegistryInterfaceMockRecorder) GetDestination(arg0 inte
 }
 
 // GetDestinations mocks base method.
-func (m *MockDestinationRegistryInterface) GetDestinations(arg0 []string) ([]destination.DestinationInterface, error) {
+func (m *MockDestinationRegistryInterface) GetDestinations(arg0 []string) ([]interfaces.DestinationInterface, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetDestinations", arg0)
-	ret0, _ := ret[0].([]destination.DestinationInterface)
+	ret0, _ := ret[0].([]interfaces.DestinationInterface)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -80,7 +80,7 @@ func (mr *MockDestinationRegistryInterfaceMockRecorder) LoadFromConfig(arg0 inte
 }
 
 // RegisterDestination mocks base method.
-func (m *MockDestinationRegistryInterface) RegisterDestination(arg0 string, arg1 destination.DestinationInterface) {
+func (m *MockDestinationRegistryInterface) RegisterDestination(arg0 string, arg1 interfaces.DestinationInterface) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "RegisterDestination", arg0, arg1)
 }

@@ -35,16 +35,16 @@ func (f *AlertFormatter) FormatAlert(alert template.Data) string {
 	messages = append(messages, "")
 
 	for _, alertItem := range alert.Alerts {
-		messages = append(messages, fmt.Sprintf("**Alert:** %s", alertItem.Labels["alertname"]))
-		messages = append(messages, fmt.Sprintf("**Status:** %s", alertItem.Status))
-		messages = append(messages, fmt.Sprintf("**Severity:** %s", alertItem.Labels["severity"]))
+		messages = append(messages, "**Alert:** "+alertItem.Labels["alertname"])
+		messages = append(messages, "**Status:** "+alertItem.Status)
+		messages = append(messages, "**Severity:** "+alertItem.Labels["severity"])
 
 		if alertItem.Annotations["summary"] != "" {
-			messages = append(messages, fmt.Sprintf("**Summary:** %s", alertItem.Annotations["summary"]))
+			messages = append(messages, "**Summary:** "+alertItem.Annotations["summary"])
 		}
 
 		if alertItem.Annotations["description"] != "" {
-			messages = append(messages, fmt.Sprintf("**Description:** %s", alertItem.Annotations["description"]))
+			messages = append(messages, "**Description:** "+alertItem.Annotations["description"])
 		}
 
 		messages = append(messages, "")
