@@ -25,8 +25,8 @@ type AppDependencies struct {
 	HealthCheckerFactory   func(cfg config.Config, log logger.LoggerInterface) health.HealthInterface
 	TracerManagerFactory   func(cfg config.Config, log logger.LoggerInterface) tracer.TracerInterface
 	MetricsFactory         func(log logger.LoggerInterface) metric.MetricsInterface
-	DestinationFactory     func(log logger.LoggerInterface) *destination.DestinationFactory
-	DestinationRegistry    func(factory *destination.DestinationFactory, log logger.LoggerInterface) interfaces.DestinationRegistryInterface
+	DestinationFactory     func(log logger.LoggerInterface) interfaces.DestinationFactoryInterface
+	DestinationRegistry    func(factory interfaces.DestinationFactoryInterface, log logger.LoggerInterface) interfaces.DestinationRegistryInterface
 	TeamResolverFactory    func(teams config_team.TeamsConfig, log logger.LoggerInterface) alert.TeamResolverInterface
 	AlertDispatcherFactory func(registry interfaces.DestinationRegistryInterface, log logger.LoggerInterface) alert.AlertDispatcherInterface
 	AlertHandlerFactory    func(log logger.LoggerInterface, m metric.MetricsInterface, tr alert.TeamResolverInterface, ad alert.AlertDispatcherInterface) alert.AlertHandlerInterface
@@ -52,10 +52,10 @@ func main() {
 		MetricsFactory: func(log logger.LoggerInterface) metric.MetricsInterface {
 			return metric.NewMetricsCollector(log)
 		},
-		DestinationFactory: func(log logger.LoggerInterface) *destination.DestinationFactory {
+		DestinationFactory: func(log logger.LoggerInterface) interfaces.DestinationFactoryInterface {
 			return destination.NewDestinationFactory(log, util.GetSharedHTTPClient())
 		},
-		DestinationRegistry: func(factory *destination.DestinationFactory, log logger.LoggerInterface) interfaces.DestinationRegistryInterface {
+		DestinationRegistry: func(factory interfaces.DestinationFactoryInterface, log logger.LoggerInterface) interfaces.DestinationRegistryInterface {
 			return destination.NewDestinationRegistry(factory, log)
 		},
 		TeamResolverFactory: func(teams config_team.TeamsConfig, log logger.LoggerInterface) alert.TeamResolverInterface {

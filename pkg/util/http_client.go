@@ -3,6 +3,7 @@ package util
 import (
 	"net"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -32,12 +33,15 @@ func DefaultHTTPClient() HTTPClient {
 }
 
 // SharedHTTPClient is a singleton HTTP client for better connection pooling
-var sharedHTTPClient HTTPClient
+var (
+	sharedHTTPClient HTTPClient
+	once             sync.Once
+)
 
 // GetSharedHTTPClient returns a shared HTTP client instance for better connection pooling
 func GetSharedHTTPClient() HTTPClient {
-	if sharedHTTPClient == nil {
+	once.Do(func() {
 		sharedHTTPClient = DefaultHTTPClient()
-	}
+	})
 	return sharedHTTPClient
 }

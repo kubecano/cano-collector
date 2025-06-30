@@ -12,13 +12,13 @@ import (
 // DestinationRegistry manages a registry of destinations
 type DestinationRegistry struct {
 	destinations map[string]interfaces.DestinationInterface
-	factory      *DestinationFactory
+	factory      interfaces.DestinationFactoryInterface
 	logger       logger.LoggerInterface
 	mu           sync.RWMutex
 }
 
 // NewDestinationRegistry creates a new destination registry
-func NewDestinationRegistry(factory *DestinationFactory, logger logger.LoggerInterface) *DestinationRegistry {
+func NewDestinationRegistry(factory interfaces.DestinationFactoryInterface, logger logger.LoggerInterface) *DestinationRegistry {
 	return &DestinationRegistry{
 		destinations: make(map[string]interfaces.DestinationInterface),
 		factory:      factory,
@@ -65,15 +65,8 @@ func (r *DestinationRegistry) GetDestination(name string) (interfaces.Destinatio
 // GetDestinations returns multiple destinations by names
 func (r *DestinationRegistry) GetDestinations(names []string) ([]interfaces.DestinationInterface, error) {
 	var destinations []interfaces.DestinationInterface
-	visited := make(map[string]bool)
 
 	for _, name := range names {
-		// Check for circular dependencies
-		if visited[name] {
-			return nil, fmt.Errorf("circular dependency detected: destination '%s' is referenced multiple times", name)
-		}
-		visited[name] = true
-
 		destination, err := r.GetDestination(name)
 		if err != nil {
 			return nil, err

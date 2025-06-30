@@ -13,7 +13,6 @@ import (
 	config_team "github.com/kubecano/cano-collector/config/team"
 	"github.com/kubecano/cano-collector/mocks"
 	"github.com/kubecano/cano-collector/pkg/alert"
-	"github.com/kubecano/cano-collector/pkg/destination"
 	"github.com/kubecano/cano-collector/pkg/health"
 	"github.com/kubecano/cano-collector/pkg/interfaces"
 	"github.com/kubecano/cano-collector/pkg/logger"
@@ -58,7 +57,7 @@ func TestRun_WithMocks(t *testing.T) {
 	mockMetrics := mocks.NewMockMetricsInterface(ctrl)
 	mockAlerts := mocks.NewMockAlertHandlerInterface(ctrl)
 	mockRouter := mocks.NewMockRouterInterface(ctrl)
-	mockDestinationFactory := &destination.DestinationFactory{}
+	mockDestinationFactory := mocks.NewMockDestinationFactoryInterface(ctrl)
 	mockDestinationRegistry := mocks.NewMockDestinationRegistryInterface(ctrl)
 	mockTeamResolver := mocks.NewMockTeamResolverInterface(ctrl)
 	mockAlertDispatcher := mocks.NewMockAlertDispatcherInterface(ctrl)
@@ -77,6 +76,9 @@ func TestRun_WithMocks(t *testing.T) {
 
 	mockTeamResolver.EXPECT().ValidateTeamDestinations(gomock.Any()).Return(nil).Times(1)
 
+	// Mock DestinationFactory - oczekujemy, że może być wywołany podczas ładowania konfiguracji
+	mockDestinationFactory.EXPECT().CreateDestination(gomock.Any()).AnyTimes()
+
 	g := gin.New()
 	mockRouter.EXPECT().SetupRouter().Return(g).Times(1)
 	mockRouter.EXPECT().StartServer(g).Times(1)
@@ -86,8 +88,8 @@ func TestRun_WithMocks(t *testing.T) {
 		HealthCheckerFactory: func(cfg config.Config, log logger.LoggerInterface) health.HealthInterface { return mockHealth },
 		TracerManagerFactory: func(cfg config.Config, log logger.LoggerInterface) tracer.TracerInterface { return mockTracer },
 		MetricsFactory:       func(log logger.LoggerInterface) metric.MetricsInterface { return mockMetrics },
-		DestinationFactory:   func(log logger.LoggerInterface) *destination.DestinationFactory { return mockDestinationFactory },
-		DestinationRegistry: func(factory *destination.DestinationFactory, log logger.LoggerInterface) interfaces.DestinationRegistryInterface {
+		DestinationFactory:   func(log logger.LoggerInterface) interfaces.DestinationFactoryInterface { return mockDestinationFactory },
+		DestinationRegistry: func(factory interfaces.DestinationFactoryInterface, log logger.LoggerInterface) interfaces.DestinationRegistryInterface {
 			return mockDestinationRegistry
 		},
 		TeamResolverFactory: func(teams config_team.TeamsConfig, log logger.LoggerInterface) alert.TeamResolverInterface {
