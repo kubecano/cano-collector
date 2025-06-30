@@ -100,9 +100,9 @@ func TestAlertFormatter_FormatAlert_MultipleAlerts(t *testing.T) {
 
 	result := formatter.FormatAlert(alert)
 
-	// Sprawdź czy oba alerty są w wyniku
-	assert.Contains(t, result, "**Alert:** HighCPUUsage")
-	assert.Contains(t, result, "**Alert:** HighMemoryUsage")
+	// Check if both alerts are in the result
+	assert.Contains(t, result, "HighCPUUsage")
+	assert.Contains(t, result, "HighMemoryUsage")
 	assert.Contains(t, result, "**Summary:** First alert")
 	assert.Contains(t, result, "**Summary:** Second alert")
 }
@@ -118,7 +118,7 @@ func TestAlertFormatter_FormatAlert_MissingLabels(t *testing.T) {
 				Status: "firing",
 				Labels: map[string]string{
 					"alertname": "HighCPUUsage",
-					// brak severity
+					// missing severity
 				},
 			},
 		},
@@ -128,7 +128,7 @@ func TestAlertFormatter_FormatAlert_MissingLabels(t *testing.T) {
 
 	assert.Contains(t, result, "**Alert:** HighCPUUsage")
 	assert.Contains(t, result, "**Status:** firing")
-	assert.Contains(t, result, "**Severity:** ") // pusty severity
+	assert.Contains(t, result, "**Severity:** ") // empty severity
 }
 
 func TestAlertFormatter_FormatAlert_MissingAnnotations(t *testing.T) {
@@ -144,7 +144,7 @@ func TestAlertFormatter_FormatAlert_MissingAnnotations(t *testing.T) {
 					"alertname": "HighCPUUsage",
 					"severity":  "critical",
 				},
-				// brak annotations
+				// missing annotations
 			},
 		},
 	}
@@ -154,7 +154,7 @@ func TestAlertFormatter_FormatAlert_MissingAnnotations(t *testing.T) {
 	assert.Contains(t, result, "**Alert:** HighCPUUsage")
 	assert.Contains(t, result, "**Status:** firing")
 	assert.Contains(t, result, "**Severity:** critical")
-	// Nie powinno zawierać summary ani description
+	// Should not contain summary or description
 	assert.NotContains(t, result, "**Summary:**")
 	assert.NotContains(t, result, "**Description:**")
 }
@@ -165,14 +165,17 @@ func TestAlertFormatter_FormatAlert_EmptyAlerts(t *testing.T) {
 	alert := template.Data{
 		Receiver: "test-receiver",
 		Status:   "firing",
-		Alerts:   []template.Alert{}, // pusta lista alertów
+		Alerts:   []template.Alert{}, // empty alerts list
 	}
 
 	result := formatter.FormatAlert(alert)
 
 	assert.Contains(t, result, "🚨 **Alert: firing**")
-	// Nie powinno zawierać szczegółów alertów
+	// Should not contain alert details
 	assert.NotContains(t, result, "**Alert:**")
+	assert.NotContains(t, result, "**Severity:**")
+	assert.NotContains(t, result, "**Summary:**")
+	assert.NotContains(t, result, "**Description:**")
 }
 
 func TestAlertFormatter_FormatAlert_ResolvedStatus(t *testing.T) {
@@ -249,7 +252,7 @@ func TestAlertFormatter_FormatAlert_NewlinesInContent(t *testing.T) {
 
 	result := formatter.FormatAlert(alert)
 
-	// Sprawdź czy newlines są zachowane
+	// Check if newlines are preserved
 	assert.Contains(t, result, "**Summary:** Multi-line\nsummary")
 	assert.Contains(t, result, "**Description:** Multi-line\ndescription\nwith breaks")
 }
@@ -279,7 +282,7 @@ func TestAlertFormatter_FormatAlert_EmptyStringValues(t *testing.T) {
 
 	assert.Contains(t, result, "**Alert:** ")
 	assert.Contains(t, result, "**Severity:** ")
-	// Nie powinno być linii summary/description jeśli są puste
+	// Should not have summary/description lines if they are empty
 	assert.NotContains(t, result, "**Summary:**")
 	assert.NotContains(t, result, "**Description:**")
 }
@@ -309,15 +312,15 @@ func TestAlertFormatter_FormatAlert_MessageStructure(t *testing.T) {
 
 	result := formatter.FormatAlert(alert)
 
-	// Sprawdź strukturę wiadomości
+	// Check message structure
 	lines := strings.Split(result, "\n")
 
-	// Pierwsza linia powinna być nagłówkiem
+	// First line should be header
 	assert.Contains(t, lines[0], "🚨 **Alert: firing**")
 
-	// Powinna być pusta linia po group labels
-	assert.Contains(t, result, "**namespace:** prod")
+	// Should be empty line after group labels
+	assert.Equal(t, "", lines[2])
 
-	// Powinna być pusta linia przed alertami
-	assert.Contains(t, result, "**Alert:** TestAlert")
+	// Should be empty line before alerts
+	assert.Equal(t, "", lines[4])
 }

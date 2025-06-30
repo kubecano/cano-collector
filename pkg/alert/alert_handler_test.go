@@ -19,12 +19,20 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func setupTestRouter(t *testing.T) *gin.Engine {
+type alertHandlerTestDeps struct {
+	ctrl            *gomock.Controller
+	logger          *mocks.MockLoggerInterface
+	teamResolver    *mocks.MockTeamResolverInterface
+	alertDispatcher *mocks.MockAlertDispatcherInterface
+	handler         *AlertHandler
+	router          *gin.Engine
+}
+
+func setupTestRouter(t *testing.T) alertHandlerTestDeps {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	mockLogger := mocks.NewMockLoggerInterface(ctrl)
 	mockTeamResolver := mocks.NewMockTeamResolverInterface(ctrl)
@@ -39,19 +47,33 @@ func setupTestRouter(t *testing.T) *gin.Engine {
 
 	mockMetrics := metric.NewMetricsCollector(mockLogger)
 
-	// Setup mock expectations for team resolver and alert dispatcher
-	mockTeamResolver.EXPECT().ResolveTeam(gomock.Any()).Return(nil, nil).AnyTimes()
+	// Happy path - return a real team with destinations
+	team := &config_team.Team{
+		Name:         "default-team",
+		Destinations: []string{"slack-default", "email-default"},
+	}
+
+	mockTeamResolver.EXPECT().ResolveTeam(gomock.Any()).Return(team, nil).AnyTimes()
 	mockAlertDispatcher.EXPECT().DispatchAlert(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	alertHandler := NewAlertHandler(mockLogger, mockMetrics, mockTeamResolver, mockAlertDispatcher)
 
 	r := gin.Default()
 	r.POST("/alert", alertHandler.HandleAlert)
-	return r
+
+	return alertHandlerTestDeps{
+		ctrl:            ctrl,
+		logger:          mockLogger,
+		teamResolver:    mockTeamResolver,
+		alertDispatcher: mockAlertDispatcher,
+		handler:         alertHandler,
+		router:          r,
+	}
 }
 
-func TestAlertHandler_ValidAlert(t *testing.T) {
-	router := setupTestRouter(t)
+func TestAlertHandler_ValidAlert_HappyPath(t *testing.T) {
+	deps := setupTestRouter(t)
+	defer deps.ctrl.Finish()
 
 	alert := template.Data{
 		Receiver: "test-receiver",
@@ -77,69 +99,108 @@ func TestAlertHandler_ValidAlert(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	deps.router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "alert processed")
+}
+
+func TestAlertHandler_ValidAlert(t *testing.T) {
+	deps := setupTestRouter(t)
+	defer deps.ctrl.Finish()
+
+	alert := template.Data{
+		Receiver: "test-receiver",
+		Status:   "firing",
+		Alerts: []template.Alert{
+			{
+				Status: "firing",
+				Labels: map[string]string{
+					"alertname": "HighCPUUsage",
+					"severity":  "critical",
+				},
+				Annotations: map[string]string{
+					"summary":     "High CPU usage detected",
+					"description": "The CPU usage has exceeded the threshold",
+				},
+				StartsAt: time.Now(),
+			},
+		},
+	}
+
+	jsonAlert, _ := json.Marshal(alert)
+	req, _ := http.NewRequest(http.MethodPost, "/alert", bytes.NewBuffer(jsonAlert))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	deps.router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), "alert processed")
 }
 
 func TestAlertHandler_InvalidJSON(t *testing.T) {
-	router := setupTestRouter(t)
+	deps := setupTestRouter(t)
+	defer deps.ctrl.Finish()
 
 	invalidJSON := "{"
 	req, _ := http.NewRequest(http.MethodPost, "/alert", bytes.NewBufferString(invalidJSON))
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	deps.router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.Contains(t, w.Body.String(), "invalid alert format")
 }
 
 func TestAlertHandler_MissingFields(t *testing.T) {
-	router := setupTestRouter(t)
+	deps := setupTestRouter(t)
+	defer deps.ctrl.Finish()
 
 	alert := `{"receiver": "test-receiver"}`
 	req, _ := http.NewRequest(http.MethodPost, "/alert", bytes.NewBufferString(alert))
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	deps.router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.Contains(t, w.Body.String(), "invalid alert format: missing required fields")
 }
 
 func TestAlertHandler_EmptyBody(t *testing.T) {
-	router := setupTestRouter(t)
+	deps := setupTestRouter(t)
+	defer deps.ctrl.Finish()
 
 	req, _ := http.NewRequest(http.MethodPost, "/alert", bytes.NewBuffer([]byte{}))
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	deps.router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.Contains(t, w.Body.String(), "empty JSON body")
 }
 
 func TestAlertHandler_AdditionalFields(t *testing.T) {
-	router := setupTestRouter(t)
+	deps := setupTestRouter(t)
+	defer deps.ctrl.Finish()
 
 	alert := `{"receiver": "test-receiver", "status": "firing", "alerts": [{"status": "firing", "labels": {"alertname": "HighCPUUsage"}}], "extra": "field"}`
 	req, _ := http.NewRequest(http.MethodPost, "/alert", bytes.NewBufferString(alert))
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	deps.router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), "alert processed")
 }
 
 func TestAlertHandler_LargeAlert(t *testing.T) {
-	router := setupTestRouter(t)
+	deps := setupTestRouter(t)
+	defer deps.ctrl.Finish()
 
 	alert := template.Data{
 		Receiver: "test-receiver",
@@ -152,7 +213,55 @@ func TestAlertHandler_LargeAlert(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	deps.router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "alert processed")
+}
+
+func TestAlertHandler_NoTeamResolved(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+	mockTeamResolver := mocks.NewMockTeamResolverInterface(ctrl)
+	mockAlertDispatcher := mocks.NewMockAlertDispatcherInterface(ctrl)
+
+	mockLogger.EXPECT().Error(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debugf(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Warn(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Warnf(gomock.Any(), gomock.Any()).AnyTimes()
+
+	mockMetrics := metric.NewMetricsCollector(mockLogger)
+
+	// Edge case - no team resolved
+	mockTeamResolver.EXPECT().ResolveTeam(gomock.Any()).Return(nil, nil).AnyTimes()
+	mockAlertDispatcher.EXPECT().DispatchAlert(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
+	alertHandler := NewAlertHandler(mockLogger, mockMetrics, mockTeamResolver, mockAlertDispatcher)
+
+	r := gin.Default()
+	r.POST("/alert", alertHandler.HandleAlert)
+
+	alert := template.Data{
+		Receiver: "test-receiver",
+		Status:   "firing",
+		Alerts: []template.Alert{
+			{
+				Status: "firing",
+				Labels: map[string]string{"alertname": "HighCPUUsage"},
+			},
+		},
+	}
+	jsonAlert, _ := json.Marshal(alert)
+	req, _ := http.NewRequest(http.MethodPost, "/alert", bytes.NewBuffer(jsonAlert))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), "alert processed")
@@ -207,5 +316,5 @@ func TestAlertHandler_TeamWithoutDestinations(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
-	// Tu nie sprawdzamy loga bezpośrednio, ale test przejdzie jeśli nie będzie panic i log Warn zostanie wywołany
+	// We don't check the log directly here, but the test will pass if there's no panic and the Warn log is called
 }

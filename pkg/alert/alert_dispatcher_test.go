@@ -21,7 +21,7 @@ type alertDispatcherTestDeps struct {
 	dispatcher *AlertDispatcher
 }
 
-// setupAlertDispatcherTest inicjalizuje mocki i dispatcher dla testów
+// setupAlertDispatcherTest initializes mocks and dispatcher for tests
 func setupAlertDispatcherTest(t *testing.T) alertDispatcherTestDeps {
 	ctrl := gomock.NewController(t)
 	mockRegistry := mocks.NewMockDestinationRegistryInterface(ctrl)
@@ -419,7 +419,7 @@ func TestAlertDispatcher_DispatchAlert_ContextCancellation(t *testing.T) {
 	// Setup expectations
 	deps.registry.EXPECT().GetDestinations([]string{"slack-test"}).Return([]destination.DestinationInterface{mockDestination}, nil)
 	deps.formatter.EXPECT().FormatAlert(alert).Return(formattedMessage)
-	// Symuluj błąd związany z kontekstem
+	// Simulate context-related error
 	contextError := errors.New("context deadline exceeded")
 	mockDestination.EXPECT().Send(gomock.Any(), formattedMessage).Return(contextError)
 	deps.logger.EXPECT().Error("Failed to send alert to destination", gomock.Any(), gomock.Any()).Times(1)
