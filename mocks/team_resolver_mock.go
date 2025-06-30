@@ -9,6 +9,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	config_team "github.com/kubecano/cano-collector/config/team"
+	destination "github.com/kubecano/cano-collector/pkg/destination"
 	template "github.com/prometheus/alertmanager/template"
 )
 
@@ -48,4 +49,18 @@ func (m *MockTeamResolverInterface) ResolveTeam(arg0 template.Data) (*config_tea
 func (mr *MockTeamResolverInterfaceMockRecorder) ResolveTeam(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResolveTeam", reflect.TypeOf((*MockTeamResolverInterface)(nil).ResolveTeam), arg0)
+}
+
+// ValidateTeamDestinations mocks base method.
+func (m *MockTeamResolverInterface) ValidateTeamDestinations(arg0 destination.DestinationRegistryInterface) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ValidateTeamDestinations", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ValidateTeamDestinations indicates an expected call of ValidateTeamDestinations.
+func (mr *MockTeamResolverInterfaceMockRecorder) ValidateTeamDestinations(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateTeamDestinations", reflect.TypeOf((*MockTeamResolverInterface)(nil).ValidateTeamDestinations), arg0)
 }

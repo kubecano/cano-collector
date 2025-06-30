@@ -74,6 +74,8 @@ func TestRun_WithMocks(t *testing.T) {
 
 	mockDestinationRegistry.EXPECT().LoadFromConfig(gomock.Any()).Return(nil).Times(1)
 
+	mockTeamResolver.EXPECT().ValidateTeamDestinations(gomock.Any()).Return(nil).Times(1)
+
 	g := gin.New()
 	mockRouter.EXPECT().SetupRouter().Return(g).Times(1)
 	mockRouter.EXPECT().StartServer(g).Times(1)

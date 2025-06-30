@@ -128,7 +128,8 @@ func TestAlertFormatter_FormatAlert_MissingLabels(t *testing.T) {
 
 	assert.Contains(t, result, "**Alert:** HighCPUUsage")
 	assert.Contains(t, result, "**Status:** firing")
-	assert.Contains(t, result, "**Severity:** ") // empty severity
+	// Should not contain severity if it's missing
+	assert.NotContains(t, result, "**Severity:**")
 }
 
 func TestAlertFormatter_FormatAlert_MissingAnnotations(t *testing.T) {
@@ -280,11 +281,14 @@ func TestAlertFormatter_FormatAlert_EmptyStringValues(t *testing.T) {
 
 	result := formatter.FormatAlert(alert)
 
-	assert.Contains(t, result, "**Alert:** ")
-	assert.Contains(t, result, "**Severity:** ")
-	// Should not have summary/description lines if they are empty
+	// Should not contain empty fields
+	assert.NotContains(t, result, "**Alert:**")
+	assert.NotContains(t, result, "**Severity:**")
 	assert.NotContains(t, result, "**Summary:**")
 	assert.NotContains(t, result, "**Description:**")
+	// Should only contain status and header
+	assert.Contains(t, result, "🚨 **Alert: firing**")
+	assert.Contains(t, result, "**Status:** firing")
 }
 
 func TestAlertFormatter_FormatAlert_MessageStructure(t *testing.T) {

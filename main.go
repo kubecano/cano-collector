@@ -20,6 +20,7 @@ import (
 
 	"github.com/kubecano/cano-collector/config"
 	config_team "github.com/kubecano/cano-collector/config/team"
+	"github.com/kubecano/cano-collector/pkg/util"
 )
 
 type AppDependencies struct {
@@ -55,7 +56,7 @@ func main() {
 			return metric.NewMetricsCollector(log)
 		},
 		DestinationFactory: func(log logger.LoggerInterface) *destination.DestinationFactory {
-			return destination.NewDestinationFactory(log, nil)
+			return destination.NewDestinationFactory(log, util.GetSharedHTTPClient())
 		},
 		DestinationRegistry: func(factory *destination.DestinationFactory, log logger.LoggerInterface) destination.DestinationRegistryInterface {
 			return destination.NewDestinationRegistry(factory, log)
@@ -110,6 +111,13 @@ func run(cfg config.Config, deps AppDependencies) error {
 	teamResolver := deps.TeamResolverFactory(cfg.Teams, log)
 	alertDispatcher := deps.AlertDispatcherFactory(destinationRegistry, log)
 	alertHandler := deps.AlertHandlerFactory(log, metricsCollector, teamResolver, alertDispatcher)
+
+	// Validate team destinations configuration
+	if err := teamResolver.ValidateTeamDestinations(destinationRegistry); err != nil {
+		log.Fatalf("Team destinations validation failed: %v", err)
+		return err
+	}
+	log.Debug("Team destinations validation passed")
 
 	routerManager := deps.RouterManagerFactory(cfg, log, tracerManager, metricsCollector, healthChecker, alertHandler)
 

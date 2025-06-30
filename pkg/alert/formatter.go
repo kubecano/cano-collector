@@ -28,23 +28,31 @@ func (f *AlertFormatter) FormatAlert(alert template.Data) string {
 
 	if alert.GroupLabels != nil {
 		for key, value := range alert.GroupLabels {
-			messages = append(messages, fmt.Sprintf("**%s:** %s", key, value))
+			if key != "" && value != "" {
+				messages = append(messages, fmt.Sprintf("**%s:** %s", key, value))
+			}
 		}
 	}
 
 	messages = append(messages, "")
 
 	for _, alertItem := range alert.Alerts {
-		messages = append(messages, "**Alert:** "+alertItem.Labels["alertname"])
-		messages = append(messages, "**Status:** "+alertItem.Status)
-		messages = append(messages, "**Severity:** "+alertItem.Labels["severity"])
-
-		if alertItem.Annotations["summary"] != "" {
-			messages = append(messages, "**Summary:** "+alertItem.Annotations["summary"])
+		if alertname := alertItem.Labels["alertname"]; alertname != "" {
+			messages = append(messages, "**Alert:** "+alertname)
+		}
+		if status := alertItem.Status; status != "" {
+			messages = append(messages, "**Status:** "+status)
+		}
+		if severity := alertItem.Labels["severity"]; severity != "" {
+			messages = append(messages, "**Severity:** "+severity)
 		}
 
-		if alertItem.Annotations["description"] != "" {
-			messages = append(messages, "**Description:** "+alertItem.Annotations["description"])
+		if summary := alertItem.Annotations["summary"]; summary != "" {
+			messages = append(messages, "**Summary:** "+summary)
+		}
+
+		if description := alertItem.Annotations["description"]; description != "" {
+			messages = append(messages, "**Description:** "+description)
 		}
 
 		messages = append(messages, "")

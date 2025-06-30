@@ -113,6 +113,11 @@ func (h *AlertHandler) HandleAlert(c *gin.Context) {
 			zap.String("team", team.Name))
 	}
 
-	h.logger.Info("Processed alert: ", zap.Any("alert", alert))
+	// Log only essential alert information to avoid memory issues with large alerts
+	h.logger.Debug("Alert details",
+		zap.String("receiver", alert.Receiver),
+		zap.String("status", alert.Status),
+		zap.Int("alerts_count", len(alert.Alerts)),
+		zap.Any("group_labels", alert.GroupLabels))
 	c.JSON(http.StatusOK, gin.H{"status": "alert processed"})
 }
