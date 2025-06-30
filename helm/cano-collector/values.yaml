@@ -36,7 +36,6 @@ destinations:
     #   slack_channel: "#prod-alerts"
     #   grouping_interval: 30
     #   unfurl_links: true
-  msteams: [ ]
 
 teams: [ ]
 

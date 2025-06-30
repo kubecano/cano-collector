@@ -3,6 +3,7 @@ package util
 import (
 	"net"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -13,18 +14,34 @@ type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-// DefaultHTTPClient returns a standard HTTP client with sane defaults
+// DefaultHTTPClient returns a standard HTTP client with sane defaults and connection pooling
 func DefaultHTTPClient() HTTPClient {
 	return &http.Client{
-		Timeout: 10 * time.Second,
+		Timeout: 30 * time.Second,
 		Transport: &http.Transport{
 			DialContext: (&net.Dialer{
-				Timeout:   5 * time.Second,
+				Timeout:   10 * time.Second,
 				KeepAlive: 30 * time.Second,
 			}).DialContext,
-			TLSHandshakeTimeout: 5 * time.Second,
+			TLSHandshakeTimeout: 10 * time.Second,
 			MaxIdleConns:        100,
+			MaxIdleConnsPerHost: 10,
 			IdleConnTimeout:     90 * time.Second,
+			DisableCompression:  false,
 		},
 	}
+}
+
+// SharedHTTPClient is a singleton HTTP client for better connection pooling
+var (
+	sharedHTTPClient HTTPClient
+	once             sync.Once
+)
+
+// GetSharedHTTPClient returns a shared HTTP client instance for better connection pooling
+func GetSharedHTTPClient() HTTPClient {
+	once.Do(func() {
+		sharedHTTPClient = DefaultHTTPClient()
+	})
+	return sharedHTTPClient
 }
