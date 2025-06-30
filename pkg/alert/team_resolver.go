@@ -6,14 +6,14 @@ import (
 	"github.com/prometheus/alertmanager/template"
 
 	config_team "github.com/kubecano/cano-collector/config/team"
-	"github.com/kubecano/cano-collector/pkg/destination"
+	"github.com/kubecano/cano-collector/pkg/interfaces"
 	"github.com/kubecano/cano-collector/pkg/logger"
 )
 
 //go:generate mockgen -destination=../../mocks/team_resolver_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/alert TeamResolverInterface
 type TeamResolverInterface interface {
 	ResolveTeam(alert template.Data) (*config_team.Team, error)
-	ValidateTeamDestinations(registry destination.DestinationRegistryInterface) error
+	ValidateTeamDestinations(registry interfaces.DestinationRegistryInterface) error
 }
 
 // TeamResolver resolves which team should handle an alert
@@ -31,7 +31,7 @@ func NewTeamResolver(teams config_team.TeamsConfig, logger logger.LoggerInterfac
 }
 
 // ValidateTeamDestinations validates that all team destinations exist in the registry
-func (r *TeamResolver) ValidateTeamDestinations(registry destination.DestinationRegistryInterface) error {
+func (r *TeamResolver) ValidateTeamDestinations(registry interfaces.DestinationRegistryInterface) error {
 	for _, team := range r.teams.Teams {
 		for _, destName := range team.Destinations {
 			if _, err := registry.GetDestination(destName); err != nil {

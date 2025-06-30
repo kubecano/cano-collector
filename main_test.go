@@ -15,6 +15,7 @@ import (
 	"github.com/kubecano/cano-collector/pkg/alert"
 	"github.com/kubecano/cano-collector/pkg/destination"
 	"github.com/kubecano/cano-collector/pkg/health"
+	"github.com/kubecano/cano-collector/pkg/interfaces"
 	"github.com/kubecano/cano-collector/pkg/logger"
 	"github.com/kubecano/cano-collector/pkg/metric"
 	"github.com/kubecano/cano-collector/pkg/router"
@@ -86,13 +87,13 @@ func TestRun_WithMocks(t *testing.T) {
 		TracerManagerFactory: func(cfg config.Config, log logger.LoggerInterface) tracer.TracerInterface { return mockTracer },
 		MetricsFactory:       func(log logger.LoggerInterface) metric.MetricsInterface { return mockMetrics },
 		DestinationFactory:   func(log logger.LoggerInterface) *destination.DestinationFactory { return mockDestinationFactory },
-		DestinationRegistry: func(factory *destination.DestinationFactory, log logger.LoggerInterface) destination.DestinationRegistryInterface {
+		DestinationRegistry: func(factory *destination.DestinationFactory, log logger.LoggerInterface) interfaces.DestinationRegistryInterface {
 			return mockDestinationRegistry
 		},
 		TeamResolverFactory: func(teams config_team.TeamsConfig, log logger.LoggerInterface) alert.TeamResolverInterface {
 			return mockTeamResolver
 		},
-		AlertDispatcherFactory: func(registry destination.DestinationRegistryInterface, log logger.LoggerInterface) alert.AlertDispatcherInterface {
+		AlertDispatcherFactory: func(registry interfaces.DestinationRegistryInterface, log logger.LoggerInterface) alert.AlertDispatcherInterface {
 			return mockAlertDispatcher
 		},
 		AlertHandlerFactory: func(log logger.LoggerInterface, m metric.MetricsInterface, tr alert.TeamResolverInterface, ad alert.AlertDispatcherInterface) alert.AlertHandlerInterface {

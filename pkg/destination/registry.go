@@ -9,14 +9,6 @@ import (
 	"github.com/kubecano/cano-collector/pkg/logger"
 )
 
-//go:generate mockgen -destination=../../mocks/destination_registry_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/destination DestinationRegistryInterface
-type DestinationRegistryInterface interface {
-	GetDestination(name string) (interfaces.DestinationInterface, error)
-	GetDestinations(names []string) ([]interfaces.DestinationInterface, error)
-	RegisterDestination(name string, destination interfaces.DestinationInterface)
-	LoadFromConfig(config config_destination.DestinationsConfig) error
-}
-
 // DestinationRegistry manages a registry of destinations
 type DestinationRegistry struct {
 	destinations map[string]interfaces.DestinationInterface

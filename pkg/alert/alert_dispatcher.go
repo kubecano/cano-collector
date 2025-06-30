@@ -9,7 +9,7 @@ import (
 	"go.uber.org/zap"
 
 	config_team "github.com/kubecano/cano-collector/config/team"
-	"github.com/kubecano/cano-collector/pkg/destination"
+	"github.com/kubecano/cano-collector/pkg/interfaces"
 	"github.com/kubecano/cano-collector/pkg/logger"
 )
 
@@ -20,13 +20,13 @@ type AlertDispatcherInterface interface {
 
 // AlertDispatcher dispatches alerts to team destinations
 type AlertDispatcher struct {
-	destinationRegistry destination.DestinationRegistryInterface
+	destinationRegistry interfaces.DestinationRegistryInterface
 	alertFormatter      AlertFormatterInterface
 	logger              logger.LoggerInterface
 }
 
 // NewAlertDispatcher creates a new alert dispatcher
-func NewAlertDispatcher(registry destination.DestinationRegistryInterface, formatter AlertFormatterInterface, logger logger.LoggerInterface) *AlertDispatcher {
+func NewAlertDispatcher(registry interfaces.DestinationRegistryInterface, formatter AlertFormatterInterface, logger logger.LoggerInterface) *AlertDispatcher {
 	return &AlertDispatcher{
 		destinationRegistry: registry,
 		alertFormatter:      formatter,

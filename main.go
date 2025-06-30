@@ -4,21 +4,18 @@ import (
 	"context"
 	"time"
 
+	"github.com/kubecano/cano-collector/config"
 	"github.com/kubecano/cano-collector/pkg/alert"
 	"github.com/kubecano/cano-collector/pkg/destination"
-	"github.com/kubecano/cano-collector/pkg/metric"
-
-	"github.com/kubecano/cano-collector/pkg/router"
-
-	"github.com/kubecano/cano-collector/pkg/logger"
-
 	"github.com/kubecano/cano-collector/pkg/health"
-
+	"github.com/kubecano/cano-collector/pkg/interfaces"
+	"github.com/kubecano/cano-collector/pkg/logger"
+	"github.com/kubecano/cano-collector/pkg/metric"
+	"github.com/kubecano/cano-collector/pkg/router"
 	"github.com/kubecano/cano-collector/pkg/tracer"
 
 	"github.com/getsentry/sentry-go"
 
-	"github.com/kubecano/cano-collector/config"
 	config_team "github.com/kubecano/cano-collector/config/team"
 	"github.com/kubecano/cano-collector/pkg/util"
 )
@@ -29,9 +26,9 @@ type AppDependencies struct {
 	TracerManagerFactory   func(cfg config.Config, log logger.LoggerInterface) tracer.TracerInterface
 	MetricsFactory         func(log logger.LoggerInterface) metric.MetricsInterface
 	DestinationFactory     func(log logger.LoggerInterface) *destination.DestinationFactory
-	DestinationRegistry    func(factory *destination.DestinationFactory, log logger.LoggerInterface) destination.DestinationRegistryInterface
+	DestinationRegistry    func(factory *destination.DestinationFactory, log logger.LoggerInterface) interfaces.DestinationRegistryInterface
 	TeamResolverFactory    func(teams config_team.TeamsConfig, log logger.LoggerInterface) alert.TeamResolverInterface
-	AlertDispatcherFactory func(registry destination.DestinationRegistryInterface, log logger.LoggerInterface) alert.AlertDispatcherInterface
+	AlertDispatcherFactory func(registry interfaces.DestinationRegistryInterface, log logger.LoggerInterface) alert.AlertDispatcherInterface
 	AlertHandlerFactory    func(log logger.LoggerInterface, m metric.MetricsInterface, tr alert.TeamResolverInterface, ad alert.AlertDispatcherInterface) alert.AlertHandlerInterface
 	RouterManagerFactory   func(cfg config.Config, log logger.LoggerInterface, t tracer.TracerInterface, m metric.MetricsInterface, h health.HealthInterface, a alert.AlertHandlerInterface) router.RouterInterface
 }
@@ -58,13 +55,13 @@ func main() {
 		DestinationFactory: func(log logger.LoggerInterface) *destination.DestinationFactory {
 			return destination.NewDestinationFactory(log, util.GetSharedHTTPClient())
 		},
-		DestinationRegistry: func(factory *destination.DestinationFactory, log logger.LoggerInterface) destination.DestinationRegistryInterface {
+		DestinationRegistry: func(factory *destination.DestinationFactory, log logger.LoggerInterface) interfaces.DestinationRegistryInterface {
 			return destination.NewDestinationRegistry(factory, log)
 		},
 		TeamResolverFactory: func(teams config_team.TeamsConfig, log logger.LoggerInterface) alert.TeamResolverInterface {
 			return alert.NewTeamResolver(teams, log)
 		},
-		AlertDispatcherFactory: func(registry destination.DestinationRegistryInterface, log logger.LoggerInterface) alert.AlertDispatcherInterface {
+		AlertDispatcherFactory: func(registry interfaces.DestinationRegistryInterface, log logger.LoggerInterface) alert.AlertDispatcherInterface {
 			formatter := alert.NewAlertFormatter()
 			return alert.NewAlertDispatcher(registry, formatter, log)
 		},

@@ -9,7 +9,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	config_team "github.com/kubecano/cano-collector/config/team"
-	destination "github.com/kubecano/cano-collector/pkg/destination"
+	interfaces "github.com/kubecano/cano-collector/pkg/interfaces"
 	template "github.com/prometheus/alertmanager/template"
 )
 
@@ -52,7 +52,7 @@ func (mr *MockTeamResolverInterfaceMockRecorder) ResolveTeam(arg0 interface{}) *
 }
 
 // ValidateTeamDestinations mocks base method.
-func (m *MockTeamResolverInterface) ValidateTeamDestinations(arg0 destination.DestinationRegistryInterface) error {
+func (m *MockTeamResolverInterface) ValidateTeamDestinations(arg0 interfaces.DestinationRegistryInterface) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ValidateTeamDestinations", arg0)
 	ret0, _ := ret[0].(error)
