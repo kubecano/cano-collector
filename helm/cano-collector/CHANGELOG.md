@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.9](https://github.com/kubecano/cano-collector/compare/cano-collector-helm-v0.0.8...cano-collector-helm-v0.0.9) (2025-07-01)
+
+
+### Features
+
+* CU-8699hgr18 - Raw alert to Slack Delivery ([#124](https://github.com/kubecano/cano-collector/issues/124)) ([c7abbd7](https://github.com/kubecano/cano-collector/commit/c7abbd73a9beae93d80c52cc41e4562c3e0de338))
+* CU-8699hgr18 - Raw alert to Slack Delivery ([#126](https://github.com/kubecano/cano-collector/issues/126)) ([0e2f440](https://github.com/kubecano/cano-collector/commit/0e2f440b77d93962a250396f1c0b89a15dc3db86))
+
 ## [0.0.8](https://github.com/kubecano/cano-collector/compare/cano-collector-helm-v0.0.7...cano-collector-helm-v0.0.8) (2025-06-15)
 
 

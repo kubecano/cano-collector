@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.0.10](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.9...cano-collector-v0.0.10) (2025-07-01)
+
+
+### Features
+
+* CU-8699gn6fk - Add README and documentation for cano-collector ([39bfdf9](https://github.com/kubecano/cano-collector/commit/39bfdf9ad9cf5e546d6fc0f162659b641df670f8))
+* CU-8699gn6fk - Add README and documentation for cano-collector ([#120](https://github.com/kubecano/cano-collector/issues/120)) ([8cc8c02](https://github.com/kubecano/cano-collector/commit/8cc8c0295110618452960d43bcf9f14c1c96b674))
+* CU-8699gpzq5 - Render cano-collector docs and deploy to S3 ([#121](https://github.com/kubecano/cano-collector/issues/121)) ([ba56c67](https://github.com/kubecano/cano-collector/commit/ba56c67471ed9772cef99afa5580018a0678cef6))
+* CU-8699hgr18 - Raw alert to Slack Delivery ([#124](https://github.com/kubecano/cano-collector/issues/124)) ([c7abbd7](https://github.com/kubecano/cano-collector/commit/c7abbd73a9beae93d80c52cc41e4562c3e0de338))
+* CU-8699hgr18 - Raw alert to Slack Delivery ([#125](https://github.com/kubecano/cano-collector/issues/125)) ([45bd3b5](https://github.com/kubecano/cano-collector/commit/45bd3b58ff1f3162637cfb86b29c214b251612c7))
+* CU-8699hgr18 - Raw alert to Slack Delivery ([#126](https://github.com/kubecano/cano-collector/issues/126)) ([0e2f440](https://github.com/kubecano/cano-collector/commit/0e2f440b77d93962a250396f1c0b89a15dc3db86))
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/getsentry/sentry-go to v0.34.0 ([#127](https://github.com/kubecano/cano-collector/issues/127)) ([a27348d](https://github.com/kubecano/cano-collector/commit/a27348dbb88ea800008203ea5622f9bdb21b0971))
+* **deps:** update module github.com/getsentry/sentry-go/gin to v0.34.0 ([#128](https://github.com/kubecano/cano-collector/issues/128)) ([fce87c2](https://github.com/kubecano/cano-collector/commit/fce87c21e15062484930131364b5534e34943940))
+* **deps:** update module go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin to v0.62.0 ([#130](https://github.com/kubecano/cano-collector/issues/130)) ([e2680cc](https://github.com/kubecano/cano-collector/commit/e2680cc34c04f6913d234b0388da8fcd9b4544e4))
+* **deps:** update opentelemetry-go monorepo to v1.37.0 ([#131](https://github.com/kubecano/cano-collector/issues/131)) ([e0e46da](https://github.com/kubecano/cano-collector/commit/e0e46da16d0207f3321ed183748c884419928b05))
+
 ## [0.0.9](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.8...cano-collector-v0.0.9) (2025-06-15)
 
 
