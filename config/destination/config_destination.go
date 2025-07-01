@@ -57,14 +57,7 @@ func parseDestinationsYAML(r io.Reader) (*DestinationsConfig, error) {
 		return nil, fmt.Errorf("failed to decode destinations YAML: %w", err)
 	}
 
-	// Validate Slack destinations
-	for _, d := range config.Destinations.Slack {
-		if err := validateSlackDestination(d); err != nil {
-			return nil, fmt.Errorf("invalid Slack destination '%s': %w", d.Name, err)
-		}
-	}
-
-	// Process environment variable placeholders for API keys
+	// Replace environment variable placeholders in Slack destinations
 	for i, d := range config.Destinations.Slack {
 		if strings.HasPrefix(d.APIKey, "${") && strings.HasSuffix(d.APIKey, "}") {
 			envVar := strings.TrimSuffix(strings.TrimPrefix(d.APIKey, "${"), "}")
@@ -73,6 +66,13 @@ func parseDestinationsYAML(r io.Reader) (*DestinationsConfig, error) {
 				return nil, fmt.Errorf("missing required env %s for slack destination %s", envVar, d.Name)
 			}
 			config.Destinations.Slack[i].APIKey = val
+		}
+	}
+
+	// Validate Slack destinations after environment variables have been replaced
+	for _, d := range config.Destinations.Slack {
+		if err := validateSlackDestination(d); err != nil {
+			return nil, fmt.Errorf("invalid Slack destination '%s': %w", d.Name, err)
 		}
 	}
 
@@ -88,13 +88,13 @@ func validateSlackDestination(d DestinationSlack) error {
 		return fmt.Errorf("slack_channel is required")
 	}
 
-	if d.APIKey == "" {
-		return fmt.Errorf("api_key is required")
-	}
-
-	// Allow placeholder format ${ENV_VAR}
+	// Skip validation for placeholder values that will be resolved at runtime
 	if strings.HasPrefix(d.APIKey, "${") && strings.HasSuffix(d.APIKey, "}") {
 		return nil
+	}
+
+	if d.APIKey == "" {
+		return fmt.Errorf("api_key is required")
 	}
 
 	// Validate grouping_interval if provided
