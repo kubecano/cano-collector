@@ -3,6 +3,7 @@ package config_destination
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -46,6 +47,70 @@ destinations:
 	assert.True(t, *slackDest.UnfurlLinks)
 }
 
+func TestLoadDestinationsConfig_WithPlaceholders(t *testing.T) {
+	// Set environment variable for testing
+	envVarName := "SLACK_API_KEY_TEST"
+	envVarValue := "xoxb-env-token"
+	os.Setenv(envVarName, envVarValue)
+	defer os.Unsetenv(envVarName)
+
+	// Sample YAML config with placeholder
+	yamlContent := `
+destinations:
+  slack:
+    - name: "incident-alerts"
+      api_key: "${SLACK_API_KEY_TEST}"
+      slack_channel: "#incident-alerts"
+`
+
+	// Create temporary file
+	tmpDir := t.TempDir()
+	tmpFile := filepath.Join(tmpDir, "destinations.yaml")
+	err := os.WriteFile(tmpFile, []byte(yamlContent), 0o644)
+	require.NoError(t, err)
+
+	loader := NewFileDestinationsLoader(tmpFile)
+	cfg, err := loader.Load()
+	require.NoError(t, err)
+	assert.NotNil(t, cfg)
+
+	// Validate that placeholder was replaced with env var value
+	assert.Len(t, cfg.Destinations.Slack, 1)
+	slackDest := cfg.Destinations.Slack[0]
+	assert.Equal(t, "incident-alerts", slackDest.Name)
+	assert.Equal(t, envVarValue, slackDest.APIKey)
+	assert.Equal(t, "#incident-alerts", slackDest.SlackChannel)
+}
+
+func TestLoadDestinationsConfig_MissingEnvVar(t *testing.T) {
+	// Use a placeholder for an env var that doesn't exist
+	nonExistentEnvVar := "SLACK_API_KEY_NONEXISTENT_" + t.Name()
+
+	// Make sure the env var doesn't exist
+	os.Unsetenv(nonExistentEnvVar)
+
+	yamlContent := `
+destinations:
+  slack:
+    - name: "incident-alerts"
+      api_key: "${` + nonExistentEnvVar + `}"
+      slack_channel: "#incident-alerts"
+`
+
+	// Create temporary file
+	tmpDir := t.TempDir()
+	tmpFile := filepath.Join(tmpDir, "destinations.yaml")
+	err := os.WriteFile(tmpFile, []byte(yamlContent), 0o644)
+	require.NoError(t, err)
+
+	loader := NewFileDestinationsLoader(tmpFile)
+	cfg, err := loader.Load()
+	require.Error(t, err)
+	assert.Nil(t, cfg)
+	assert.True(t, strings.Contains(err.Error(), "missing required env"))
+	assert.True(t, strings.Contains(err.Error(), nonExistentEnvVar))
+}
+
 func TestLoadDestinationsConfig_FileNotFound(t *testing.T) {
 	loader := NewFileDestinationsLoader("non-existent.yaml")
 	cfg, err := loader.Load()
@@ -69,6 +134,16 @@ func TestValidateSlackDestination_Success(t *testing.T) {
 	dest := DestinationSlack{
 		Name:         "test",
 		APIKey:       "xoxb-token",
+		SlackChannel: "#test",
+	}
+	err := validateSlackDestination(dest)
+	assert.NoError(t, err)
+}
+
+func TestValidateSlackDestination_WithPlaceholder(t *testing.T) {
+	dest := DestinationSlack{
+		Name:         "test",
+		APIKey:       "${SLACK_API_KEY_TEST}",
 		SlackChannel: "#test",
 	}
 	err := validateSlackDestination(dest)

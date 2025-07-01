@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -63,6 +64,18 @@ func parseDestinationsYAML(r io.Reader) (*DestinationsConfig, error) {
 		}
 	}
 
+	// Process environment variable placeholders for API keys
+	for i, d := range config.Destinations.Slack {
+		if strings.HasPrefix(d.APIKey, "${") && strings.HasSuffix(d.APIKey, "}") {
+			envVar := strings.TrimSuffix(strings.TrimPrefix(d.APIKey, "${"), "}")
+			val, ok := os.LookupEnv(envVar)
+			if !ok {
+				return nil, fmt.Errorf("missing required env %s for slack destination %s", envVar, d.Name)
+			}
+			config.Destinations.Slack[i].APIKey = val
+		}
+	}
+
 	return &config, nil
 }
 
@@ -77,6 +90,11 @@ func validateSlackDestination(d DestinationSlack) error {
 
 	if d.APIKey == "" {
 		return fmt.Errorf("api_key is required")
+	}
+
+	// Allow placeholder format ${ENV_VAR}
+	if strings.HasPrefix(d.APIKey, "${") && strings.HasSuffix(d.APIKey, "}") {
+		return nil
 	}
 
 	// Validate grouping_interval if provided

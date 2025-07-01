@@ -110,6 +110,15 @@ spec:
             - name: DISABLE_HELM_MONITORING
               value: "True"
             {{- end }}
+            {{- range .Values.destinations.slack }}
+            {{- if .api_key_value_from }}
+            - name: SLACK_API_KEY_{{ .name | upper | replace "-" "_" }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .api_key_value_from.secretName }}
+                  key: {{ .api_key_value_from.secretKey }}
+            {{- end }}
+            {{- end }}
           envFrom:
             - secretRef:
                 name: {{ include "cano-collector.fullname" . }}-secret

@@ -74,26 +74,3 @@ Validate Slack destination configuration
 {{- end -}}
 {{- end -}}
 {{- end -}}
-
-{{/*
-Resolve API key from external secret
-*/}}
-{{- define "cano-collector.resolveApiKey" -}}
-{{- $destination := .destination -}}
-{{- $context := .context -}}
-{{- if hasKey $destination "api_key_value_from" -}}
-{{- $secretName := $destination.api_key_value_from.secretName -}}
-{{- $secretKey := $destination.api_key_value_from.secretKey -}}
-{{- $secret := (lookup "v1" "Secret" $context.Release.Namespace $secretName) -}}
-{{- if not $secret -}}
-{{- fail (printf "Secret '%s' not found in namespace '%s' for Slack destination '%s'" $secretName $context.Release.Namespace $destination.name) -}}
-{{- end -}}
-{{- $apiKey := (index $secret.data $secretKey) -}}
-{{- if not $apiKey -}}
-{{- fail (printf "Key '%s' not found in secret '%s' for Slack destination '%s'" $secretKey $secretName $destination.name) -}}
-{{- end -}}
-{{- $apiKey | b64dec | quote -}}
-{{- else if hasKey $destination "api_key" -}}
-{{- $destination.api_key | quote -}}
-{{- end -}}
-{{- end -}}
