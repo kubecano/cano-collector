@@ -20,8 +20,8 @@ github.com/gabriel-vasile/mimetype v1.4.9 h1:5k+WDwEsD9eTLL8Tz3L0VnmVh9QxGjRmjBv
 github.com/gabriel-vasile/mimetype v1.4.9/go.mod h1:WnSQhFKJuBlRyLiKohA/2DtIlPFAbguNaG7QCHcyGok=
 github.com/getsentry/sentry-go v0.34.0 h1:1FCHBVp8TfSc8L10zqSwXUZNiOSF+10qw4czjarTiY4=
 github.com/getsentry/sentry-go v0.34.0/go.mod h1:C55omcY9ChRQIUcVcGcs+Zdy4ZpQGvNJ7JYHIoSWOtE=
-github.com/getsentry/sentry-go/gin v0.33.0 h1:8oH2ydD/EeKlDMoENhCtq3rJ7EcQtjfdzrMM1Ku2J3I=
-github.com/getsentry/sentry-go/gin v0.33.0/go.mod h1:uwqds9mMjBCn/+WcgtX0z+mBq487macTzDxNljM+/g8=
+github.com/getsentry/sentry-go/gin v0.34.0 h1:k4kszBvurhnMlU09oNlzWSOTTjkvoirvmLNPMRvwc/s=
+github.com/getsentry/sentry-go/gin v0.34.0/go.mod h1:Z/nqdw6aFO5GuFdXVxgpFlIhUeOt7oTWlLzxj0I9+TE=
 github.com/gin-contrib/sse v1.1.0 h1:n0w2GMuUpWDVp7qSpvze6fAu9iRxJY4Hmj6AmBOU05w=
 github.com/gin-contrib/sse v1.1.0/go.mod h1:hxRZ5gVpWMT7Z0B0gSNYqqsSCNIJMjzvm6fqCz9vjwM=
 github.com/gin-contrib/zap v1.1.5 h1:qKwhWb4DQgPriCl1AHLLob6hav/KUIctKXIjTmWIN3I=
