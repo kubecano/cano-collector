@@ -4,7 +4,7 @@ Slack
 Sends notifications to a Slack channel. This is the most feature-rich destination, offering interactive messages, file attachments, and notification grouping.
 
 Creating a Slack App
--------------------
+--------------------
 
 To use Slack integration, you need to create a Slack App and obtain an API key. Follow these steps:
 
@@ -12,17 +12,56 @@ To use Slack integration, you need to create a Slack App and obtain an API key. 
    
    Go to `https://api.slack.com/apps?new_app=1` and click "Create New App".
    
-   - Choose "From scratch"
-   - Enter an app name (e.g., "Kubecano Alerts")
-   - Select your workspace
+   Choose one of the following methods:
 
-2. **Configure App Permissions**
+2. **Choose App Creation Method**
    
-   In your app settings, go to "OAuth & Permissions" and add the following scopes:
+   a. **Using Manifest (Recommended)**
    
-   - `chat:write` - Send messages to channels
-   - `chat:write.public` - Send messages to public channels
-   - `files:write` - Upload files (for log attachments)
+      - Choose "From manifest"
+      - Select your workspace
+      - In the next step, use the following manifest:
+
+      .. code-block:: json
+
+          {
+              "display_information": {
+                  "name": "Kubecano Alerts",
+                  "description": "Kubernetes alerting and monitoring integration",
+                  "background_color": "#2eb67d"
+              },
+              "features": {
+                  "bot_user": {
+                      "display_name": "Kubecano Bot",
+                      "always_online": false
+                  }
+              },
+              "oauth_config": {
+                  "scopes": {
+                      "bot": [
+                          "chat:write",
+                          "chat:write.public",
+                          "files:write"
+                      ]
+                  }
+              },
+              "settings": {
+                  "org_deploy_enabled": false,
+                  "socket_mode_enabled": false,
+                  "is_hosted": false,
+                  "token_rotation_enabled": false
+              }
+          }
+
+   b. **Using From Scratch**
+   
+      - Choose "From scratch"
+      - Enter an app name (e.g., "Kubecano Alerts")
+      - Select your workspace
+      - Go to "OAuth & Permissions" and add the following scopes:
+        - `chat:write` - Send messages to channels
+        - `chat:write.public` - Send messages to public channels
+        - `files:write` - Upload files (for log attachments)
 
 3. **Install App to Workspace**
    

@@ -14,7 +14,7 @@
    :og:site_name: Cano-Collector Docs
 
 Welcome to cano-collector's documentation!
-============================================
+==========================================
 
 **Cano Collector** is an open-source alert and event ingestion agent for Kubernetes, designed to help developers and DevOps teams better understand incidents in their clusters by enriching raw alerts and events with valuable context.
 
@@ -69,7 +69,7 @@ For each alert or event, Cano Collector:
    * 🔀 Kafka topics (Planned)
 
 Architecture Overview
---------------------
+---------------------
 
 Cano Collector follows a clean architecture pattern with clear separation of concerns:
 
@@ -111,10 +111,10 @@ Core Components
 * **``Sender``**: Factory pattern implementation for API communication
 
 Current Status (MVP)
--------------------
+--------------------
 
 ✅ **Available Now**
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 * **Slack Integration**: Full-featured Slack destination with:
   * Rich message formatting with blocks and attachments
@@ -124,7 +124,7 @@ Current Status (MVP)
   * Table formatting for structured data
 
 🚧 **Coming Soon**
-~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~
 
 * **MS Teams Integration**: Adaptive Cards support
 * **PagerDuty Integration**: Incident lifecycle management
