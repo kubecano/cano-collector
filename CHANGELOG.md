@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.11](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.10...cano-collector-v0.0.11) (2025-07-01)
+
+
+### Bug Fixes
+
+* CU-8699hgr18 - Raw alert to Slack Delivery - fix configuration ([#135](https://github.com/kubecano/cano-collector/issues/135)) ([bbf1746](https://github.com/kubecano/cano-collector/commit/bbf1746b3e9c8b283b91efdf9b41fc25e1c2ab61))
+
 ## [0.0.10](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.9...cano-collector-v0.0.10) (2025-07-01)
 
 
