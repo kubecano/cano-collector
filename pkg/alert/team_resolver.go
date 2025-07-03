@@ -3,18 +3,10 @@ package alert
 import (
 	"fmt"
 
-	"github.com/prometheus/alertmanager/template"
-
 	config_team "github.com/kubecano/cano-collector/config/team"
 	"github.com/kubecano/cano-collector/pkg/interfaces"
 	"github.com/kubecano/cano-collector/pkg/logger"
 )
-
-//go:generate mockgen -destination=../../mocks/team_resolver_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/alert TeamResolverInterface
-type TeamResolverInterface interface {
-	ResolveTeam(alert template.Data) (*config_team.Team, error)
-	ValidateTeamDestinations(registry interfaces.DestinationRegistryInterface) error
-}
 
 // TeamResolver resolves which team should handle an alert
 type TeamResolver struct {
@@ -44,7 +36,14 @@ func (r *TeamResolver) ValidateTeamDestinations(registry interfaces.DestinationR
 
 // ResolveTeam determines which team should handle the alert
 // For now, returns the first team (default team) as specified in requirements
-func (r *TeamResolver) ResolveTeam(alert template.Data) (*config_team.Team, error) {
+func (r *TeamResolver) ResolveTeam(alert interface{}) (*config_team.Team, error) {
+	// Type assertion - in practice, this should always be *AlertManagerEvent
+	alertEvent, ok := alert.(*AlertManagerEvent)
+	if !ok {
+		r.logger.Error("Invalid alert type passed to ResolveTeam")
+		return nil, fmt.Errorf("invalid alert type")
+	}
+
 	if len(r.teams.Teams) == 0 {
 		return nil, nil // No teams configured
 	}
@@ -52,7 +51,10 @@ func (r *TeamResolver) ResolveTeam(alert template.Data) (*config_team.Team, erro
 	// TODO: Implement proper routing logic based on namespace, pod names, etc.
 	// For now, return the first team as the default team
 	defaultTeam := r.teams.Teams[0]
-	r.logger.Info("Resolved team for alert", "team", defaultTeam.Name, "destinations", defaultTeam.Destinations)
+	r.logger.Info("Resolved team for alert",
+		"team", defaultTeam.Name,
+		"destinations", defaultTeam.Destinations,
+		"alert_name", alertEvent.GetAlertName())
 
 	return &defaultTeam, nil
 }

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/prometheus/alertmanager/template"
 	"go.uber.org/zap"
 
 	config_team "github.com/kubecano/cano-collector/config/team"
@@ -13,20 +12,15 @@ import (
 	"github.com/kubecano/cano-collector/pkg/logger"
 )
 
-//go:generate mockgen -destination=../../mocks/alert_dispatcher_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/alert AlertDispatcherInterface
-type AlertDispatcherInterface interface {
-	DispatchAlert(ctx context.Context, alert template.Data, team *config_team.Team) error
-}
-
 // AlertDispatcher dispatches alerts to team destinations
 type AlertDispatcher struct {
 	destinationRegistry interfaces.DestinationRegistryInterface
-	alertFormatter      AlertFormatterInterface
+	alertFormatter      interfaces.AlertFormatterInterface
 	logger              logger.LoggerInterface
 }
 
 // NewAlertDispatcher creates a new alert dispatcher
-func NewAlertDispatcher(registry interfaces.DestinationRegistryInterface, formatter AlertFormatterInterface, logger logger.LoggerInterface) *AlertDispatcher {
+func NewAlertDispatcher(registry interfaces.DestinationRegistryInterface, formatter interfaces.AlertFormatterInterface, logger logger.LoggerInterface) *AlertDispatcher {
 	return &AlertDispatcher{
 		destinationRegistry: registry,
 		alertFormatter:      formatter,
@@ -35,7 +29,14 @@ func NewAlertDispatcher(registry interfaces.DestinationRegistryInterface, format
 }
 
 // DispatchAlert sends the alert to all destinations of the specified team
-func (d *AlertDispatcher) DispatchAlert(ctx context.Context, alert template.Data, team *config_team.Team) error {
+func (d *AlertDispatcher) DispatchAlert(ctx context.Context, alert interface{}, team *config_team.Team) error {
+	// Type assertion - in practice, this should always be *AlertManagerEvent
+	alertEvent, ok := alert.(*AlertManagerEvent)
+	if !ok {
+		d.logger.Error("Invalid alert type passed to DispatchAlert")
+		return fmt.Errorf("invalid alert type")
+	}
+
 	if team == nil {
 		d.logger.Info("No team resolved for alert, skipping dispatch")
 		return nil
@@ -53,7 +54,7 @@ func (d *AlertDispatcher) DispatchAlert(ctx context.Context, alert template.Data
 	}
 
 	// Convert alert to message format using formatter
-	message := d.alertFormatter.FormatAlert(alert)
+	message := d.alertFormatter.FormatAlert(alertEvent)
 
 	// Send to all destinations
 	var errors []string

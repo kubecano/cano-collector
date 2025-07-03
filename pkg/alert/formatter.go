@@ -3,14 +3,7 @@ package alert
 import (
 	"fmt"
 	"strings"
-
-	"github.com/prometheus/alertmanager/template"
 )
-
-//go:generate mockgen -destination=../../mocks/alert_formatter_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/alert AlertFormatterInterface
-type AlertFormatterInterface interface {
-	FormatAlert(alert template.Data) string
-}
 
 // AlertFormatter formats alertmanager alerts to readable messages
 type AlertFormatter struct{}
@@ -21,13 +14,19 @@ func NewAlertFormatter() *AlertFormatter {
 }
 
 // FormatAlert converts alertmanager alert to a readable message
-func (f *AlertFormatter) FormatAlert(alert template.Data) string {
+func (f *AlertFormatter) FormatAlert(alert interface{}) string {
+	// Type assertion - in practice, this should always be *AlertManagerEvent
+	alertEvent, ok := alert.(*AlertManagerEvent)
+	if !ok {
+		return "Error: Invalid alert format"
+	}
+
 	var messages []string
 
-	messages = append(messages, fmt.Sprintf("🚨 **Alert: %s**", alert.Status))
+	messages = append(messages, fmt.Sprintf("🚨 **Alert: %s**", alertEvent.Status))
 
-	if alert.GroupLabels != nil {
-		for key, value := range alert.GroupLabels {
+	if alertEvent.GroupLabels != nil {
+		for key, value := range alertEvent.GroupLabels {
 			if key != "" && value != "" {
 				messages = append(messages, fmt.Sprintf("**%s:** %s", key, value))
 			}
@@ -36,7 +35,7 @@ func (f *AlertFormatter) FormatAlert(alert template.Data) string {
 
 	messages = append(messages, "")
 
-	for _, alertItem := range alert.Alerts {
+	for _, alertItem := range alertEvent.Alerts {
 		if alertname := alertItem.Labels["alertname"]; alertname != "" {
 			messages = append(messages, "**Alert:** "+alertname)
 		}

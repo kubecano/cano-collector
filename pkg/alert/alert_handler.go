@@ -9,6 +9,7 @@ import (
 	"github.com/prometheus/alertmanager/template"
 	"go.uber.org/zap"
 
+	"github.com/kubecano/cano-collector/pkg/interfaces"
 	"github.com/kubecano/cano-collector/pkg/logger"
 	"github.com/kubecano/cano-collector/pkg/metric"
 )
@@ -22,16 +23,16 @@ type AlertHandlerInterface interface {
 type AlertHandler struct {
 	logger          logger.LoggerInterface
 	metrics         metric.MetricsInterface
-	teamResolver    TeamResolverInterface
-	alertDispatcher AlertDispatcherInterface
+	teamResolver    interfaces.TeamResolverInterface
+	alertDispatcher interfaces.AlertDispatcherInterface
 }
 
 // NewAlertHandler creates a new handler with dependencies
 func NewAlertHandler(
 	logger logger.LoggerInterface,
 	metrics metric.MetricsInterface,
-	teamResolver TeamResolverInterface,
-	alertDispatcher AlertDispatcherInterface,
+	teamResolver interfaces.TeamResolverInterface,
+	alertDispatcher interfaces.AlertDispatcherInterface,
 ) *AlertHandler {
 	return &AlertHandler{
 		logger:          logger,
@@ -79,8 +80,7 @@ func (h *AlertHandler) HandleAlert(c *gin.Context) {
 	h.metrics.ObserveAlert(alert.Receiver, alert.Status)
 
 	// Resolve which team should handle this alert
-	// Using ToTemplateData() for backward compatibility
-	team, err := h.teamResolver.ResolveTeam(alert.ToTemplateData())
+	team, err := h.teamResolver.ResolveTeam(alert)
 	if err != nil {
 		h.logger.Error("Failed to resolve team for alert", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to resolve team"})
@@ -89,7 +89,7 @@ func (h *AlertHandler) HandleAlert(c *gin.Context) {
 
 	// Dispatch alert to team destinations
 	ctx := c.Request.Context()
-	dispatchErr := h.alertDispatcher.DispatchAlert(ctx, alert.ToTemplateData(), team)
+	dispatchErr := h.alertDispatcher.DispatchAlert(ctx, alert, team)
 	if dispatchErr != nil {
 		h.logger.Error("Failed to dispatch alert", zap.Error(dispatchErr))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to dispatch alert"})

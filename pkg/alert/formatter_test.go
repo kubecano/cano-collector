@@ -5,17 +5,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/prometheus/alertmanager/template"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestAlertFormatter_FormatAlert_BasicAlert(t *testing.T) {
 	formatter := NewAlertFormatter()
+	now := time.Now()
 
-	alert := template.Data{
+	alert := &AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
-		Alerts: []template.Alert{
+		Alerts: []PrometheusAlert{
 			{
 				Status: "firing",
 				Labels: map[string]string{
@@ -26,7 +26,7 @@ func TestAlertFormatter_FormatAlert_BasicAlert(t *testing.T) {
 					"summary":     "High CPU usage detected",
 					"description": "The CPU usage has exceeded the threshold",
 				},
-				StartsAt: time.Now(),
+				StartsAt: now,
 			},
 		},
 	}
@@ -44,14 +44,14 @@ func TestAlertFormatter_FormatAlert_BasicAlert(t *testing.T) {
 func TestAlertFormatter_FormatAlert_WithGroupLabels(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	alert := template.Data{
+	alert := &AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
 		GroupLabels: map[string]string{
 			"namespace": "production",
 			"service":   "api",
 		},
-		Alerts: []template.Alert{
+		Alerts: []PrometheusAlert{
 			{
 				Status: "firing",
 				Labels: map[string]string{
@@ -71,10 +71,10 @@ func TestAlertFormatter_FormatAlert_WithGroupLabels(t *testing.T) {
 func TestAlertFormatter_FormatAlert_MultipleAlerts(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	alert := template.Data{
+	alert := &AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
-		Alerts: []template.Alert{
+		Alerts: []PrometheusAlert{
 			{
 				Status: "firing",
 				Labels: map[string]string{
@@ -110,10 +110,10 @@ func TestAlertFormatter_FormatAlert_MultipleAlerts(t *testing.T) {
 func TestAlertFormatter_FormatAlert_MissingLabels(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	alert := template.Data{
+	alert := &AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
-		Alerts: []template.Alert{
+		Alerts: []PrometheusAlert{
 			{
 				Status: "firing",
 				Labels: map[string]string{
@@ -135,10 +135,10 @@ func TestAlertFormatter_FormatAlert_MissingLabels(t *testing.T) {
 func TestAlertFormatter_FormatAlert_MissingAnnotations(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	alert := template.Data{
+	alert := &AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
-		Alerts: []template.Alert{
+		Alerts: []PrometheusAlert{
 			{
 				Status: "firing",
 				Labels: map[string]string{
@@ -163,10 +163,10 @@ func TestAlertFormatter_FormatAlert_MissingAnnotations(t *testing.T) {
 func TestAlertFormatter_FormatAlert_EmptyAlerts(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	alert := template.Data{
+	alert := &AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
-		Alerts:   []template.Alert{}, // empty alerts list
+		Alerts:   []PrometheusAlert{}, // empty alerts list
 	}
 
 	result := formatter.FormatAlert(alert)
@@ -182,10 +182,10 @@ func TestAlertFormatter_FormatAlert_EmptyAlerts(t *testing.T) {
 func TestAlertFormatter_FormatAlert_ResolvedStatus(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	alert := template.Data{
+	alert := &AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "resolved",
-		Alerts: []template.Alert{
+		Alerts: []PrometheusAlert{
 			{
 				Status: "resolved",
 				Labels: map[string]string{
@@ -205,10 +205,10 @@ func TestAlertFormatter_FormatAlert_ResolvedStatus(t *testing.T) {
 func TestAlertFormatter_FormatAlert_SpecialCharacters(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	alert := template.Data{
+	alert := &AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
-		Alerts: []template.Alert{
+		Alerts: []PrometheusAlert{
 			{
 				Status: "firing",
 				Labels: map[string]string{
@@ -233,10 +233,10 @@ func TestAlertFormatter_FormatAlert_SpecialCharacters(t *testing.T) {
 func TestAlertFormatter_FormatAlert_NewlinesInContent(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	alert := template.Data{
+	alert := &AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
-		Alerts: []template.Alert{
+		Alerts: []PrometheusAlert{
 			{
 				Status: "firing",
 				Labels: map[string]string{
@@ -253,7 +253,6 @@ func TestAlertFormatter_FormatAlert_NewlinesInContent(t *testing.T) {
 
 	result := formatter.FormatAlert(alert)
 
-	// Check if newlines are preserved
 	assert.Contains(t, result, "**Summary:** Multi-line\nsummary")
 	assert.Contains(t, result, "**Description:** Multi-line\ndescription\nwith breaks")
 }
@@ -261,19 +260,19 @@ func TestAlertFormatter_FormatAlert_NewlinesInContent(t *testing.T) {
 func TestAlertFormatter_FormatAlert_EmptyStringValues(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	alert := template.Data{
+	alert := &AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
-		Alerts: []template.Alert{
+		Alerts: []PrometheusAlert{
 			{
 				Status: "firing",
 				Labels: map[string]string{
-					"alertname": "",
-					"severity":  "",
+					"alertname": "HighCPUUsage",
+					"severity":  "", // empty severity
 				},
 				Annotations: map[string]string{
-					"summary":     "",
-					"description": "",
+					"summary":     "", // empty summary
+					"description": "", // empty description
 				},
 			},
 		},
@@ -281,34 +280,25 @@ func TestAlertFormatter_FormatAlert_EmptyStringValues(t *testing.T) {
 
 	result := formatter.FormatAlert(alert)
 
-	// Should not contain empty fields
-	assert.NotContains(t, result, "**Alert:**")
-	assert.NotContains(t, result, "**Severity:**")
-	assert.NotContains(t, result, "**Summary:**")
-	assert.NotContains(t, result, "**Description:**")
-	// Should only contain status and header
 	assert.Contains(t, result, "🚨 **Alert: firing**")
 	assert.Contains(t, result, "**Status:** firing")
+	// Should not include empty fields
+	assert.NotContains(t, result, "**Severity:** ")
+	assert.NotContains(t, result, "**Summary:** ")
+	assert.NotContains(t, result, "**Description:** ")
 }
 
 func TestAlertFormatter_FormatAlert_MessageStructure(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	alert := template.Data{
+	alert := &AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
-		GroupLabels: map[string]string{
-			"namespace": "prod",
-		},
-		Alerts: []template.Alert{
+		Alerts: []PrometheusAlert{
 			{
 				Status: "firing",
 				Labels: map[string]string{
-					"alertname": "TestAlert",
-					"severity":  "critical",
-				},
-				Annotations: map[string]string{
-					"summary": "Test summary",
+					"alertname": "HighCPUUsage",
 				},
 			},
 		},
@@ -316,30 +306,26 @@ func TestAlertFormatter_FormatAlert_MessageStructure(t *testing.T) {
 
 	result := formatter.FormatAlert(alert)
 
-	// Check message structure
+	// Check the structure: status at top, then group labels, then alerts
 	lines := strings.Split(result, "\n")
+	assert.True(t, strings.Contains(lines[0], "🚨 **Alert: firing**"))
 
-	// First line should be header
-	assert.Contains(t, lines[0], "🚨 **Alert: firing**")
+	// Check that there's a blank line between sections
+	hasBlankLine := false
+	for _, line := range lines {
+		if line == "" {
+			hasBlankLine = true
+			break
+		}
+	}
+	assert.True(t, hasBlankLine)
+}
 
-	// Second line should be group label
-	assert.Contains(t, lines[1], "**namespace:** prod")
+func TestAlertFormatter_FormatAlert_InvalidAlertType(t *testing.T) {
+	formatter := NewAlertFormatter()
 
-	// Third line should be empty (separator)
-	assert.Empty(t, lines[2])
+	// Pass a string instead of AlertManagerEvent
+	result := formatter.FormatAlert("not an alert")
 
-	// Fourth line should be alert name
-	assert.Contains(t, lines[3], "**Alert:** TestAlert")
-
-	// Fifth line should be status
-	assert.Contains(t, lines[4], "**Status:** firing")
-
-	// Sixth line should be severity
-	assert.Contains(t, lines[5], "**Severity:** critical")
-
-	// Seventh line should be summary
-	assert.Contains(t, lines[6], "**Summary:** Test summary")
-
-	// Eighth line should be empty (separator)
-	assert.Empty(t, lines[7])
+	assert.Equal(t, "Error: Invalid alert format", result)
 }

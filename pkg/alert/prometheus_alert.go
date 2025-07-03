@@ -177,30 +177,3 @@ func (a *AlertManagerEvent) GetDescription() string {
 
 	return ""
 }
-
-// ToTemplateData converts AlertManagerEvent back to template.Data
-// This function is useful for maintaining compatibility with existing code
-func (a *AlertManagerEvent) ToTemplateData() template.Data {
-	alerts := make([]template.Alert, 0, len(a.Alerts))
-	for _, alert := range a.Alerts {
-		alerts = append(alerts, template.Alert{
-			EndsAt:       alert.EndsAt,
-			GeneratorURL: alert.GeneratorURL,
-			StartsAt:     alert.StartsAt,
-			Fingerprint:  alert.Fingerprint,
-			Status:       alert.Status,
-			Labels:       alert.Labels,
-			Annotations:  alert.Annotations,
-		})
-	}
-
-	return template.Data{
-		Alerts:            alerts,
-		ExternalURL:       a.ExternalURL,
-		CommonAnnotations: a.CommonAnnotations,
-		CommonLabels:      a.CommonLabels,
-		GroupLabels:       a.GroupLabels,
-		Receiver:          a.Receiver,
-		Status:            a.Status,
-	}
-}
