@@ -60,17 +60,18 @@ func (h *AlertHandler) HandleAlert(c *gin.Context) {
 	// Restore the body for JSON binding
 	c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
 
-	var alert template.Data
-	if err := c.ShouldBindJSON(&alert); err != nil {
+	var templateData template.Data
+	if err := c.ShouldBindJSON(&templateData); err != nil {
 		h.logger.Error("Failed to parse alert", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid alert format"})
 		return
 	}
 
-	// Validate the parsed alert
-	if alert.Receiver == "" || alert.Status == "" || len(alert.Alerts) == 0 {
-		h.logger.Error("Invalid alert structure: missing required fields", zap.Any("alert", alert))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid alert format: missing required fields"})
+	// Convert and validate the alert
+	alert := NewAlertManagerEventFromTemplateData(templateData)
+	if err := alert.Validate(); err != nil {
+		h.logger.Error("Invalid alert structure", zap.Error(err), zap.Any("alert", templateData))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid alert format: " + err.Error()})
 		return
 	}
 
@@ -78,7 +79,8 @@ func (h *AlertHandler) HandleAlert(c *gin.Context) {
 	h.metrics.ObserveAlert(alert.Receiver, alert.Status)
 
 	// Resolve which team should handle this alert
-	team, err := h.teamResolver.ResolveTeam(alert)
+	// Using ToTemplateData() for backward compatibility
+	team, err := h.teamResolver.ResolveTeam(alert.ToTemplateData())
 	if err != nil {
 		h.logger.Error("Failed to resolve team for alert", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to resolve team"})
@@ -87,7 +89,7 @@ func (h *AlertHandler) HandleAlert(c *gin.Context) {
 
 	// Dispatch alert to team destinations
 	ctx := c.Request.Context()
-	dispatchErr := h.alertDispatcher.DispatchAlert(ctx, alert, team)
+	dispatchErr := h.alertDispatcher.DispatchAlert(ctx, alert.ToTemplateData(), team)
 	if dispatchErr != nil {
 		h.logger.Error("Failed to dispatch alert", zap.Error(dispatchErr))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to dispatch alert"})
@@ -118,6 +120,8 @@ func (h *AlertHandler) HandleAlert(c *gin.Context) {
 		zap.String("receiver", alert.Receiver),
 		zap.String("status", alert.Status),
 		zap.Int("alerts_count", len(alert.Alerts)),
+		zap.String("alert_name", alert.GetAlertName()),
+		zap.String("severity", alert.GetSeverity()),
 		zap.Any("group_labels", alert.GroupLabels))
 	c.JSON(http.StatusOK, gin.H{"status": "alert processed"})
 }

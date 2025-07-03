@@ -47,13 +47,12 @@ func setupTestRouter(t *testing.T) alertHandlerTestDeps {
 
 	mockMetrics := metric.NewMetricsCollector(mockLogger)
 
-	// Happy path - return a real team with destinations
-	team := &config_team.Team{
-		Name:         "default-team",
-		Destinations: []string{"slack-default", "email-default"},
+	// Happy path - team resolved and alert dispatched
+	mockTeam := &config_team.Team{
+		Name:         "test-team",
+		Destinations: []string{"test-destination"},
 	}
-
-	mockTeamResolver.EXPECT().ResolveTeam(gomock.Any()).Return(team, nil).AnyTimes()
+	mockTeamResolver.EXPECT().ResolveTeam(gomock.Any()).Return(mockTeam, nil).AnyTimes()
 	mockAlertDispatcher.EXPECT().DispatchAlert(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	alertHandler := NewAlertHandler(mockLogger, mockMetrics, mockTeamResolver, mockAlertDispatcher)
@@ -166,7 +165,8 @@ func TestAlertHandler_MissingFields(t *testing.T) {
 	deps.router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), "invalid alert format: missing required fields")
+	assert.Contains(t, w.Body.String(), "invalid alert format")
+	assert.Contains(t, w.Body.String(), "missing status field")
 }
 
 func TestAlertHandler_EmptyBody(t *testing.T) {
@@ -187,7 +187,7 @@ func TestAlertHandler_AdditionalFields(t *testing.T) {
 	deps := setupTestRouter(t)
 	defer deps.ctrl.Finish()
 
-	alert := `{"receiver": "test-receiver", "status": "firing", "alerts": [{"status": "firing", "labels": {"alertname": "HighCPUUsage"}}], "extra": "field"}`
+	alert := `{"receiver": "test-receiver", "status": "firing", "alerts": [{"status": "firing", "labels": {"alertname": "HighCPUUsage"}, "startsAt": "2023-01-01T00:00:00Z"}], "extra": "field"}`
 	req, _ := http.NewRequest(http.MethodPost, "/alert", bytes.NewBufferString(alert))
 	req.Header.Set("Content-Type", "application/json")
 
@@ -202,10 +202,21 @@ func TestAlertHandler_LargeAlert(t *testing.T) {
 	deps := setupTestRouter(t)
 	defer deps.ctrl.Finish()
 
+	alerts := make([]template.Alert, 1000)
+	for i := range alerts {
+		alerts[i] = template.Alert{
+			Status: "firing",
+			Labels: map[string]string{
+				"alertname": "HighCPUUsage",
+			},
+			StartsAt: time.Now(),
+		}
+	}
+
 	alert := template.Data{
 		Receiver: "test-receiver",
 		Status:   "firing",
-		Alerts:   make([]template.Alert, 1000),
+		Alerts:   alerts,
 	}
 
 	jsonAlert, _ := json.Marshal(alert)
@@ -251,8 +262,9 @@ func TestAlertHandler_NoTeamResolved(t *testing.T) {
 		Status:   "firing",
 		Alerts: []template.Alert{
 			{
-				Status: "firing",
-				Labels: map[string]string{"alertname": "HighCPUUsage"},
+				Status:   "firing",
+				Labels:   map[string]string{"alertname": "HighCPUUsage"},
+				StartsAt: time.Now(),
 			},
 		},
 	}
@@ -267,36 +279,38 @@ func TestAlertHandler_NoTeamResolved(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "alert processed")
 }
 
-func TestAlertHandler_TeamWithoutDestinations(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+func TestAlertHandler_InvalidAlertStatus(t *testing.T) {
+	deps := setupTestRouter(t)
+	defer deps.ctrl.Finish()
 
-	mockLogger := mocks.NewMockLoggerInterface(ctrl)
-	mockTeamResolver := mocks.NewMockTeamResolverInterface(ctrl)
-	mockAlertDispatcher := mocks.NewMockAlertDispatcherInterface(ctrl)
-
-	team := &config_team.Team{
-		Name:         "team-no-dest",
-		Destinations: []string{},
+	alert := template.Data{
+		Receiver: "test-receiver",
+		Status:   "firing",
+		Alerts: []template.Alert{
+			{
+				Status: "invalid-status", // Nieprawidłowy status
+				Labels: map[string]string{
+					"alertname": "HighCPUUsage",
+				},
+				StartsAt: time.Now(),
+			},
+		},
 	}
 
-	mockLogger.EXPECT().Error(gomock.Any()).AnyTimes()
-	mockLogger.EXPECT().Debug(gomock.Any()).AnyTimes()
-	mockLogger.EXPECT().Debugf(gomock.Any(), gomock.Any()).AnyTimes()
-	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
-	mockLogger.EXPECT().Warn(gomock.Any()).AnyTimes()
-	mockLogger.EXPECT().Warnf(gomock.Any(), gomock.Any()).AnyTimes()
+	jsonAlert, _ := json.Marshal(alert)
+	req, _ := http.NewRequest(http.MethodPost, "/alert", bytes.NewBuffer(jsonAlert))
+	req.Header.Set("Content-Type", "application/json")
 
-	mockMetrics := metric.NewMetricsCollector(mockLogger)
+	w := httptest.NewRecorder()
+	deps.router.ServeHTTP(w, req)
 
-	mockTeamResolver.EXPECT().ResolveTeam(gomock.Any()).Return(team, nil).AnyTimes()
-	mockAlertDispatcher.EXPECT().DispatchAlert(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "invalid status value")
+}
 
-	alertHandler := NewAlertHandler(mockLogger, mockMetrics, mockTeamResolver, mockAlertDispatcher)
-
-	r := gin.Default()
-	r.POST("/alert", alertHandler.HandleAlert)
+func TestAlertHandler_MissingAlertName(t *testing.T) {
+	deps := setupTestRouter(t)
+	defer deps.ctrl.Finish()
 
 	alert := template.Data{
 		Receiver: "test-receiver",
@@ -304,17 +318,22 @@ func TestAlertHandler_TeamWithoutDestinations(t *testing.T) {
 		Alerts: []template.Alert{
 			{
 				Status: "firing",
-				Labels: map[string]string{"alertname": "HighCPUUsage"},
+				Labels: map[string]string{
+					// Brak alertname
+					"severity": "critical",
+				},
+				StartsAt: time.Now(),
 			},
 		},
 	}
+
 	jsonAlert, _ := json.Marshal(alert)
 	req, _ := http.NewRequest(http.MethodPost, "/alert", bytes.NewBuffer(jsonAlert))
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
+	deps.router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	// We don't check the log directly here, but the test will pass if there's no panic and the Warn log is called
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "missing alertname label")
 }
