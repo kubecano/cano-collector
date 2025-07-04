@@ -6,14 +6,16 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/kubecano/cano-collector/pkg/alert/model"
 )
 
-func createTestAlertManagerEventForFormatter() *AlertManagerEvent {
+func createTestAlertManagerEventForFormatter() *model.AlertManagerEvent {
 	now := time.Now()
-	return &AlertManagerEvent{
+	return &model.AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
-		Alerts: []PrometheusAlert{
+		Alerts: []model.PrometheusAlert{
 			{
 				Status: "firing",
 				Labels: map[string]string{
@@ -37,25 +39,24 @@ func TestAlertFormatter_FormatAlert_BasicAlert(t *testing.T) {
 
 	result := formatter.FormatAlert(alert)
 
-	assert.Contains(t, result, "🚨 **Alert: firing**")
-	assert.Contains(t, result, "**Alert:** HighCPUUsage")
-	assert.Contains(t, result, "**Status:** firing")
-	assert.Contains(t, result, "**Severity:** critical")
-	assert.Contains(t, result, "**Summary:** High CPU usage detected")
-	assert.Contains(t, result, "**Description:** The CPU usage has exceeded the threshold")
+	assert.Contains(t, result, "🚨 Alert: HighCPUUsage")
+	assert.Contains(t, result, "Status: firing")
+	assert.Contains(t, result, "Severity: critical")
+	assert.Contains(t, result, "Summary: High CPU usage detected")
+	assert.Contains(t, result, "Description: The CPU usage has exceeded the threshold")
 }
 
 func TestAlertFormatter_FormatAlert_WithGroupLabels(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	alert := &AlertManagerEvent{
+	alert := &model.AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
 		GroupLabels: map[string]string{
 			"namespace": "production",
 			"service":   "api",
 		},
-		Alerts: []PrometheusAlert{
+		Alerts: []model.PrometheusAlert{
 			{
 				Status: "firing",
 				Labels: map[string]string{
@@ -68,17 +69,19 @@ func TestAlertFormatter_FormatAlert_WithGroupLabels(t *testing.T) {
 
 	result := formatter.FormatAlert(alert)
 
-	assert.Contains(t, result, "**namespace:** production")
-	assert.Contains(t, result, "**service:** api")
+	// New formatter doesn't display GroupLabels, just check basic format
+	assert.Contains(t, result, "🚨 Alert: HighCPUUsage")
+	assert.Contains(t, result, "Status: firing")
+	assert.Contains(t, result, "Severity: warning")
 }
 
 func TestAlertFormatter_FormatAlert_MultipleAlerts(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	alert := &AlertManagerEvent{
+	alert := &model.AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
-		Alerts: []PrometheusAlert{
+		Alerts: []model.PrometheusAlert{
 			{
 				Status: "firing",
 				Labels: map[string]string{
@@ -104,20 +107,21 @@ func TestAlertFormatter_FormatAlert_MultipleAlerts(t *testing.T) {
 
 	result := formatter.FormatAlert(alert)
 
-	// Check if both alerts are in the result
-	assert.Contains(t, result, "HighCPUUsage")
-	assert.Contains(t, result, "HighMemoryUsage")
-	assert.Contains(t, result, "**Summary:** First alert")
-	assert.Contains(t, result, "**Summary:** Second alert")
+	// Formatter shows first alert name in header, but all summaries
+	assert.Contains(t, result, "🚨 Alert: HighCPUUsage")
+	assert.Contains(t, result, "Status: firing")
+	assert.Contains(t, result, "Severity: critical")
+	assert.Contains(t, result, "Summary: First alert")
+	assert.Contains(t, result, "Summary: Second alert")
 }
 
 func TestAlertFormatter_FormatAlert_MissingLabels(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	alert := &AlertManagerEvent{
+	alert := &model.AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
-		Alerts: []PrometheusAlert{
+		Alerts: []model.PrometheusAlert{
 			{
 				Status: "firing",
 				Labels: map[string]string{
@@ -130,19 +134,18 @@ func TestAlertFormatter_FormatAlert_MissingLabels(t *testing.T) {
 
 	result := formatter.FormatAlert(alert)
 
-	assert.Contains(t, result, "**Alert:** HighCPUUsage")
-	assert.Contains(t, result, "**Status:** firing")
-	// Should not contain severity if it's missing
-	assert.NotContains(t, result, "**Severity:**")
+	assert.Contains(t, result, "🚨 Alert: HighCPUUsage")
+	assert.Contains(t, result, "Status: firing")
+	assert.Contains(t, result, "Severity: unknown")
 }
 
 func TestAlertFormatter_FormatAlert_MissingAnnotations(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	alert := &AlertManagerEvent{
+	alert := &model.AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
-		Alerts: []PrometheusAlert{
+		Alerts: []model.PrometheusAlert{
 			{
 				Status: "firing",
 				Labels: map[string]string{
@@ -156,40 +159,40 @@ func TestAlertFormatter_FormatAlert_MissingAnnotations(t *testing.T) {
 
 	result := formatter.FormatAlert(alert)
 
-	assert.Contains(t, result, "**Alert:** HighCPUUsage")
-	assert.Contains(t, result, "**Status:** firing")
-	assert.Contains(t, result, "**Severity:** critical")
+	assert.Contains(t, result, "🚨 Alert: HighCPUUsage")
+	assert.Contains(t, result, "Status: firing")
+	assert.Contains(t, result, "Severity: critical")
 	// Should not contain summary or description
-	assert.NotContains(t, result, "**Summary:**")
-	assert.NotContains(t, result, "**Description:**")
+	assert.NotContains(t, result, "Summary:")
+	assert.NotContains(t, result, "Description:")
 }
 
 func TestAlertFormatter_FormatAlert_EmptyAlerts(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	alert := &AlertManagerEvent{
+	alert := &model.AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
-		Alerts:   []PrometheusAlert{}, // empty alerts list
+		Alerts:   []model.PrometheusAlert{}, // empty alerts list
 	}
 
 	result := formatter.FormatAlert(alert)
 
-	assert.Contains(t, result, "🚨 **Alert: firing**")
-	// Should not contain alert details
-	assert.NotContains(t, result, "**Alert:**")
-	assert.NotContains(t, result, "**Severity:**")
-	assert.NotContains(t, result, "**Summary:**")
-	assert.NotContains(t, result, "**Description:**")
+	assert.Contains(t, result, "🚨 Alert: unknown")
+	assert.Contains(t, result, "Status: firing")
+	assert.Contains(t, result, "Severity: unknown")
+	// Should not contain summary or description for empty alerts
+	assert.NotContains(t, result, "Summary:")
+	assert.NotContains(t, result, "Description:")
 }
 
 func TestAlertFormatter_FormatAlert_ResolvedStatus(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	alert := &AlertManagerEvent{
+	alert := &model.AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "resolved",
-		Alerts: []PrometheusAlert{
+		Alerts: []model.PrometheusAlert{
 			{
 				Status: "resolved",
 				Labels: map[string]string{
@@ -202,18 +205,18 @@ func TestAlertFormatter_FormatAlert_ResolvedStatus(t *testing.T) {
 
 	result := formatter.FormatAlert(alert)
 
-	assert.Contains(t, result, "🚨 **Alert: resolved**")
-	assert.Contains(t, result, "**Alert:** HighCPUUsage")
-	assert.Contains(t, result, "**Status:** resolved")
+	assert.Contains(t, result, "🚨 Alert: HighCPUUsage")
+	assert.Contains(t, result, "Status: resolved")
+	assert.Contains(t, result, "Severity: critical")
 }
 
 func TestAlertFormatter_FormatAlert_SpecialCharacters(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	alert := &AlertManagerEvent{
+	alert := &model.AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
-		Alerts: []PrometheusAlert{
+		Alerts: []model.PrometheusAlert{
 			{
 				Status: "firing",
 				Labels: map[string]string{
@@ -231,17 +234,17 @@ func TestAlertFormatter_FormatAlert_SpecialCharacters(t *testing.T) {
 
 	result := formatter.FormatAlert(alert)
 
-	assert.Contains(t, result, "**Alert:** SpecialChars")
+	assert.Contains(t, result, "🚨 Alert: SpecialChars")
 	assert.Contains(t, result, "Unicode symbols: 🚨🔥💻")
 }
 
 func TestAlertFormatter_FormatAlert_NewlinesInContent(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	alert := &AlertManagerEvent{
+	alert := &model.AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
-		Alerts: []PrometheusAlert{
+		Alerts: []model.PrometheusAlert{
 			{
 				Status: "firing",
 				Labels: map[string]string{"alertname": "MultilineAlert"},
@@ -254,20 +257,20 @@ func TestAlertFormatter_FormatAlert_NewlinesInContent(t *testing.T) {
 
 	result := formatter.FormatAlert(alert)
 
-	assert.Contains(t, result, "**Description:** Line 1\nLine 2\nLine 3")
+	assert.Contains(t, result, "Description: Line 1\nLine 2\nLine 3")
 }
 
 func TestAlertFormatter_FormatAlert_EmptyStringValues(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	alert := &AlertManagerEvent{
+	alert := &model.AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
 		GroupLabels: map[string]string{
 			"empty": "",
 			"valid": "value",
 		},
-		Alerts: []PrometheusAlert{
+		Alerts: []model.PrometheusAlert{
 			{
 				Status: "firing",
 				Labels: map[string]string{
@@ -284,10 +287,12 @@ func TestAlertFormatter_FormatAlert_EmptyStringValues(t *testing.T) {
 
 	result := formatter.FormatAlert(alert)
 
-	assert.Contains(t, result, "**valid:** value")
-	assert.NotContains(t, result, "**empty:**")
-	assert.Contains(t, result, "**Description:** Valid description")
-	assert.NotContains(t, result, "**Summary:**")
+	// New formatter doesn't display GroupLabels, check basic format
+	assert.Contains(t, result, "🚨 Alert: EmptyValues")
+	assert.Contains(t, result, "Status: firing")
+	assert.Contains(t, result, "Severity: unknown")
+	assert.Contains(t, result, "Summary: ")
+	assert.Contains(t, result, "Description: Valid description")
 }
 
 func TestAlertFormatter_FormatAlert_MessageStructure(t *testing.T) {
@@ -298,27 +303,22 @@ func TestAlertFormatter_FormatAlert_MessageStructure(t *testing.T) {
 	result := formatter.FormatAlert(alert)
 
 	lines := strings.Split(result, "\n")
-	assert.GreaterOrEqual(t, len(lines), 5, "Expected at least 5 lines in the formatted message")
+	assert.GreaterOrEqual(t, len(lines), 3, "Expected at least 3 lines in the formatted message")
 
-	// First line should be the alert status
-	assert.Contains(t, lines[0], "🚨 **Alert: firing**")
+	// First line should be the alert header
+	assert.Contains(t, lines[0], "🚨 Alert: HighCPUUsage")
 
-	// There should be a blank line between sections
-	foundBlankLine := false
-	for _, line := range lines {
-		if line == "" {
-			foundBlankLine = true
-			break
-		}
-	}
-	assert.True(t, foundBlankLine, "Expected at least one blank line in the formatted message")
+	// Check basic structure
+	assert.Contains(t, result, "Status:")
+	assert.Contains(t, result, "Severity:")
 }
 
-func TestAlertFormatter_FormatAlert_InvalidAlertType(t *testing.T) {
+func TestAlertFormatter_FormatAlert_EmptyAlertEvent(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	// Pass a string instead of AlertManagerEvent
-	result := formatter.FormatAlert(&AlertManagerEvent{})
+	// Pass empty AlertManagerEvent
+	result := formatter.FormatAlert(&model.AlertManagerEvent{})
 
-	assert.Equal(t, "Error: Invalid alert format", result)
+	expected := "🚨 Alert: unknown\nStatus: \nSeverity: unknown"
+	assert.Equal(t, expected, result)
 }

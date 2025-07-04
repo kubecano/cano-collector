@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	config_team "github.com/kubecano/cano-collector/config/team"
+	"github.com/kubecano/cano-collector/pkg/alert/model"
 	"github.com/kubecano/cano-collector/pkg/interfaces"
 	"github.com/kubecano/cano-collector/pkg/logger"
 )
@@ -36,7 +37,7 @@ func (r *TeamResolver) ValidateTeamDestinations(registry interfaces.DestinationR
 
 // ResolveTeam determines which team should handle the alert
 // For now, returns the first team (default team) as specified in requirements
-func (r *TeamResolver) ResolveTeam(alertEvent *AlertManagerEvent) (*config_team.Team, error) {
+func (r *TeamResolver) ResolveTeam(alertEvent *model.AlertManagerEvent) (*config_team.Team, error) {
 	if len(r.teams.Teams) == 0 {
 		return nil, nil // No teams configured
 	}

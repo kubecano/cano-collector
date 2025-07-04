@@ -1,4 +1,4 @@
-package alert
+package model
 
 import (
 	"testing"
@@ -6,6 +6,7 @@ import (
 
 	"github.com/prometheus/alertmanager/template"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewAlertManagerEventFromTemplateData(t *testing.T) {
@@ -37,7 +38,7 @@ func TestNewAlertManagerEventFromTemplateData(t *testing.T) {
 
 	assert.Equal(t, "test-receiver", event.Receiver)
 	assert.Equal(t, "firing", event.Status)
-	assert.Equal(t, 1, len(event.Alerts))
+	assert.Len(t, event.Alerts, 1)
 	assert.Equal(t, "HighCPUUsage", event.Alerts[0].Labels["alertname"])
 	assert.Equal(t, "critical", event.Alerts[0].Labels["severity"])
 	assert.Equal(t, "High CPU usage detected", event.Alerts[0].Annotations["summary"])
@@ -71,7 +72,7 @@ func TestAlertManagerEvent_Validate_ValidAlert(t *testing.T) {
 	}
 
 	err := event.Validate()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestAlertManagerEvent_Validate_MissingReceiver(t *testing.T) {
@@ -91,7 +92,7 @@ func TestAlertManagerEvent_Validate_MissingReceiver(t *testing.T) {
 	}
 
 	err := event.Validate()
-	assert.ErrorIs(t, err, ErrMissingReceiver)
+	require.ErrorIs(t, err, ErrMissingReceiver)
 }
 
 func TestAlertManagerEvent_Validate_MissingStatus(t *testing.T) {
@@ -111,7 +112,7 @@ func TestAlertManagerEvent_Validate_MissingStatus(t *testing.T) {
 	}
 
 	err := event.Validate()
-	assert.ErrorIs(t, err, ErrMissingStatus)
+	require.ErrorIs(t, err, ErrMissingStatus)
 }
 
 func TestAlertManagerEvent_Validate_MissingAlerts(t *testing.T) {
@@ -122,7 +123,7 @@ func TestAlertManagerEvent_Validate_MissingAlerts(t *testing.T) {
 	}
 
 	err := event.Validate()
-	assert.ErrorIs(t, err, ErrMissingAlerts)
+	require.ErrorIs(t, err, ErrMissingAlerts)
 }
 
 func TestAlertManagerEvent_Validate_InvalidAlertStatus(t *testing.T) {
@@ -142,7 +143,7 @@ func TestAlertManagerEvent_Validate_InvalidAlertStatus(t *testing.T) {
 	}
 
 	err := event.Validate()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid status value")
 }
 
@@ -164,7 +165,7 @@ func TestAlertManagerEvent_Validate_MissingAlertName(t *testing.T) {
 	}
 
 	err := event.Validate()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "missing alertname label")
 }
 
@@ -184,7 +185,7 @@ func TestAlertManagerEvent_Validate_MissingStartTime(t *testing.T) {
 	}
 
 	err := event.Validate()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "missing start time for firing alert")
 }
 
@@ -284,7 +285,7 @@ func TestAlertManagerEvent_GetSummary(t *testing.T) {
 
 func TestAlertManagerEvent_GetSummary_NoAlerts(t *testing.T) {
 	event := &AlertManagerEvent{}
-	assert.Equal(t, "", event.GetSummary())
+	assert.Empty(t, event.GetSummary())
 }
 
 func TestAlertManagerEvent_GetSummary_NoSummary(t *testing.T) {
@@ -296,7 +297,7 @@ func TestAlertManagerEvent_GetSummary_NoSummary(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, "", event.GetSummary())
+	assert.Empty(t, event.GetSummary())
 }
 
 func TestAlertManagerEvent_GetDescription(t *testing.T) {
@@ -315,7 +316,7 @@ func TestAlertManagerEvent_GetDescription(t *testing.T) {
 
 func TestAlertManagerEvent_GetDescription_NoAlerts(t *testing.T) {
 	event := &AlertManagerEvent{}
-	assert.Equal(t, "", event.GetDescription())
+	assert.Empty(t, event.GetDescription())
 }
 
 func TestAlertManagerEvent_GetDescription_NoDescription(t *testing.T) {
@@ -327,5 +328,5 @@ func TestAlertManagerEvent_GetDescription_NoDescription(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, "", event.GetDescription())
+	assert.Empty(t, event.GetDescription())
 }

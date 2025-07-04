@@ -10,7 +10,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	config_team "github.com/kubecano/cano-collector/config/team"
-	interfaces "github.com/kubecano/cano-collector/pkg/interfaces"
+	model "github.com/kubecano/cano-collector/pkg/alert/model"
 )
 
 // MockAlertDispatcherInterface is a mock of AlertDispatcherInterface interface.
@@ -37,7 +37,7 @@ func (m *MockAlertDispatcherInterface) EXPECT() *MockAlertDispatcherInterfaceMoc
 }
 
 // DispatchAlert mocks base method.
-func (m *MockAlertDispatcherInterface) DispatchAlert(arg0 context.Context, arg1 interfaces.AlertEvent, arg2 *config_team.Team) error {
+func (m *MockAlertDispatcherInterface) DispatchAlert(arg0 context.Context, arg1 *model.AlertManagerEvent, arg2 *config_team.Team) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DispatchAlert", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)

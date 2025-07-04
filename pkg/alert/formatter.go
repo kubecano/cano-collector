@@ -1,11 +1,12 @@
 package alert
 
 import (
-	"fmt"
 	"strings"
+
+	"github.com/kubecano/cano-collector/pkg/alert/model"
 )
 
-// AlertFormatter formats alertmanager alerts to readable messages
+// AlertFormatter formats alert into readable messages
 type AlertFormatter struct{}
 
 // NewAlertFormatter creates a new alert formatter
@@ -14,41 +15,22 @@ func NewAlertFormatter() *AlertFormatter {
 }
 
 // FormatAlert converts alertmanager alert to a readable message
-func (f *AlertFormatter) FormatAlert(alertEvent *AlertManagerEvent) string {
+func (f *AlertFormatter) FormatAlert(alertEvent *model.AlertManagerEvent) string {
 	var messages []string
 
-	messages = append(messages, fmt.Sprintf("🚨 **Alert: %s**", alertEvent.Status))
+	// Add alert header
+	messages = append(messages, "🚨 Alert: "+alertEvent.GetAlertName())
+	messages = append(messages, "Status: "+alertEvent.Status)
+	messages = append(messages, "Severity: "+alertEvent.GetSeverity())
 
-	if alertEvent.GroupLabels != nil {
-		for key, value := range alertEvent.GroupLabels {
-			if key != "" && value != "" {
-				messages = append(messages, fmt.Sprintf("**%s:** %s", key, value))
-			}
+	// Add individual alerts
+	for _, alert := range alertEvent.Alerts {
+		if summary, ok := alert.Annotations["summary"]; ok {
+			messages = append(messages, "Summary: "+summary)
 		}
-	}
-
-	messages = append(messages, "")
-
-	for _, alertItem := range alertEvent.Alerts {
-		if alertname := alertItem.Labels["alertname"]; alertname != "" {
-			messages = append(messages, "**Alert:** "+alertname)
+		if description, ok := alert.Annotations["description"]; ok {
+			messages = append(messages, "Description: "+description)
 		}
-		if status := alertItem.Status; status != "" {
-			messages = append(messages, "**Status:** "+status)
-		}
-		if severity := alertItem.Labels["severity"]; severity != "" {
-			messages = append(messages, "**Severity:** "+severity)
-		}
-
-		if summary := alertItem.Annotations["summary"]; summary != "" {
-			messages = append(messages, "**Summary:** "+summary)
-		}
-
-		if description := alertItem.Annotations["description"]; description != "" {
-			messages = append(messages, "**Description:** "+description)
-		}
-
-		messages = append(messages, "")
 	}
 
 	return strings.Join(messages, "\n")

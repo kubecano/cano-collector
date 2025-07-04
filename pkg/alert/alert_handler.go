@@ -9,6 +9,7 @@ import (
 	"github.com/prometheus/alertmanager/template"
 	"go.uber.org/zap"
 
+	"github.com/kubecano/cano-collector/pkg/alert/model"
 	"github.com/kubecano/cano-collector/pkg/interfaces"
 	"github.com/kubecano/cano-collector/pkg/logger"
 	"github.com/kubecano/cano-collector/pkg/metric"
@@ -69,7 +70,7 @@ func (h *AlertHandler) HandleAlert(c *gin.Context) {
 	}
 
 	// Convert and validate the alert
-	alertEvent := NewAlertManagerEventFromTemplateData(templateData)
+	alertEvent := model.NewAlertManagerEventFromTemplateData(templateData)
 	if err := alertEvent.Validate(); err != nil {
 		h.logger.Error("Invalid alert structure", zap.Error(err), zap.Any("alert", templateData))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid alert format: " + err.Error()})

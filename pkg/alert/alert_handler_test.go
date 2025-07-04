@@ -8,15 +8,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/golang/mock/gomock"
+	"github.com/prometheus/alertmanager/template"
+	"github.com/stretchr/testify/assert"
 
 	config_team "github.com/kubecano/cano-collector/config/team"
 	"github.com/kubecano/cano-collector/mocks"
 	"github.com/kubecano/cano-collector/pkg/metric"
-
-	"github.com/gin-gonic/gin"
-	"github.com/prometheus/alertmanager/template"
-	"github.com/stretchr/testify/assert"
 )
 
 type alertHandlerTestDeps struct {
@@ -166,7 +165,7 @@ func TestAlertHandler_MissingFields(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.Contains(t, w.Body.String(), "invalid alert format")
-	assert.Contains(t, w.Body.String(), "alert status is required")
+	assert.Contains(t, w.Body.String(), "missing status field")
 }
 
 func TestAlertHandler_EmptyBody(t *testing.T) {

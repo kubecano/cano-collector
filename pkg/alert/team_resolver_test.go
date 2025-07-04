@@ -10,6 +10,7 @@ import (
 
 	config_team "github.com/kubecano/cano-collector/config/team"
 	"github.com/kubecano/cano-collector/mocks"
+	"github.com/kubecano/cano-collector/pkg/alert/model"
 )
 
 type teamResolverTestDeps struct {
@@ -31,12 +32,12 @@ func setupTeamResolverTest(t *testing.T, teams config_team.TeamsConfig) teamReso
 	return teamResolverTestDeps{ctrl, logger, resolver}
 }
 
-func createTestAlertManagerEventForTeamResolver() *AlertManagerEvent {
+func createTestAlertManagerEventForTeamResolver() *model.AlertManagerEvent {
 	now := time.Now()
-	return &AlertManagerEvent{
+	return &model.AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
-		Alerts: []PrometheusAlert{
+		Alerts: []model.PrometheusAlert{
 			{
 				Status: "firing",
 				Labels: map[string]string{
@@ -123,11 +124,11 @@ func TestTeamResolver_ResolveTeam_ComplexAlert(t *testing.T) {
 	defer deps.ctrl.Finish()
 
 	now := time.Now()
-	alert := &AlertManagerEvent{
+	alert := &model.AlertManagerEvent{
 		Receiver:    "test-receiver",
 		Status:      "firing",
 		GroupLabels: map[string]string{"namespace": "production", "service": "api"},
-		Alerts: []PrometheusAlert{
+		Alerts: []model.PrometheusAlert{
 			{
 				Status:      "firing",
 				Labels:      map[string]string{"alertname": "HighCPUUsage", "severity": "critical", "instance": "api-1"},
@@ -158,10 +159,10 @@ func TestTeamResolver_ResolveTeam_ResolvedAlert(t *testing.T) {
 	defer deps.ctrl.Finish()
 
 	now := time.Now()
-	alert := &AlertManagerEvent{
+	alert := &model.AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "resolved",
-		Alerts: []PrometheusAlert{
+		Alerts: []model.PrometheusAlert{
 			{
 				Status:   "resolved",
 				Labels:   map[string]string{"alertname": "HighCPUUsage", "severity": "critical"},
@@ -183,10 +184,10 @@ func TestTeamResolver_ResolveTeam_EmptyAlert(t *testing.T) {
 	deps := setupTeamResolverTest(t, teams)
 	defer deps.ctrl.Finish()
 
-	alert := &AlertManagerEvent{
+	alert := &model.AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
-		Alerts:   []PrometheusAlert{},
+		Alerts:   []model.PrometheusAlert{},
 	}
 
 	team, err := deps.resolver.ResolveTeam(alert)
@@ -203,10 +204,10 @@ func TestTeamResolver_ResolveTeam_AlertWithSpecialCharacters(t *testing.T) {
 	defer deps.ctrl.Finish()
 
 	now := time.Now()
-	alert := &AlertManagerEvent{
+	alert := &model.AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
-		Alerts: []PrometheusAlert{
+		Alerts: []model.PrometheusAlert{
 			{
 				Status: "firing",
 				Labels: map[string]string{
@@ -239,17 +240,4 @@ func TestTeamResolver_ResolveTeam_LoggingVerification(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, team)
 	assert.Equal(t, "default-team", team.Name)
-}
-
-func TestTeamResolver_ResolveTeam_InvalidAlertType(t *testing.T) {
-	teams := config_team.TeamsConfig{
-		Teams: []config_team.Team{{Name: "default-team", Destinations: []string{"slack-default"}}},
-	}
-	deps := setupTeamResolverTest(t, teams)
-	defer deps.ctrl.Finish()
-
-	team, err := deps.resolver.ResolveTeam("not an alert")
-	require.Error(t, err)
-	assert.Nil(t, team)
-	assert.Contains(t, err.Error(), "invalid alert type")
 }

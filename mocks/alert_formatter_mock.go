@@ -8,7 +8,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	interfaces "github.com/kubecano/cano-collector/pkg/interfaces"
+	model "github.com/kubecano/cano-collector/pkg/alert/model"
 )
 
 // MockAlertFormatterInterface is a mock of AlertFormatterInterface interface.
@@ -35,7 +35,7 @@ func (m *MockAlertFormatterInterface) EXPECT() *MockAlertFormatterInterfaceMockR
 }
 
 // FormatAlert mocks base method.
-func (m *MockAlertFormatterInterface) FormatAlert(arg0 interfaces.AlertEvent) string {
+func (m *MockAlertFormatterInterface) FormatAlert(arg0 *model.AlertManagerEvent) string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FormatAlert", arg0)
 	ret0, _ := ret[0].(string)
