@@ -31,6 +31,24 @@ func setupTeamResolverTest(t *testing.T, teams config_team.TeamsConfig) teamReso
 	return teamResolverTestDeps{ctrl, logger, resolver}
 }
 
+func createTestAlertManagerEventForTeamResolver() *AlertManagerEvent {
+	now := time.Now()
+	return &AlertManagerEvent{
+		Receiver: "test-receiver",
+		Status:   "firing",
+		Alerts: []PrometheusAlert{
+			{
+				Status: "firing",
+				Labels: map[string]string{
+					"alertname": "HighCPUUsage",
+					"severity":  "critical",
+				},
+				StartsAt: now,
+			},
+		},
+	}
+}
+
 func TestTeamResolver_ResolveTeam_DefaultTeam(t *testing.T) {
 	teams := config_team.TeamsConfig{
 		Teams: []config_team.Team{{
@@ -40,16 +58,7 @@ func TestTeamResolver_ResolveTeam_DefaultTeam(t *testing.T) {
 	deps := setupTeamResolverTest(t, teams)
 	defer deps.ctrl.Finish()
 
-	now := time.Now()
-	alert := &AlertManagerEvent{
-		Receiver: "test-receiver",
-		Status:   "firing",
-		Alerts: []PrometheusAlert{{
-			Status:   "firing",
-			Labels:   map[string]string{"alertname": "HighCPUUsage", "severity": "critical"},
-			StartsAt: now,
-		}},
-	}
+	alert := createTestAlertManagerEventForTeamResolver()
 
 	team, err := deps.resolver.ResolveTeam(alert)
 	require.NoError(t, err)
@@ -69,16 +78,7 @@ func TestTeamResolver_ResolveTeam_MultipleTeams(t *testing.T) {
 	deps := setupTeamResolverTest(t, teams)
 	defer deps.ctrl.Finish()
 
-	now := time.Now()
-	alert := &AlertManagerEvent{
-		Receiver: "test-receiver",
-		Status:   "firing",
-		Alerts: []PrometheusAlert{{
-			Status:   "firing",
-			Labels:   map[string]string{"alertname": "HighCPUUsage", "severity": "critical"},
-			StartsAt: now,
-		}},
-	}
+	alert := createTestAlertManagerEventForTeamResolver()
 
 	team, err := deps.resolver.ResolveTeam(alert)
 	require.NoError(t, err)
@@ -92,16 +92,7 @@ func TestTeamResolver_ResolveTeam_NoTeams(t *testing.T) {
 	deps := setupTeamResolverTest(t, teams)
 	defer deps.ctrl.Finish()
 
-	now := time.Now()
-	alert := &AlertManagerEvent{
-		Receiver: "test-receiver",
-		Status:   "firing",
-		Alerts: []PrometheusAlert{{
-			Status:   "firing",
-			Labels:   map[string]string{"alertname": "HighCPUUsage", "severity": "critical"},
-			StartsAt: now,
-		}},
-	}
+	alert := createTestAlertManagerEventForTeamResolver()
 
 	team, err := deps.resolver.ResolveTeam(alert)
 	require.NoError(t, err)
@@ -115,16 +106,7 @@ func TestTeamResolver_ResolveTeam_TeamWithoutDestinations(t *testing.T) {
 	deps := setupTeamResolverTest(t, teams)
 	defer deps.ctrl.Finish()
 
-	now := time.Now()
-	alert := &AlertManagerEvent{
-		Receiver: "test-receiver",
-		Status:   "firing",
-		Alerts: []PrometheusAlert{{
-			Status:   "firing",
-			Labels:   map[string]string{"alertname": "HighCPUUsage", "severity": "critical"},
-			StartsAt: now,
-		}},
-	}
+	alert := createTestAlertManagerEventForTeamResolver()
 
 	team, err := deps.resolver.ResolveTeam(alert)
 	require.NoError(t, err)
@@ -179,11 +161,13 @@ func TestTeamResolver_ResolveTeam_ResolvedAlert(t *testing.T) {
 	alert := &AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "resolved",
-		Alerts: []PrometheusAlert{{
-			Status:   "resolved",
-			Labels:   map[string]string{"alertname": "HighCPUUsage", "severity": "critical"},
-			StartsAt: now,
-		}},
+		Alerts: []PrometheusAlert{
+			{
+				Status:   "resolved",
+				Labels:   map[string]string{"alertname": "HighCPUUsage", "severity": "critical"},
+				StartsAt: now,
+			},
+		},
 	}
 
 	team, err := deps.resolver.ResolveTeam(alert)
@@ -222,16 +206,18 @@ func TestTeamResolver_ResolveTeam_AlertWithSpecialCharacters(t *testing.T) {
 	alert := &AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
-		Alerts: []PrometheusAlert{{
-			Status: "firing",
-			Labels: map[string]string{
-				"alertname": "HighCPUUsage",
-				"severity":  "critical",
-				"special":   "test@example.com",
-				"unicode":   "🚨🔥💻",
+		Alerts: []PrometheusAlert{
+			{
+				Status: "firing",
+				Labels: map[string]string{
+					"alertname": "HighCPUUsage",
+					"severity":  "critical",
+					"special":   "test@example.com",
+					"unicode":   "🚨🔥💻",
+				},
+				StartsAt: now,
 			},
-			StartsAt: now,
-		}},
+		},
 	}
 
 	team, err := deps.resolver.ResolveTeam(alert)
@@ -247,16 +233,7 @@ func TestTeamResolver_ResolveTeam_LoggingVerification(t *testing.T) {
 	deps := setupTeamResolverTest(t, teams)
 	defer deps.ctrl.Finish()
 
-	now := time.Now()
-	alert := &AlertManagerEvent{
-		Receiver: "test-receiver",
-		Status:   "firing",
-		Alerts: []PrometheusAlert{{
-			Status:   "firing",
-			Labels:   map[string]string{"alertname": "HighCPUUsage", "severity": "critical"},
-			StartsAt: now,
-		}},
-	}
+	alert := createTestAlertManagerEventForTeamResolver()
 
 	team, err := deps.resolver.ResolveTeam(alert)
 	require.NoError(t, err)

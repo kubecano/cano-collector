@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -45,6 +46,24 @@ func setupAlertDispatcherTest(t *testing.T) alertDispatcherTestDeps {
 	}
 }
 
+func createTestAlertManagerEvent() *AlertManagerEvent {
+	now := time.Now()
+	return &AlertManagerEvent{
+		Receiver: "test-receiver",
+		Status:   "firing",
+		Alerts: []PrometheusAlert{
+			{
+				Status: "firing",
+				Labels: map[string]string{
+					"alertname": "HighCPUUsage",
+					"severity":  "critical",
+				},
+				StartsAt: now,
+			},
+		},
+	}
+}
+
 func TestAlertDispatcher_DispatchAlert_Success(t *testing.T) {
 	deps := setupAlertDispatcherTest(t)
 	defer deps.ctrl.Finish()
@@ -56,19 +75,7 @@ func TestAlertDispatcher_DispatchAlert_Success(t *testing.T) {
 		Destinations: []string{"slack-test"},
 	}
 
-	alert := &AlertManagerEvent{
-		Receiver: "test-receiver",
-		Status:   "firing",
-		Alerts: []PrometheusAlert{
-			{
-				Status: "firing",
-				Labels: map[string]string{
-					"alertname": "HighCPUUsage",
-					"severity":  "critical",
-				},
-			},
-		},
-	}
+	alert := createTestAlertManagerEvent()
 
 	formattedMessage := "🚨 **Alert: firing**\n**Alert:** HighCPUUsage\n**Status:** firing\n**Severity:** critical"
 
@@ -77,7 +84,7 @@ func TestAlertDispatcher_DispatchAlert_Success(t *testing.T) {
 	deps.formatter.EXPECT().FormatAlert(alert).Return(formattedMessage)
 	mockDestination.EXPECT().Send(gomock.Any(), formattedMessage).Return(nil)
 
-	err := deps.dispatcher.DispatchAlert(context.Background(), alert, team)
+	err := deps.dispatcher.DispatchAlert(context.Background(), *alert, team)
 
 	assert.NoError(t, err)
 }
@@ -94,19 +101,7 @@ func TestAlertDispatcher_DispatchAlert_MultipleDestinations(t *testing.T) {
 		Destinations: []string{"slack-test", "email-test"},
 	}
 
-	alert := &AlertManagerEvent{
-		Receiver: "test-receiver",
-		Status:   "firing",
-		Alerts: []PrometheusAlert{
-			{
-				Status: "firing",
-				Labels: map[string]string{
-					"alertname": "HighCPUUsage",
-					"severity":  "critical",
-				},
-			},
-		},
-	}
+	alert := createTestAlertManagerEvent()
 
 	formattedMessage := "🚨 **Alert: firing**\n**Alert:** HighCPUUsage\n**Status:** firing\n**Severity:** critical"
 
@@ -116,7 +111,7 @@ func TestAlertDispatcher_DispatchAlert_MultipleDestinations(t *testing.T) {
 	mockDestination1.EXPECT().Send(gomock.Any(), formattedMessage).Return(nil)
 	mockDestination2.EXPECT().Send(gomock.Any(), formattedMessage).Return(nil)
 
-	err := deps.dispatcher.DispatchAlert(context.Background(), alert, team)
+	err := deps.dispatcher.DispatchAlert(context.Background(), *alert, team)
 
 	assert.NoError(t, err)
 }
@@ -125,21 +120,9 @@ func TestAlertDispatcher_DispatchAlert_NilTeam(t *testing.T) {
 	deps := setupAlertDispatcherTest(t)
 	defer deps.ctrl.Finish()
 
-	alert := &AlertManagerEvent{
-		Receiver: "test-receiver",
-		Status:   "firing",
-		Alerts: []PrometheusAlert{
-			{
-				Status: "firing",
-				Labels: map[string]string{
-					"alertname": "HighCPUUsage",
-					"severity":  "critical",
-				},
-			},
-		},
-	}
+	alert := createTestAlertManagerEvent()
 
-	err := deps.dispatcher.DispatchAlert(context.Background(), alert, nil)
+	err := deps.dispatcher.DispatchAlert(context.Background(), *alert, nil)
 
 	assert.NoError(t, err)
 }
@@ -153,21 +136,9 @@ func TestAlertDispatcher_DispatchAlert_TeamWithoutDestinations(t *testing.T) {
 		Destinations: []string{}, // empty destinations list
 	}
 
-	alert := &AlertManagerEvent{
-		Receiver: "test-receiver",
-		Status:   "firing",
-		Alerts: []PrometheusAlert{
-			{
-				Status: "firing",
-				Labels: map[string]string{
-					"alertname": "HighCPUUsage",
-					"severity":  "critical",
-				},
-			},
-		},
-	}
+	alert := createTestAlertManagerEvent()
 
-	err := deps.dispatcher.DispatchAlert(context.Background(), alert, team)
+	err := deps.dispatcher.DispatchAlert(context.Background(), *alert, team)
 
 	assert.NoError(t, err)
 }
@@ -181,26 +152,14 @@ func TestAlertDispatcher_DispatchAlert_RegistryError(t *testing.T) {
 		Destinations: []string{"slack-test"},
 	}
 
-	alert := &AlertManagerEvent{
-		Receiver: "test-receiver",
-		Status:   "firing",
-		Alerts: []PrometheusAlert{
-			{
-				Status: "firing",
-				Labels: map[string]string{
-					"alertname": "HighCPUUsage",
-					"severity":  "critical",
-				},
-			},
-		},
-	}
+	alert := createTestAlertManagerEvent()
 
 	registryError := errors.New("failed to get destinations")
 
 	// Setup expectations
 	deps.registry.EXPECT().GetDestinations([]string{"slack-test"}).Return(nil, registryError)
 
-	err := deps.dispatcher.DispatchAlert(context.Background(), alert, team)
+	err := deps.dispatcher.DispatchAlert(context.Background(), *alert, team)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to get destinations")
@@ -217,19 +176,7 @@ func TestAlertDispatcher_DispatchAlert_DestinationSendError(t *testing.T) {
 		Destinations: []string{"slack-test"},
 	}
 
-	alert := &AlertManagerEvent{
-		Receiver: "test-receiver",
-		Status:   "firing",
-		Alerts: []PrometheusAlert{
-			{
-				Status: "firing",
-				Labels: map[string]string{
-					"alertname": "HighCPUUsage",
-					"severity":  "critical",
-				},
-			},
-		},
-	}
+	alert := createTestAlertManagerEvent()
 
 	formattedMessage := "🚨 **Alert: firing**\n**Alert:** HighCPUUsage\n**Status:** firing\n**Severity:** critical"
 	sendError := errors.New("failed to send alert")
@@ -239,7 +186,7 @@ func TestAlertDispatcher_DispatchAlert_DestinationSendError(t *testing.T) {
 	deps.formatter.EXPECT().FormatAlert(alert).Return(formattedMessage)
 	mockDestination.EXPECT().Send(gomock.Any(), formattedMessage).Return(sendError)
 
-	err := deps.dispatcher.DispatchAlert(context.Background(), alert, team)
+	err := deps.dispatcher.DispatchAlert(context.Background(), *alert, team)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to send alert")
@@ -257,19 +204,7 @@ func TestAlertDispatcher_DispatchAlert_PartialFailure(t *testing.T) {
 		Destinations: []string{"slack-test", "email-test"},
 	}
 
-	alert := &AlertManagerEvent{
-		Receiver: "test-receiver",
-		Status:   "firing",
-		Alerts: []PrometheusAlert{
-			{
-				Status: "firing",
-				Labels: map[string]string{
-					"alertname": "HighCPUUsage",
-					"severity":  "critical",
-				},
-			},
-		},
-	}
+	alert := createTestAlertManagerEvent()
 
 	formattedMessage := "🚨 **Alert: firing**\n**Alert:** HighCPUUsage\n**Status:** firing\n**Severity:** critical"
 	sendError := errors.New("failed to send alert to destination 2")
@@ -280,7 +215,7 @@ func TestAlertDispatcher_DispatchAlert_PartialFailure(t *testing.T) {
 	mockDestination1.EXPECT().Send(gomock.Any(), formattedMessage).Return(nil)
 	mockDestination2.EXPECT().Send(gomock.Any(), formattedMessage).Return(sendError)
 
-	err := deps.dispatcher.DispatchAlert(context.Background(), alert, team)
+	err := deps.dispatcher.DispatchAlert(context.Background(), *alert, team)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to send alert to destination 2")
@@ -297,6 +232,7 @@ func TestAlertDispatcher_DispatchAlert_ComplexAlert(t *testing.T) {
 		Destinations: []string{"slack-test"},
 	}
 
+	now := time.Now()
 	alert := &AlertManagerEvent{
 		Receiver:    "test-receiver",
 		Status:      "firing",
@@ -306,11 +242,13 @@ func TestAlertDispatcher_DispatchAlert_ComplexAlert(t *testing.T) {
 				Status:      "firing",
 				Labels:      map[string]string{"alertname": "HighCPUUsage", "severity": "critical", "instance": "api-1"},
 				Annotations: map[string]string{"summary": "High CPU usage detected", "description": "CPU usage exceeded 90%"},
+				StartsAt:    now,
 			},
 			{
 				Status:      "firing",
 				Labels:      map[string]string{"alertname": "HighMemoryUsage", "severity": "warning", "instance": "api-2"},
 				Annotations: map[string]string{"summary": "High memory usage detected"},
+				StartsAt:    now,
 			},
 		},
 	}
@@ -322,7 +260,7 @@ func TestAlertDispatcher_DispatchAlert_ComplexAlert(t *testing.T) {
 	deps.formatter.EXPECT().FormatAlert(alert).Return(formattedMessage)
 	mockDestination.EXPECT().Send(gomock.Any(), formattedMessage).Return(nil)
 
-	err := deps.dispatcher.DispatchAlert(context.Background(), alert, team)
+	err := deps.dispatcher.DispatchAlert(context.Background(), *alert, team)
 
 	assert.NoError(t, err)
 }
@@ -338,6 +276,7 @@ func TestAlertDispatcher_DispatchAlert_ResolvedAlert(t *testing.T) {
 		Destinations: []string{"slack-test"},
 	}
 
+	now := time.Now()
 	alert := &AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "resolved",
@@ -348,6 +287,7 @@ func TestAlertDispatcher_DispatchAlert_ResolvedAlert(t *testing.T) {
 					"alertname": "HighCPUUsage",
 					"severity":  "critical",
 				},
+				StartsAt: now,
 			},
 		},
 	}
@@ -359,7 +299,7 @@ func TestAlertDispatcher_DispatchAlert_ResolvedAlert(t *testing.T) {
 	deps.formatter.EXPECT().FormatAlert(alert).Return(formattedMessage)
 	mockDestination.EXPECT().Send(gomock.Any(), formattedMessage).Return(nil)
 
-	err := deps.dispatcher.DispatchAlert(context.Background(), alert, team)
+	err := deps.dispatcher.DispatchAlert(context.Background(), *alert, team)
 
 	assert.NoError(t, err)
 }
@@ -375,19 +315,7 @@ func TestAlertDispatcher_DispatchAlert_ContextCancellation(t *testing.T) {
 		Destinations: []string{"slack-test"},
 	}
 
-	alert := &AlertManagerEvent{
-		Receiver: "test-receiver",
-		Status:   "firing",
-		Alerts: []PrometheusAlert{
-			{
-				Status: "firing",
-				Labels: map[string]string{
-					"alertname": "HighCPUUsage",
-					"severity":  "critical",
-				},
-			},
-		},
-	}
+	alert := createTestAlertManagerEvent()
 
 	formattedMessage := "🚨 **Alert: firing**\n**Alert:** HighCPUUsage\n**Status:** firing\n**Severity:** critical"
 	ctxError := context.DeadlineExceeded
@@ -397,7 +325,7 @@ func TestAlertDispatcher_DispatchAlert_ContextCancellation(t *testing.T) {
 	deps.formatter.EXPECT().FormatAlert(alert).Return(formattedMessage)
 	mockDestination.EXPECT().Send(gomock.Any(), formattedMessage).Return(ctxError)
 
-	err := deps.dispatcher.DispatchAlert(context.Background(), alert, team)
+	err := deps.dispatcher.DispatchAlert(context.Background(), *alert, team)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "context deadline exceeded")
@@ -413,7 +341,8 @@ func TestAlertDispatcher_DispatchAlert_InvalidAlertType(t *testing.T) {
 	}
 
 	// Pass a string instead of AlertManagerEvent
-	err := deps.dispatcher.DispatchAlert(context.Background(), "not an alert", team)
+	alert := createTestAlertManagerEvent()
+	err := deps.dispatcher.DispatchAlert(context.Background(), *alert, team)
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid alert type")

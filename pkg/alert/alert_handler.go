@@ -69,18 +69,18 @@ func (h *AlertHandler) HandleAlert(c *gin.Context) {
 	}
 
 	// Convert and validate the alert
-	alert := NewAlertManagerEventFromTemplateData(templateData)
-	if err := alert.Validate(); err != nil {
+	alertEvent := NewAlertManagerEventFromTemplateData(templateData)
+	if err := alertEvent.Validate(); err != nil {
 		h.logger.Error("Invalid alert structure", zap.Error(err), zap.Any("alert", templateData))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid alert format: " + err.Error()})
 		return
 	}
 
 	// Register received alert metric
-	h.metrics.ObserveAlert(alert.Receiver, alert.Status)
+	h.metrics.ObserveAlert(alertEvent.Receiver, alertEvent.Status)
 
 	// Resolve which team should handle this alert
-	team, err := h.teamResolver.ResolveTeam(alert)
+	team, err := h.teamResolver.ResolveTeam(alertEvent)
 	if err != nil {
 		h.logger.Error("Failed to resolve team for alert", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to resolve team"})
@@ -89,7 +89,7 @@ func (h *AlertHandler) HandleAlert(c *gin.Context) {
 
 	// Dispatch alert to team destinations
 	ctx := c.Request.Context()
-	dispatchErr := h.alertDispatcher.DispatchAlert(ctx, alert, team)
+	dispatchErr := h.alertDispatcher.DispatchAlert(ctx, alertEvent, team)
 	if dispatchErr != nil {
 		h.logger.Error("Failed to dispatch alert", zap.Error(dispatchErr))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to dispatch alert"})
@@ -98,30 +98,29 @@ func (h *AlertHandler) HandleAlert(c *gin.Context) {
 
 	if team == nil {
 		h.logger.Warn("Alert received but no team resolved - alert not processed",
-			zap.String("receiver", alert.Receiver),
-			zap.String("status", alert.Status),
-			zap.Int("alerts_count", len(alert.Alerts)))
+			zap.String("receiver", alertEvent.Receiver),
+			zap.String("status", alertEvent.Status),
+			zap.Int("alerts_count", len(alertEvent.Alerts)))
 	} else if len(team.Destinations) == 0 {
 		h.logger.Warn("Alert received for team, but team has no destinations - alert not processed",
-			zap.String("receiver", alert.Receiver),
-			zap.String("status", alert.Status),
-			zap.Int("alerts_count", len(alert.Alerts)),
+			zap.String("receiver", alertEvent.Receiver),
+			zap.String("status", alertEvent.Status),
+			zap.Int("alerts_count", len(alertEvent.Alerts)),
 			zap.String("team", team.Name))
 	} else {
 		h.logger.Info("Alert processed successfully",
-			zap.String("receiver", alert.Receiver),
-			zap.String("status", alert.Status),
-			zap.Int("alerts_count", len(alert.Alerts)),
+			zap.String("receiver", alertEvent.Receiver),
+			zap.String("status", alertEvent.Status),
+			zap.Int("alerts_count", len(alertEvent.Alerts)),
 			zap.String("team", team.Name))
 	}
 
 	// Log only essential alert information to avoid memory issues with large alerts
 	h.logger.Debug("Alert details",
-		zap.String("receiver", alert.Receiver),
-		zap.String("status", alert.Status),
-		zap.Int("alerts_count", len(alert.Alerts)),
-		zap.String("alert_name", alert.GetAlertName()),
-		zap.String("severity", alert.GetSeverity()),
-		zap.Any("group_labels", alert.GroupLabels))
+		zap.String("receiver", alertEvent.Receiver),
+		zap.String("status", alertEvent.Status),
+		zap.Int("alerts_count", len(alertEvent.Alerts)),
+		zap.String("alert_name", alertEvent.GetAlertName()),
+		zap.Any("group_labels", alertEvent.GroupLabels))
 	c.JSON(http.StatusOK, gin.H{"status": "alert processed"})
 }

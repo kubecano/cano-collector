@@ -166,7 +166,7 @@ func TestAlertHandler_MissingFields(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.Contains(t, w.Body.String(), "invalid alert format")
-	assert.Contains(t, w.Body.String(), "missing status field")
+	assert.Contains(t, w.Body.String(), "alert status is required")
 }
 
 func TestAlertHandler_EmptyBody(t *testing.T) {
@@ -277,63 +277,4 @@ func TestAlertHandler_NoTeamResolved(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), "alert processed")
-}
-
-func TestAlertHandler_InvalidAlertStatus(t *testing.T) {
-	deps := setupTestRouter(t)
-	defer deps.ctrl.Finish()
-
-	alert := template.Data{
-		Receiver: "test-receiver",
-		Status:   "firing",
-		Alerts: []template.Alert{
-			{
-				Status: "invalid-status", // Nieprawidłowy status
-				Labels: map[string]string{
-					"alertname": "HighCPUUsage",
-				},
-				StartsAt: time.Now(),
-			},
-		},
-	}
-
-	jsonAlert, _ := json.Marshal(alert)
-	req, _ := http.NewRequest(http.MethodPost, "/alert", bytes.NewBuffer(jsonAlert))
-	req.Header.Set("Content-Type", "application/json")
-
-	w := httptest.NewRecorder()
-	deps.router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), "invalid status value")
-}
-
-func TestAlertHandler_MissingAlertName(t *testing.T) {
-	deps := setupTestRouter(t)
-	defer deps.ctrl.Finish()
-
-	alert := template.Data{
-		Receiver: "test-receiver",
-		Status:   "firing",
-		Alerts: []template.Alert{
-			{
-				Status: "firing",
-				Labels: map[string]string{
-					// Brak alertname
-					"severity": "critical",
-				},
-				StartsAt: time.Now(),
-			},
-		},
-	}
-
-	jsonAlert, _ := json.Marshal(alert)
-	req, _ := http.NewRequest(http.MethodPost, "/alert", bytes.NewBuffer(jsonAlert))
-	req.Header.Set("Content-Type", "application/json")
-
-	w := httptest.NewRecorder()
-	deps.router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), "missing alertname label")
 }

@@ -36,7 +36,7 @@ func (m *MockTeamResolverInterface) EXPECT() *MockTeamResolverInterfaceMockRecor
 }
 
 // ResolveTeam mocks base method.
-func (m *MockTeamResolverInterface) ResolveTeam(arg0 interface{}) (*config_team.Team, error) {
+func (m *MockTeamResolverInterface) ResolveTeam(arg0 interfaces.AlertEvent) (*config_team.Team, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ResolveTeam", arg0)
 	ret0, _ := ret[0].(*config_team.Team)

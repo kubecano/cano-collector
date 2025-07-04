@@ -36,14 +36,7 @@ func (r *TeamResolver) ValidateTeamDestinations(registry interfaces.DestinationR
 
 // ResolveTeam determines which team should handle the alert
 // For now, returns the first team (default team) as specified in requirements
-func (r *TeamResolver) ResolveTeam(alert interface{}) (*config_team.Team, error) {
-	// Type assertion - in practice, this should always be *AlertManagerEvent
-	alertEvent, ok := alert.(*AlertManagerEvent)
-	if !ok {
-		r.logger.Error("Invalid alert type passed to ResolveTeam")
-		return nil, fmt.Errorf("invalid alert type")
-	}
-
+func (r *TeamResolver) ResolveTeam(alertEvent *AlertManagerEvent) (*config_team.Team, error) {
 	if len(r.teams.Teams) == 0 {
 		return nil, nil // No teams configured
 	}

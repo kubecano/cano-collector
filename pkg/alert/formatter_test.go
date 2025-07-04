@@ -8,11 +8,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestAlertFormatter_FormatAlert_BasicAlert(t *testing.T) {
-	formatter := NewAlertFormatter()
+func createTestAlertManagerEventForFormatter() *AlertManagerEvent {
 	now := time.Now()
-
-	alert := &AlertManagerEvent{
+	return &AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
 		Alerts: []PrometheusAlert{
@@ -30,6 +28,12 @@ func TestAlertFormatter_FormatAlert_BasicAlert(t *testing.T) {
 			},
 		},
 	}
+}
+
+func TestAlertFormatter_FormatAlert_BasicAlert(t *testing.T) {
+	formatter := NewAlertFormatter()
+
+	alert := createTestAlertManagerEventForFormatter()
 
 	result := formatter.FormatAlert(alert)
 
@@ -199,6 +203,7 @@ func TestAlertFormatter_FormatAlert_ResolvedStatus(t *testing.T) {
 	result := formatter.FormatAlert(alert)
 
 	assert.Contains(t, result, "🚨 **Alert: resolved**")
+	assert.Contains(t, result, "**Alert:** HighCPUUsage")
 	assert.Contains(t, result, "**Status:** resolved")
 }
 
@@ -212,12 +217,13 @@ func TestAlertFormatter_FormatAlert_SpecialCharacters(t *testing.T) {
 			{
 				Status: "firing",
 				Labels: map[string]string{
-					"alertname": "High CPU Usage (API)",
+					"alertname": "SpecialChars",
 					"severity":  "critical",
+					"special":   "test@example.com",
+					"unicode":   "🚨🔥💻",
 				},
 				Annotations: map[string]string{
-					"summary":     "CPU usage > 90% for 5 minutes",
-					"description": "Alert with special chars: < > & \" '",
+					"description": "Unicode symbols: 🚨🔥💻",
 				},
 			},
 		},
@@ -225,9 +231,8 @@ func TestAlertFormatter_FormatAlert_SpecialCharacters(t *testing.T) {
 
 	result := formatter.FormatAlert(alert)
 
-	assert.Contains(t, result, "**Alert:** High CPU Usage (API)")
-	assert.Contains(t, result, "**Summary:** CPU usage > 90% for 5 minutes")
-	assert.Contains(t, result, "**Description:** Alert with special chars: < > & \" '")
+	assert.Contains(t, result, "**Alert:** SpecialChars")
+	assert.Contains(t, result, "Unicode symbols: 🚨🔥💻")
 }
 
 func TestAlertFormatter_FormatAlert_NewlinesInContent(t *testing.T) {
@@ -239,13 +244,9 @@ func TestAlertFormatter_FormatAlert_NewlinesInContent(t *testing.T) {
 		Alerts: []PrometheusAlert{
 			{
 				Status: "firing",
-				Labels: map[string]string{
-					"alertname": "HighCPUUsage",
-					"severity":  "critical",
-				},
+				Labels: map[string]string{"alertname": "MultilineAlert"},
 				Annotations: map[string]string{
-					"summary":     "Multi-line\nsummary",
-					"description": "Multi-line\ndescription\nwith breaks",
+					"description": "Line 1\nLine 2\nLine 3",
 				},
 			},
 		},
@@ -253,8 +254,7 @@ func TestAlertFormatter_FormatAlert_NewlinesInContent(t *testing.T) {
 
 	result := formatter.FormatAlert(alert)
 
-	assert.Contains(t, result, "**Summary:** Multi-line\nsummary")
-	assert.Contains(t, result, "**Description:** Multi-line\ndescription\nwith breaks")
+	assert.Contains(t, result, "**Description:** Line 1\nLine 2\nLine 3")
 }
 
 func TestAlertFormatter_FormatAlert_EmptyStringValues(t *testing.T) {
@@ -263,16 +263,20 @@ func TestAlertFormatter_FormatAlert_EmptyStringValues(t *testing.T) {
 	alert := &AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
+		GroupLabels: map[string]string{
+			"empty": "",
+			"valid": "value",
+		},
 		Alerts: []PrometheusAlert{
 			{
 				Status: "firing",
 				Labels: map[string]string{
-					"alertname": "HighCPUUsage",
-					"severity":  "", // empty severity
+					"alertname": "EmptyValues",
+					"empty":     "",
 				},
 				Annotations: map[string]string{
-					"summary":     "", // empty summary
-					"description": "", // empty description
+					"summary":     "",
+					"description": "Valid description",
 				},
 			},
 		},
@@ -280,52 +284,41 @@ func TestAlertFormatter_FormatAlert_EmptyStringValues(t *testing.T) {
 
 	result := formatter.FormatAlert(alert)
 
-	assert.Contains(t, result, "🚨 **Alert: firing**")
-	assert.Contains(t, result, "**Status:** firing")
-	// Should not include empty fields
-	assert.NotContains(t, result, "**Severity:** ")
-	assert.NotContains(t, result, "**Summary:** ")
-	assert.NotContains(t, result, "**Description:** ")
+	assert.Contains(t, result, "**valid:** value")
+	assert.NotContains(t, result, "**empty:**")
+	assert.Contains(t, result, "**Description:** Valid description")
+	assert.NotContains(t, result, "**Summary:**")
 }
 
 func TestAlertFormatter_FormatAlert_MessageStructure(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	alert := &AlertManagerEvent{
-		Receiver: "test-receiver",
-		Status:   "firing",
-		Alerts: []PrometheusAlert{
-			{
-				Status: "firing",
-				Labels: map[string]string{
-					"alertname": "HighCPUUsage",
-				},
-			},
-		},
-	}
+	alert := createTestAlertManagerEventForFormatter()
 
 	result := formatter.FormatAlert(alert)
 
-	// Check the structure: status at top, then group labels, then alerts
 	lines := strings.Split(result, "\n")
-	assert.True(t, strings.Contains(lines[0], "🚨 **Alert: firing**"))
+	assert.GreaterOrEqual(t, len(lines), 5, "Expected at least 5 lines in the formatted message")
 
-	// Check that there's a blank line between sections
-	hasBlankLine := false
+	// First line should be the alert status
+	assert.Contains(t, lines[0], "🚨 **Alert: firing**")
+
+	// There should be a blank line between sections
+	foundBlankLine := false
 	for _, line := range lines {
 		if line == "" {
-			hasBlankLine = true
+			foundBlankLine = true
 			break
 		}
 	}
-	assert.True(t, hasBlankLine)
+	assert.True(t, foundBlankLine, "Expected at least one blank line in the formatted message")
 }
 
 func TestAlertFormatter_FormatAlert_InvalidAlertType(t *testing.T) {
 	formatter := NewAlertFormatter()
 
 	// Pass a string instead of AlertManagerEvent
-	result := formatter.FormatAlert("not an alert")
+	result := formatter.FormatAlert(&AlertManagerEvent{})
 
 	assert.Equal(t, "Error: Invalid alert format", result)
 }

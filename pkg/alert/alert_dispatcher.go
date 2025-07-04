@@ -29,14 +29,7 @@ func NewAlertDispatcher(registry interfaces.DestinationRegistryInterface, format
 }
 
 // DispatchAlert sends the alert to all destinations of the specified team
-func (d *AlertDispatcher) DispatchAlert(ctx context.Context, alert interface{}, team *config_team.Team) error {
-	// Type assertion - in practice, this should always be *AlertManagerEvent
-	alertEvent, ok := alert.(*AlertManagerEvent)
-	if !ok {
-		d.logger.Error("Invalid alert type passed to DispatchAlert")
-		return fmt.Errorf("invalid alert type")
-	}
-
+func (d *AlertDispatcher) DispatchAlert(ctx context.Context, alertEvent AlertManagerEvent, team *config_team.Team) error {
 	if team == nil {
 		d.logger.Info("No team resolved for alert, skipping dispatch")
 		return nil
@@ -54,7 +47,7 @@ func (d *AlertDispatcher) DispatchAlert(ctx context.Context, alert interface{}, 
 	}
 
 	// Convert alert to message format using formatter
-	message := d.alertFormatter.FormatAlert(alertEvent)
+	message := d.alertFormatter.FormatAlert(&alertEvent)
 
 	// Send to all destinations
 	var errors []string

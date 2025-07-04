@@ -14,13 +14,7 @@ func NewAlertFormatter() *AlertFormatter {
 }
 
 // FormatAlert converts alertmanager alert to a readable message
-func (f *AlertFormatter) FormatAlert(alert interface{}) string {
-	// Type assertion - in practice, this should always be *AlertManagerEvent
-	alertEvent, ok := alert.(*AlertManagerEvent)
-	if !ok {
-		return "Error: Invalid alert format"
-	}
-
+func (f *AlertFormatter) FormatAlert(alertEvent *AlertManagerEvent) string {
 	var messages []string
 
 	messages = append(messages, fmt.Sprintf("🚨 **Alert: %s**", alertEvent.Status))
