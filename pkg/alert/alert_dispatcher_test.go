@@ -52,7 +52,8 @@ func createTestAlertManagerEvent() *model.AlertManagerEvent {
 		Status:   "firing",
 		Alerts: []model.PrometheusAlert{
 			{
-				Status: "firing",
+				Status:   "firing",
+				StartsAt: time.Now(),
 				Labels: map[string]string{
 					"alertname": "TestAlert",
 					"severity":  "critical",
