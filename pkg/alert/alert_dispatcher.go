@@ -5,28 +5,21 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/prometheus/alertmanager/template"
-	"go.uber.org/zap"
-
 	config_team "github.com/kubecano/cano-collector/config/team"
+	"github.com/kubecano/cano-collector/pkg/alert/model"
 	"github.com/kubecano/cano-collector/pkg/interfaces"
 	"github.com/kubecano/cano-collector/pkg/logger"
 )
 
-//go:generate mockgen -destination=../../mocks/alert_dispatcher_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/alert AlertDispatcherInterface
-type AlertDispatcherInterface interface {
-	DispatchAlert(ctx context.Context, alert template.Data, team *config_team.Team) error
-}
-
 // AlertDispatcher dispatches alerts to team destinations
 type AlertDispatcher struct {
 	destinationRegistry interfaces.DestinationRegistryInterface
-	alertFormatter      AlertFormatterInterface
+	alertFormatter      interfaces.AlertFormatterInterface
 	logger              logger.LoggerInterface
 }
 
 // NewAlertDispatcher creates a new alert dispatcher
-func NewAlertDispatcher(registry interfaces.DestinationRegistryInterface, formatter AlertFormatterInterface, logger logger.LoggerInterface) *AlertDispatcher {
+func NewAlertDispatcher(registry interfaces.DestinationRegistryInterface, formatter interfaces.AlertFormatterInterface, logger logger.LoggerInterface) *AlertDispatcher {
 	return &AlertDispatcher{
 		destinationRegistry: registry,
 		alertFormatter:      formatter,
@@ -35,7 +28,7 @@ func NewAlertDispatcher(registry interfaces.DestinationRegistryInterface, format
 }
 
 // DispatchAlert sends the alert to all destinations of the specified team
-func (d *AlertDispatcher) DispatchAlert(ctx context.Context, alert template.Data, team *config_team.Team) error {
+func (d *AlertDispatcher) DispatchAlert(ctx context.Context, alertEvent *model.AlertManagerEvent, team *config_team.Team) error {
 	if team == nil {
 		d.logger.Info("No team resolved for alert, skipping dispatch")
 		return nil
@@ -46,32 +39,48 @@ func (d *AlertDispatcher) DispatchAlert(ctx context.Context, alert template.Data
 		return nil
 	}
 
-	// Get destinations for the team
-	destinations, err := d.destinationRegistry.GetDestinations(team.Destinations)
-	if err != nil {
-		return fmt.Errorf("failed to get destinations for team '%s': %w", team.Name, err)
-	}
-
 	// Convert alert to message format using formatter
-	message := d.alertFormatter.FormatAlert(alert)
+	message := d.alertFormatter.FormatAlert(alertEvent)
 
-	// Send to all destinations
+	// Send to each destination individually to avoid index mismatch issues
 	var errors []string
-	for _, dest := range destinations {
+	for _, destName := range team.Destinations {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		// Get individual destination by name
+		dest, err := d.destinationRegistry.GetDestination(destName)
+		if err != nil {
+			errorMsg := fmt.Sprintf("failed to get destination '%s': %v", destName, err)
+			errors = append(errors, errorMsg)
+			d.logger.Error("Failed to get destination",
+				"destination", destName,
+				"team", team.Name,
+				"error", err)
+			continue
+		}
+
+		// Send message to destination
 		if err := dest.Send(ctx, message); err != nil {
-			errorMsg := fmt.Sprintf("failed to send to destination: %v", err)
+			errorMsg := fmt.Sprintf("failed to send to destination '%s': %v", destName, err)
 			errors = append(errors, errorMsg)
 			d.logger.Error("Failed to send alert to destination",
-				zap.Error(err),
-				zap.String("team", team.Name))
+				"destination", destName,
+				"team", team.Name,
+				"error", err)
 		} else {
-			d.logger.Info("Alert sent successfully to destination",
-				zap.String("team", team.Name))
+			d.logger.Info("Alert sent successfully",
+				"destination", destName,
+				"team", team.Name,
+				"alert_name", alertEvent.GetAlertName())
 		}
 	}
 
 	if len(errors) > 0 {
-		return fmt.Errorf("some destinations failed: %s", strings.Join(errors, "; "))
+		return fmt.Errorf("failed to send to some destinations: %s", strings.Join(errors, "; "))
 	}
 
 	return nil

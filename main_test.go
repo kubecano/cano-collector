@@ -92,13 +92,13 @@ func TestRun_WithMocks(t *testing.T) {
 		DestinationRegistry: func(factory interfaces.DestinationFactoryInterface, log logger.LoggerInterface) interfaces.DestinationRegistryInterface {
 			return mockDestinationRegistry
 		},
-		TeamResolverFactory: func(teams config_team.TeamsConfig, log logger.LoggerInterface) alert.TeamResolverInterface {
+		TeamResolverFactory: func(teams config_team.TeamsConfig, log logger.LoggerInterface) interfaces.TeamResolverInterface {
 			return mockTeamResolver
 		},
-		AlertDispatcherFactory: func(registry interfaces.DestinationRegistryInterface, log logger.LoggerInterface) alert.AlertDispatcherInterface {
+		AlertDispatcherFactory: func(registry interfaces.DestinationRegistryInterface, log logger.LoggerInterface) interfaces.AlertDispatcherInterface {
 			return mockAlertDispatcher
 		},
-		AlertHandlerFactory: func(log logger.LoggerInterface, m metric.MetricsInterface, tr alert.TeamResolverInterface, ad alert.AlertDispatcherInterface) alert.AlertHandlerInterface {
+		AlertHandlerFactory: func(log logger.LoggerInterface, m metric.MetricsInterface, tr interfaces.TeamResolverInterface, ad interfaces.AlertDispatcherInterface) alert.AlertHandlerInterface {
 			return mockAlerts
 		},
 		RouterManagerFactory: func(cfg config.Config, log logger.LoggerInterface, t tracer.TracerInterface, m metric.MetricsInterface, h health.HealthInterface, a alert.AlertHandlerInterface) router.RouterInterface {
