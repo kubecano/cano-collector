@@ -13,7 +13,6 @@ import (
 	config_team "github.com/kubecano/cano-collector/config/team"
 	"github.com/kubecano/cano-collector/mocks"
 	"github.com/kubecano/cano-collector/pkg/alert/model"
-	"github.com/kubecano/cano-collector/pkg/interfaces"
 )
 
 type alertDispatcherTestDeps struct {
@@ -79,7 +78,7 @@ func TestAlertDispatcher_DispatchAlert_Success(t *testing.T) {
 	formattedMessage := "🚨 Alert: TestAlert\nStatus: firing\nSeverity: critical"
 
 	// Setup expectations
-	deps.registry.EXPECT().GetDestinations([]string{"slack-test"}).Return([]interfaces.DestinationInterface{mockDestination}, nil)
+	deps.registry.EXPECT().GetDestination("slack-test").Return(mockDestination, nil)
 	deps.formatter.EXPECT().FormatAlert(alert).Return(formattedMessage)
 	mockDestination.EXPECT().Send(gomock.Any(), formattedMessage).Return(nil)
 
@@ -105,7 +104,8 @@ func TestAlertDispatcher_DispatchAlert_MultipleDestinations(t *testing.T) {
 	formattedMessage := "🚨 Alert: TestAlert\nStatus: firing\nSeverity: critical"
 
 	// Setup expectations
-	deps.registry.EXPECT().GetDestinations([]string{"slack-test", "email-test"}).Return([]interfaces.DestinationInterface{mockDestination1, mockDestination2}, nil)
+	deps.registry.EXPECT().GetDestination("slack-test").Return(mockDestination1, nil)
+	deps.registry.EXPECT().GetDestination("email-test").Return(mockDestination2, nil)
 	deps.formatter.EXPECT().FormatAlert(alert).Return(formattedMessage)
 	mockDestination1.EXPECT().Send(gomock.Any(), formattedMessage).Return(nil)
 	mockDestination2.EXPECT().Send(gomock.Any(), formattedMessage).Return(nil)
@@ -153,15 +153,17 @@ func TestAlertDispatcher_DispatchAlert_RegistryError(t *testing.T) {
 
 	alert := createTestAlertManagerEvent()
 
-	registryError := errors.New("failed to get destinations")
+	registryError := errors.New("failed to get destination")
+	formattedMessage := "🚨 Alert: TestAlert\nStatus: firing\nSeverity: critical"
 
 	// Setup expectations
-	deps.registry.EXPECT().GetDestinations([]string{"slack-test"}).Return(nil, registryError)
+	deps.formatter.EXPECT().FormatAlert(alert).Return(formattedMessage)
+	deps.registry.EXPECT().GetDestination("slack-test").Return(nil, registryError)
 
 	err := deps.dispatcher.DispatchAlert(context.Background(), alert, team)
 
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to get destinations")
+	assert.Contains(t, err.Error(), "failed to get destination")
 }
 
 func TestAlertDispatcher_DispatchAlert_DestinationSendError(t *testing.T) {
@@ -181,7 +183,7 @@ func TestAlertDispatcher_DispatchAlert_DestinationSendError(t *testing.T) {
 	sendError := errors.New("failed to send alert")
 
 	// Setup expectations
-	deps.registry.EXPECT().GetDestinations([]string{"slack-test"}).Return([]interfaces.DestinationInterface{mockDestination}, nil)
+	deps.registry.EXPECT().GetDestination("slack-test").Return(mockDestination, nil)
 	deps.formatter.EXPECT().FormatAlert(alert).Return(formattedMessage)
 	mockDestination.EXPECT().Send(gomock.Any(), formattedMessage).Return(sendError)
 
@@ -209,7 +211,8 @@ func TestAlertDispatcher_DispatchAlert_PartialFailure(t *testing.T) {
 	sendError := errors.New("failed to send alert to destination 2")
 
 	// Setup expectations
-	deps.registry.EXPECT().GetDestinations([]string{"slack-test", "email-test"}).Return([]interfaces.DestinationInterface{mockDestination1, mockDestination2}, nil)
+	deps.registry.EXPECT().GetDestination("slack-test").Return(mockDestination1, nil)
+	deps.registry.EXPECT().GetDestination("email-test").Return(mockDestination2, nil)
 	deps.formatter.EXPECT().FormatAlert(alert).Return(formattedMessage)
 	mockDestination1.EXPECT().Send(gomock.Any(), formattedMessage).Return(nil)
 	mockDestination2.EXPECT().Send(gomock.Any(), formattedMessage).Return(sendError)
@@ -255,7 +258,7 @@ func TestAlertDispatcher_DispatchAlert_ComplexAlert(t *testing.T) {
 	formattedMessage := "🚨 Alert: TestAlert\nStatus: firing\nSeverity: critical\nSummary: High CPU usage detected\nDescription: CPU usage exceeded 90%\nSummary: High memory usage detected"
 
 	// Setup expectations
-	deps.registry.EXPECT().GetDestinations([]string{"slack-test"}).Return([]interfaces.DestinationInterface{mockDestination}, nil)
+	deps.registry.EXPECT().GetDestination("slack-test").Return(mockDestination, nil)
 	deps.formatter.EXPECT().FormatAlert(alert).Return(formattedMessage)
 	mockDestination.EXPECT().Send(gomock.Any(), formattedMessage).Return(nil)
 
@@ -294,7 +297,7 @@ func TestAlertDispatcher_DispatchAlert_ResolvedAlert(t *testing.T) {
 	formattedMessage := "🚨 Alert: TestAlert\nStatus: resolved\nSeverity: critical"
 
 	// Setup expectations
-	deps.registry.EXPECT().GetDestinations([]string{"slack-test"}).Return([]interfaces.DestinationInterface{mockDestination}, nil)
+	deps.registry.EXPECT().GetDestination("slack-test").Return(mockDestination, nil)
 	deps.formatter.EXPECT().FormatAlert(alert).Return(formattedMessage)
 	mockDestination.EXPECT().Send(gomock.Any(), formattedMessage).Return(nil)
 
@@ -320,7 +323,7 @@ func TestAlertDispatcher_DispatchAlert_ContextCancellation(t *testing.T) {
 	ctxError := context.DeadlineExceeded
 
 	// Setup expectations
-	deps.registry.EXPECT().GetDestinations([]string{"slack-test"}).Return([]interfaces.DestinationInterface{mockDestination}, nil)
+	deps.registry.EXPECT().GetDestination("slack-test").Return(mockDestination, nil)
 	deps.formatter.EXPECT().FormatAlert(alert).Return(formattedMessage)
 	mockDestination.EXPECT().Send(gomock.Any(), formattedMessage).Return(ctxError)
 
@@ -328,4 +331,33 @@ func TestAlertDispatcher_DispatchAlert_ContextCancellation(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "context deadline exceeded")
+}
+
+func TestAlertDispatcher_DispatchAlert_MixedDestinationFailures(t *testing.T) {
+	deps := setupAlertDispatcherTest(t)
+	defer deps.ctrl.Finish()
+
+	mockDestination2 := mocks.NewMockDestinationInterface(deps.ctrl)
+
+	team := &config_team.Team{
+		Name:         "test-team",
+		Destinations: []string{"nonexistent-destination", "slack-test"},
+	}
+
+	alert := createTestAlertManagerEvent()
+
+	formattedMessage := "🚨 Alert: TestAlert\nStatus: firing\nSeverity: critical"
+	nonexistentError := errors.New("destination 'nonexistent-destination' not found")
+
+	// Setup expectations
+	deps.registry.EXPECT().GetDestination("nonexistent-destination").Return(nil, nonexistentError)
+	deps.registry.EXPECT().GetDestination("slack-test").Return(mockDestination2, nil)
+	deps.formatter.EXPECT().FormatAlert(alert).Return(formattedMessage)
+	mockDestination2.EXPECT().Send(gomock.Any(), formattedMessage).Return(nil)
+
+	err := deps.dispatcher.DispatchAlert(context.Background(), alert, team)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to get destination 'nonexistent-destination'")
+	assert.Contains(t, err.Error(), "destination 'nonexistent-destination' not found")
 }

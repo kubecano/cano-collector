@@ -39,31 +39,33 @@ func (d *AlertDispatcher) DispatchAlert(ctx context.Context, alertEvent *model.A
 		return nil
 	}
 
-	// Get destinations for the team
-	destinations, err := d.destinationRegistry.GetDestinations(team.Destinations)
-	if err != nil {
-		d.logger.Error("Failed to get destinations for team",
-			"team", team.Name,
-			"destinations", team.Destinations,
-			"error", err)
-		return fmt.Errorf("failed to get destinations: %w", err)
-	}
-
 	// Convert alert to message format using formatter
 	message := d.alertFormatter.FormatAlert(alertEvent)
 
-	// Send to all destinations
+	// Send to each destination individually to avoid index mismatch issues
 	var errors []string
-	for i, dest := range destinations {
+	for _, destName := range team.Destinations {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
 		}
 
-		destName := team.Destinations[i] // Get the destination name from the team config
+		// Get individual destination by name
+		dest, err := d.destinationRegistry.GetDestination(destName)
+		if err != nil {
+			errorMsg := fmt.Sprintf("failed to get destination '%s': %v", destName, err)
+			errors = append(errors, errorMsg)
+			d.logger.Error("Failed to get destination",
+				"destination", destName,
+				"team", team.Name,
+				"error", err)
+			continue
+		}
+
+		// Send message to destination
 		if err := dest.Send(ctx, message); err != nil {
-			errorMsg := fmt.Sprintf("failed to send to destination: %v", err)
+			errorMsg := fmt.Sprintf("failed to send to destination '%s': %v", destName, err)
 			errors = append(errors, errorMsg)
 			d.logger.Error("Failed to send alert to destination",
 				"destination", destName,
