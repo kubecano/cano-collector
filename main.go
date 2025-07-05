@@ -49,9 +49,7 @@ func main() {
 		TracerManagerFactory: func(cfg config.Config, log logger.LoggerInterface) tracer.TracerInterface {
 			return tracer.NewTracerManager(cfg, log)
 		},
-		MetricsFactory: func(log logger.LoggerInterface) interfaces.MetricsInterface {
-			return metric.NewMetricsCollector(log)
-		},
+		MetricsFactory: metric.NewMetricsCollector,
 		DestinationFactory: func(log logger.LoggerInterface) interfaces.DestinationFactoryInterface {
 			return destination.NewDestinationFactory(log, util.GetSharedHTTPClient())
 		},

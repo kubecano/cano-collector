@@ -46,7 +46,6 @@ type RouterManager struct {
 	metrics interfaces.MetricsInterface
 	health  health.HealthInterface
 	alerts  alert.AlertHandlerInterface
-	server  *http.Server
 }
 
 func NewRouterManager(
