@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.12](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.11...cano-collector-v0.0.12) (2025-07-05)
+
+
+### Features
+
+* CU-8699hqkbv - Alert Data Structure and Validation ([#137](https://github.com/kubecano/cano-collector/issues/137)) ([d77aea1](https://github.com/kubecano/cano-collector/commit/d77aea109a4e4b332967c71b11a5777b8a88ac4a))
+* CU-8699hu9hk - Health Checks and Basic Metrics ([#139](https://github.com/kubecano/cano-collector/issues/139)) ([54eb50f](https://github.com/kubecano/cano-collector/commit/54eb50f870b0779d1edbe4e234ba9d46209e038c))
+
 ## [0.0.11](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.10...cano-collector-v0.0.11) (2025-07-01)
 
 
