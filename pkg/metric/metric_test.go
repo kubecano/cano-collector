@@ -10,6 +10,7 @@ import (
 	"github.com/golang/mock/gomock"
 
 	"github.com/kubecano/cano-collector/mocks"
+	"github.com/kubecano/cano-collector/pkg/interfaces"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
@@ -17,7 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func setupTestMetricsCollector(t *testing.T) *MetricsCollector {
+func setupTestMetricsCollector(t *testing.T) interfaces.MetricsInterface {
 	t.Helper()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -28,14 +29,11 @@ func setupTestMetricsCollector(t *testing.T) *MetricsCollector {
 	mockLogger.EXPECT().Warnf(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
 
-	reg := prometheus.NewRegistry()
+	// Clear existing metrics
+	prometheus.DefaultRegisterer = prometheus.NewRegistry()
+	prometheus.DefaultGatherer = prometheus.DefaultRegisterer.(*prometheus.Registry)
 
 	metrics := NewMetricsCollector(mockLogger)
-
-	reg.MustRegister(metrics.httpRequestsTotal)
-	reg.MustRegister(metrics.alertManagerAlertsTotal)
-
-	prometheus.DefaultGatherer = reg
 
 	return metrics
 }

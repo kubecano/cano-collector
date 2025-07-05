@@ -11,15 +11,17 @@ import (
 
 // TeamResolver resolves which team should handle an alert
 type TeamResolver struct {
-	teams  config_team.TeamsConfig
-	logger logger.LoggerInterface
+	teams   config_team.TeamsConfig
+	logger  logger.LoggerInterface
+	metrics interfaces.MetricsInterface
 }
 
 // NewTeamResolver creates a new team resolver
-func NewTeamResolver(teams config_team.TeamsConfig, logger logger.LoggerInterface) *TeamResolver {
+func NewTeamResolver(teams config_team.TeamsConfig, logger logger.LoggerInterface, metrics interfaces.MetricsInterface) *TeamResolver {
 	return &TeamResolver{
-		teams:  teams,
-		logger: logger,
+		teams:   teams,
+		logger:  logger,
+		metrics: metrics,
 	}
 }
 
@@ -39,6 +41,7 @@ func (r *TeamResolver) ValidateTeamDestinations(registry interfaces.DestinationR
 // For now, returns the first team (default team) as specified in requirements
 func (r *TeamResolver) ResolveTeam(alertEvent *model.AlertManagerEvent) (*config_team.Team, error) {
 	if len(r.teams.Teams) == 0 {
+		r.metrics.IncRoutingDecisions("no_team", "none", "no_teams_configured")
 		return nil, nil // No teams configured
 	}
 
@@ -49,6 +52,14 @@ func (r *TeamResolver) ResolveTeam(alertEvent *model.AlertManagerEvent) (*config
 		"team", defaultTeam.Name,
 		"destinations", defaultTeam.Destinations,
 		"alert_name", alertEvent.GetAlertName())
+
+	// Record team matching metrics
+	r.metrics.IncTeamsMatched(defaultTeam.Name, alertEvent.GetAlertName())
+
+	// Record routing decision metrics based on team's destinations
+	for range defaultTeam.Destinations {
+		r.metrics.IncRoutingDecisions(defaultTeam.Name, "unknown", "routed") // TODO: Get actual destination type
+	}
 
 	return &defaultTeam, nil
 }

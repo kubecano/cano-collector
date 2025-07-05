@@ -1,0 +1,405 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Cano Collector - SLA/SLO Dashboard",
+    "tags": ["cano-collector", "sla", "slo", "business"],
+    "timezone": "browser",
+    "refresh": "1m",
+    "time": {
+      "from": "now-24h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "🎯 Service Level Objectives",
+        "type": "row",
+        "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
+        "collapsed": false
+      },
+      {
+        "id": 2,
+        "title": "Alert Processing SLO (99.9%)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "(\n  sum(rate(cano_alerts_processed_total[24h])) - \n  sum(rate(cano_alerts_errors_total[24h]))\n) / sum(rate(cano_alerts_processed_total[24h])) * 100",
+            "legendFormat": "Success Rate %"
+          }
+        ],
+        "gridPos": {"h": 6, "w": 6, "x": 0, "y": 1},
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "unit": "percent",
+            "decimals": 2,
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 95},
+                {"color": "green", "value": 99.9}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Destination Delivery SLO (99.5%)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "(\n  sum(rate(cano_destination_messages_sent_total{status=\"success\"}[24h]))\n) / sum(rate(cano_destination_messages_sent_total[24h])) * 100",
+            "legendFormat": "Delivery Success Rate %"
+          }
+        ],
+        "gridPos": {"h": 6, "w": 6, "x": 6, "y": 1},
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "unit": "percent",
+            "decimals": 2,
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 95},
+                {"color": "green", "value": 99.5}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Response Time SLO (< 500ms)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(cano_http_request_duration_seconds_bucket[24h])) * 1000",
+            "legendFormat": "95th Percentile (ms)"
+          }
+        ],
+        "gridPos": {"h": 6, "w": 6, "x": 12, "y": 1},
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "unit": "ms",
+            "decimals": 0,
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 500},
+                {"color": "red", "value": 1000}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "System Availability",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "(1 - (rate(http_requests_total{status=~\"5..\"}[24h]) / rate(http_requests_total[24h]))) * 100",
+            "legendFormat": "Availability %"
+          }
+        ],
+        "gridPos": {"h": 6, "w": 6, "x": 18, "y": 1},
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "unit": "percent",
+            "decimals": 3,
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 99.9},
+                {"color": "green", "value": 99.99}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "📊 Business Impact Metrics",
+        "type": "row",
+        "gridPos": {"h": 1, "w": 24, "x": 0, "y": 7},
+        "collapsed": false
+      },
+      {
+        "id": 7,
+        "title": "Alert Processing Volume",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "sum(rate(cano_alerts_processed_total[5m])) * 60",
+            "legendFormat": "Alerts/minute"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "End-to-End Processing Latency",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(cano_alerts_processing_duration_seconds_bucket[5m])) * 1000",
+            "legendFormat": "P50"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(cano_alerts_processing_duration_seconds_bucket[5m])) * 1000",
+            "legendFormat": "P95"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(cano_alerts_processing_duration_seconds_bucket[5m])) * 1000",
+            "legendFormat": "P99"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "unit": "ms"
+          }
+        }
+      },
+      {
+        "id": 9,
+        "title": "🚨 Error Budget Tracking",
+        "type": "row",
+        "gridPos": {"h": 1, "w": 24, "x": 0, "y": 16},
+        "collapsed": false
+      },
+      {
+        "id": 10,
+        "title": "Error Budget Burn Rate",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "(\n  sum(rate(cano_alerts_errors_total[1h])) + \n  sum(rate(cano_destination_errors_total[1h]))\n) / sum(rate(cano_alerts_processed_total[1h])) * 100",
+            "legendFormat": "Error Rate %"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 17},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "unit": "percent",
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 0.1},
+                {"color": "red", "value": 1}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 11,
+        "title": "Mean Time to Recovery (MTTR)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "avg(cano_alerts_processing_duration_seconds) * 1000",
+            "legendFormat": "MTTR (ms)"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 17},
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "unit": "ms",
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 1000},
+                {"color": "red", "value": 5000}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 12,
+        "title": "📈 Performance Trends",
+        "type": "row",
+        "gridPos": {"h": 1, "w": 24, "x": 0, "y": 25},
+        "collapsed": false
+      },
+      {
+        "id": 13,
+        "title": "Throughput by Team",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "sum(rate(cano_teams_matched_total[5m])) by (team_name)",
+            "legendFormat": "{{team_name}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 26},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "unit": "ops"
+          }
+        }
+      },
+      {
+        "id": 14,
+        "title": "Destination Performance",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(cano_destination_send_duration_seconds_bucket[5m])) by (destination_type) * 1000",
+            "legendFormat": "{{destination_type}} P95"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 26},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "unit": "ms"
+          }
+        }
+      },
+      {
+        "id": 15,
+        "title": "💼 Business KPIs",
+        "type": "row",
+        "gridPos": {"h": 1, "w": 24, "x": 0, "y": 34},
+        "collapsed": false
+      },
+      {
+        "id": 16,
+        "title": "Daily Alert Volume",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(increase(cano_alerts_processed_total[24h]))",
+            "legendFormat": "Alerts/Day"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 35},
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "unit": "short",
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 10000},
+                {"color": "red", "value": 50000}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 17,
+        "title": "Customer Satisfaction (SLA)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "(\n  sum(rate(cano_alerts_processed_total[24h])) - \n  sum(rate(cano_alerts_errors_total[24h]))\n) / sum(rate(cano_alerts_processed_total[24h])) * 100",
+            "legendFormat": "SLA %"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 35},
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "unit": "percent",
+            "decimals": 2,
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 99},
+                {"color": "green", "value": 99.9}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 18,
+        "title": "Active Integrations",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "count(count by (destination_type) (cano_destination_messages_sent_total))",
+            "legendFormat": "Integrations"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 35},
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "unit": "short",
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 5},
+                {"color": "red", "value": 10}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 19,
+        "title": "Resource Efficiency",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(rate(cano_alerts_processed_total[24h])) / avg(go_goroutines)",
+            "legendFormat": "Alerts/Goroutine"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 35},
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "unit": "short",
+            "decimals": 2,
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 1},
+                {"color": "green", "value": 10}
+              ]
+            }
+          }
+        }
+      }
+    ]
+  },
+  "overwrite": true
+} 

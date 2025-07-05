@@ -24,13 +24,13 @@ type AppDependencies struct {
 	LoggerFactory          func(level string, env string) logger.LoggerInterface
 	HealthCheckerFactory   func(cfg config.Config, log logger.LoggerInterface) health.HealthInterface
 	TracerManagerFactory   func(cfg config.Config, log logger.LoggerInterface) tracer.TracerInterface
-	MetricsFactory         func(log logger.LoggerInterface) metric.MetricsInterface
+	MetricsFactory         func(log logger.LoggerInterface) interfaces.MetricsInterface
 	DestinationFactory     func(log logger.LoggerInterface) interfaces.DestinationFactoryInterface
 	DestinationRegistry    func(factory interfaces.DestinationFactoryInterface, log logger.LoggerInterface) interfaces.DestinationRegistryInterface
-	TeamResolverFactory    func(teams config_team.TeamsConfig, log logger.LoggerInterface) interfaces.TeamResolverInterface
-	AlertDispatcherFactory func(registry interfaces.DestinationRegistryInterface, log logger.LoggerInterface) interfaces.AlertDispatcherInterface
-	AlertHandlerFactory    func(log logger.LoggerInterface, m metric.MetricsInterface, tr interfaces.TeamResolverInterface, ad interfaces.AlertDispatcherInterface) alert.AlertHandlerInterface
-	RouterManagerFactory   func(cfg config.Config, log logger.LoggerInterface, t tracer.TracerInterface, m metric.MetricsInterface, h health.HealthInterface, a alert.AlertHandlerInterface) router.RouterInterface
+	TeamResolverFactory    func(teams config_team.TeamsConfig, log logger.LoggerInterface, m interfaces.MetricsInterface) interfaces.TeamResolverInterface
+	AlertDispatcherFactory func(registry interfaces.DestinationRegistryInterface, log logger.LoggerInterface, m interfaces.MetricsInterface) interfaces.AlertDispatcherInterface
+	AlertHandlerFactory    func(log logger.LoggerInterface, m interfaces.MetricsInterface, tr interfaces.TeamResolverInterface, ad interfaces.AlertDispatcherInterface) alert.AlertHandlerInterface
+	RouterManagerFactory   func(cfg config.Config, log logger.LoggerInterface, t tracer.TracerInterface, m interfaces.MetricsInterface, h health.HealthInterface, a alert.AlertHandlerInterface) router.RouterInterface
 }
 
 func main() {
@@ -49,7 +49,7 @@ func main() {
 		TracerManagerFactory: func(cfg config.Config, log logger.LoggerInterface) tracer.TracerInterface {
 			return tracer.NewTracerManager(cfg, log)
 		},
-		MetricsFactory: func(log logger.LoggerInterface) metric.MetricsInterface {
+		MetricsFactory: func(log logger.LoggerInterface) interfaces.MetricsInterface {
 			return metric.NewMetricsCollector(log)
 		},
 		DestinationFactory: func(log logger.LoggerInterface) interfaces.DestinationFactoryInterface {
@@ -58,17 +58,17 @@ func main() {
 		DestinationRegistry: func(factory interfaces.DestinationFactoryInterface, log logger.LoggerInterface) interfaces.DestinationRegistryInterface {
 			return destination.NewDestinationRegistry(factory, log)
 		},
-		TeamResolverFactory: func(teams config_team.TeamsConfig, log logger.LoggerInterface) interfaces.TeamResolverInterface {
-			return alert.NewTeamResolver(teams, log)
+		TeamResolverFactory: func(teams config_team.TeamsConfig, log logger.LoggerInterface, m interfaces.MetricsInterface) interfaces.TeamResolverInterface {
+			return alert.NewTeamResolver(teams, log, m)
 		},
-		AlertDispatcherFactory: func(registry interfaces.DestinationRegistryInterface, log logger.LoggerInterface) interfaces.AlertDispatcherInterface {
+		AlertDispatcherFactory: func(registry interfaces.DestinationRegistryInterface, log logger.LoggerInterface, m interfaces.MetricsInterface) interfaces.AlertDispatcherInterface {
 			formatter := alert.NewAlertFormatter()
-			return alert.NewAlertDispatcher(registry, formatter, log)
+			return alert.NewAlertDispatcher(registry, formatter, log, m)
 		},
-		AlertHandlerFactory: func(log logger.LoggerInterface, m metric.MetricsInterface, tr interfaces.TeamResolverInterface, ad interfaces.AlertDispatcherInterface) alert.AlertHandlerInterface {
+		AlertHandlerFactory: func(log logger.LoggerInterface, m interfaces.MetricsInterface, tr interfaces.TeamResolverInterface, ad interfaces.AlertDispatcherInterface) alert.AlertHandlerInterface {
 			return alert.NewAlertHandler(log, m, tr, ad)
 		},
-		RouterManagerFactory: func(cfg config.Config, log logger.LoggerInterface, t tracer.TracerInterface, m metric.MetricsInterface, h health.HealthInterface, a alert.AlertHandlerInterface) router.RouterInterface {
+		RouterManagerFactory: func(cfg config.Config, log logger.LoggerInterface, t tracer.TracerInterface, m interfaces.MetricsInterface, h health.HealthInterface, a alert.AlertHandlerInterface) router.RouterInterface {
 			return router.NewRouterManager(cfg, log, t, m, h, a)
 		},
 	}
@@ -105,8 +105,8 @@ func run(cfg config.Config, deps AppDependencies) error {
 	log.Debug("Destinations loaded from config")
 
 	// Initialize alert processing components
-	teamResolver := deps.TeamResolverFactory(cfg.Teams, log)
-	alertDispatcher := deps.AlertDispatcherFactory(destinationRegistry, log)
+	teamResolver := deps.TeamResolverFactory(cfg.Teams, log, metricsCollector)
+	alertDispatcher := deps.AlertDispatcherFactory(destinationRegistry, log, metricsCollector)
 	alertHandler := deps.AlertHandlerFactory(log, metricsCollector, teamResolver, alertDispatcher)
 
 	// Validate team destinations configuration

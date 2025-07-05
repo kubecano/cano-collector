@@ -16,6 +16,7 @@ import (
 type teamResolverTestDeps struct {
 	ctrl     *gomock.Controller
 	logger   *mocks.MockLoggerInterface
+	metrics  *mocks.MockMetricsInterface
 	resolver *TeamResolver
 }
 
@@ -23,13 +24,18 @@ func setupTeamResolverTest(t *testing.T, teams config_team.TeamsConfig) teamReso
 	t.Helper()
 	ctrl := gomock.NewController(t)
 	logger := mocks.NewMockLoggerInterface(ctrl)
+	metrics := mocks.NewMockMetricsInterface(ctrl)
 
 	// Allow any number of arguments
 	logger.EXPECT().Info(gomock.Any()).AnyTimes()
 	logger.EXPECT().Error(gomock.Any()).AnyTimes()
 
-	resolver := NewTeamResolver(teams, logger)
-	return teamResolverTestDeps{ctrl, logger, resolver}
+	// Allow any number of arguments for metrics methods
+	metrics.EXPECT().IncRoutingDecisions(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	metrics.EXPECT().IncTeamsMatched(gomock.Any(), gomock.Any()).AnyTimes()
+
+	resolver := NewTeamResolver(teams, logger, metrics)
+	return teamResolverTestDeps{ctrl, logger, metrics, resolver}
 }
 
 func createTestAlertManagerEventForTeamResolver() *model.AlertManagerEvent {

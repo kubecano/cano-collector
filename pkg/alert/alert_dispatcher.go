@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	config_team "github.com/kubecano/cano-collector/config/team"
 	"github.com/kubecano/cano-collector/pkg/alert/model"
@@ -16,14 +17,16 @@ type AlertDispatcher struct {
 	destinationRegistry interfaces.DestinationRegistryInterface
 	alertFormatter      interfaces.AlertFormatterInterface
 	logger              logger.LoggerInterface
+	metrics             interfaces.MetricsInterface
 }
 
 // NewAlertDispatcher creates a new alert dispatcher
-func NewAlertDispatcher(registry interfaces.DestinationRegistryInterface, formatter interfaces.AlertFormatterInterface, logger logger.LoggerInterface) *AlertDispatcher {
+func NewAlertDispatcher(registry interfaces.DestinationRegistryInterface, formatter interfaces.AlertFormatterInterface, logger logger.LoggerInterface, metrics interfaces.MetricsInterface) *AlertDispatcher {
 	return &AlertDispatcher{
 		destinationRegistry: registry,
 		alertFormatter:      formatter,
 		logger:              logger,
+		metrics:             metrics,
 	}
 }
 
@@ -60,22 +63,30 @@ func (d *AlertDispatcher) DispatchAlert(ctx context.Context, alertEvent *model.A
 				"destination", destName,
 				"team", team.Name,
 				"error", err)
+			d.metrics.IncDestinationErrors(destName, "unknown", "destination_not_found")
 			continue
 		}
 
-		// Send message to destination
+		// Send message to destination with timing
+		start := time.Now()
 		if err := dest.Send(ctx, message); err != nil {
+			duration := time.Since(start)
 			errorMsg := fmt.Sprintf("failed to send to destination '%s': %v", destName, err)
 			errors = append(errors, errorMsg)
 			d.logger.Error("Failed to send alert to destination",
 				"destination", destName,
 				"team", team.Name,
 				"error", err)
+			d.metrics.IncDestinationErrors(destName, "unknown", "send_failed") // TODO: Get actual destination type
+			d.metrics.ObserveDestinationSendDuration(destName, "unknown", duration)
 		} else {
+			duration := time.Since(start)
 			d.logger.Info("Alert sent successfully",
 				"destination", destName,
 				"team", team.Name,
 				"alert_name", alertEvent.GetAlertName())
+			d.metrics.IncDestinationMessagesSent(destName, "unknown", "success") // TODO: Get actual destination type
+			d.metrics.ObserveDestinationSendDuration(destName, "unknown", duration)
 		}
 	}
 
