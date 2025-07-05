@@ -30,7 +30,7 @@ import (
 
 	"github.com/kubecano/cano-collector/config"
 	"github.com/kubecano/cano-collector/pkg/health"
-	"github.com/kubecano/cano-collector/pkg/metric"
+	"github.com/kubecano/cano-collector/pkg/interfaces"
 )
 
 //go:generate mockgen -destination=../../mocks/router_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/router RouterInterface
@@ -43,7 +43,7 @@ type RouterManager struct {
 	cfg     config.Config
 	logger  logger.LoggerInterface
 	tracer  tracer.TracerInterface
-	metrics metric.MetricsInterface
+	metrics interfaces.MetricsInterface
 	health  health.HealthInterface
 	alerts  alert.AlertHandlerInterface
 }
@@ -52,7 +52,7 @@ func NewRouterManager(
 	cfg config.Config,
 	log logger.LoggerInterface,
 	tracer tracer.TracerInterface,
-	metrics metric.MetricsInterface,
+	metrics interfaces.MetricsInterface,
 	health health.HealthInterface,
 	alerts alert.AlertHandlerInterface,
 ) *RouterManager {

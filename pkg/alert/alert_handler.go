@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/alertmanager/template"
@@ -12,7 +13,6 @@ import (
 	"github.com/kubecano/cano-collector/pkg/alert/model"
 	"github.com/kubecano/cano-collector/pkg/interfaces"
 	"github.com/kubecano/cano-collector/pkg/logger"
-	"github.com/kubecano/cano-collector/pkg/metric"
 )
 
 //go:generate mockgen -destination=../../mocks/alert_handler_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/alert AlertHandlerInterface
@@ -23,15 +23,15 @@ type AlertHandlerInterface interface {
 // AlertHandler handles incoming alerts from Alertmanager
 type AlertHandler struct {
 	logger          logger.LoggerInterface
-	metrics         metric.MetricsInterface
+	metrics         interfaces.MetricsInterface
 	teamResolver    interfaces.TeamResolverInterface
 	alertDispatcher interfaces.AlertDispatcherInterface
 }
 
-// NewAlertHandler creates a new handler with dependencies
+// NewAlertHandler creates a new alert handler
 func NewAlertHandler(
 	logger logger.LoggerInterface,
-	metrics metric.MetricsInterface,
+	metrics interfaces.MetricsInterface,
 	teamResolver interfaces.TeamResolverInterface,
 	alertDispatcher interfaces.AlertDispatcherInterface,
 ) *AlertHandler {
@@ -45,6 +45,9 @@ func NewAlertHandler(
 
 // HandleAlert processes alerts
 func (h *AlertHandler) HandleAlert(c *gin.Context) {
+	start := time.Now()
+	var alertEvent *model.AlertManagerEvent
+
 	// Check if the request body is empty
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
@@ -70,7 +73,7 @@ func (h *AlertHandler) HandleAlert(c *gin.Context) {
 	}
 
 	// Convert and validate the alert
-	alertEvent := model.NewAlertManagerEventFromTemplateData(templateData)
+	alertEvent = model.NewAlertManagerEventFromTemplateData(templateData)
 	if err := alertEvent.Validate(); err != nil {
 		h.logger.Error("Invalid alert structure", zap.Error(err), zap.Any("alert", templateData))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid alert format: " + err.Error()})
@@ -84,6 +87,7 @@ func (h *AlertHandler) HandleAlert(c *gin.Context) {
 	team, err := h.teamResolver.ResolveTeam(alertEvent)
 	if err != nil {
 		h.logger.Error("Failed to resolve team for alert", zap.Error(err))
+		h.metrics.IncAlertErrors(alertEvent.GetAlertName(), "team_resolution_failed")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to resolve team"})
 		return
 	}
@@ -93,27 +97,40 @@ func (h *AlertHandler) HandleAlert(c *gin.Context) {
 	dispatchErr := h.alertDispatcher.DispatchAlert(ctx, alertEvent, team)
 	if dispatchErr != nil {
 		h.logger.Error("Failed to dispatch alert", zap.Error(dispatchErr))
+		h.metrics.IncAlertErrors(alertEvent.GetAlertName(), "dispatch_failed")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to dispatch alert"})
 		return
 	}
+
+	// Record processing metrics
+	processingDuration := time.Since(start)
+	workflowCount := 0
+	if team != nil {
+		workflowCount = len(team.Destinations)
+	}
+
+	h.metrics.ObserveAlertProcessingDuration(alertEvent.GetAlertName(), workflowCount, processingDuration)
 
 	if team == nil {
 		h.logger.Warn("Alert received but no team resolved - alert not processed",
 			zap.String("receiver", alertEvent.Receiver),
 			zap.String("status", alertEvent.Status),
 			zap.Int("alerts_count", len(alertEvent.Alerts)))
+		h.metrics.IncAlertsProcessed(alertEvent.GetAlertName(), alertEvent.GetSeverity(), "no_team_resolved")
 	} else if len(team.Destinations) == 0 {
 		h.logger.Warn("Alert received for team, but team has no destinations - alert not processed",
 			zap.String("receiver", alertEvent.Receiver),
 			zap.String("status", alertEvent.Status),
 			zap.Int("alerts_count", len(alertEvent.Alerts)),
 			zap.String("team", team.Name))
+		h.metrics.IncAlertsProcessed(alertEvent.GetAlertName(), alertEvent.GetSeverity(), "no_destinations")
 	} else {
 		h.logger.Info("Alert processed successfully",
 			zap.String("receiver", alertEvent.Receiver),
 			zap.String("status", alertEvent.Status),
 			zap.Int("alerts_count", len(alertEvent.Alerts)),
 			zap.String("team", team.Name))
+		h.metrics.IncAlertsProcessed(alertEvent.GetAlertName(), alertEvent.GetSeverity(), "processed")
 	}
 
 	// Log only essential alert information to avoid memory issues with large alerts

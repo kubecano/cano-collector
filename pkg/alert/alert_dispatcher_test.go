@@ -20,6 +20,7 @@ type alertDispatcherTestDeps struct {
 	registry   *mocks.MockDestinationRegistryInterface
 	formatter  *mocks.MockAlertFormatterInterface
 	logger     *mocks.MockLoggerInterface
+	metrics    *mocks.MockMetricsInterface
 	dispatcher *AlertDispatcher
 }
 
@@ -30,18 +31,25 @@ func setupAlertDispatcherTest(t *testing.T) alertDispatcherTestDeps {
 	mockRegistry := mocks.NewMockDestinationRegistryInterface(ctrl)
 	mockFormatter := mocks.NewMockAlertFormatterInterface(ctrl)
 	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+	mockMetrics := mocks.NewMockMetricsInterface(ctrl)
 
 	// Allow any number of arguments for logger methods
 	mockLogger.EXPECT().Error(gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
 
-	dispatcher := NewAlertDispatcher(mockRegistry, mockFormatter, mockLogger)
+	// Allow any number of arguments for metrics methods
+	mockMetrics.EXPECT().IncDestinationErrors(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockMetrics.EXPECT().IncDestinationMessagesSent(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockMetrics.EXPECT().ObserveDestinationSendDuration(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+
+	dispatcher := NewAlertDispatcher(mockRegistry, mockFormatter, mockLogger, mockMetrics)
 
 	return alertDispatcherTestDeps{
 		ctrl:       ctrl,
 		registry:   mockRegistry,
 		formatter:  mockFormatter,
 		logger:     mockLogger,
+		metrics:    mockMetrics,
 		dispatcher: dispatcher,
 	}
 }
