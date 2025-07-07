@@ -20,10 +20,15 @@ func TestDestinationSlack_Send_DelegatesToSender(t *testing.T) {
 	mockLogger := mocks.NewMockLoggerInterface(ctrl)
 	mockClient := mocks.NewMockHTTPClient(ctrl)
 
-	// Akceptujemy dowolne wywołania Info i Error z różną liczbą argumentów
+	// Accept any number of arguments for Info and Error calls
+	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 	mockClient.EXPECT().Do(gomock.Any()).Return(&http.Response{
 		StatusCode: http.StatusOK,
@@ -47,7 +52,7 @@ func TestDestinationSlack_Send_DelegatesToSender(t *testing.T) {
 
 	d := NewDestinationSlack(cfg, mockLogger, mockClient)
 	err := d.Send(context.Background(), testIssue)
-	// Akceptujemy zarówno brak błędu, jak i EOF, bo slack-go może zwrócić EOF przy pustym body
+	// Accept either no error or EOF, as slack-go may return EOF with empty body
 	if err != nil {
 		assert.Contains(t, err.Error(), "EOF")
 	}
@@ -60,9 +65,14 @@ func TestDestinationSlack_Send_WithError(t *testing.T) {
 	mockLogger := mocks.NewMockLoggerInterface(ctrl)
 	mockClient := mocks.NewMockHTTPClient(ctrl)
 
+	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 	mockClient.EXPECT().Do(gomock.Any()).Return(nil, assert.AnError).Times(1)
 

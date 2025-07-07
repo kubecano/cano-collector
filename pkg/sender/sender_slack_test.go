@@ -16,8 +16,14 @@ func setupSenderSlackTest(t *testing.T) (*SenderSlack, *mocks.MockSlackClientInt
 	ctrl := gomock.NewController(t)
 
 	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
 
 	sender := &SenderSlack{
