@@ -25,6 +25,18 @@ func (s Status) String() string {
 	}
 }
 
+// ToEmoji returns the emoji representation of the status
+func (s Status) ToEmoji() string {
+	switch s {
+	case StatusResolved:
+		return "✅"
+	case StatusFiring:
+		return "🔥"
+	default:
+		return "🔥"
+	}
+}
+
 // FromString converts a string to Status
 func StatusFromString(s string) (Status, error) {
 	switch strings.ToUpper(s) {

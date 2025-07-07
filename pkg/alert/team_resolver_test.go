@@ -28,7 +28,15 @@ func setupTeamResolverTest(t *testing.T, teams config_team.TeamsConfig) teamReso
 
 	// Allow any number of arguments
 	logger.EXPECT().Info(gomock.Any()).AnyTimes()
+	logger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
+	logger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	logger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	logger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	logger.EXPECT().Error(gomock.Any()).AnyTimes()
+	logger.EXPECT().Error(gomock.Any(), gomock.Any()).AnyTimes()
+	logger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	logger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	logger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 	// Allow any number of arguments for metrics methods
 	metrics.EXPECT().IncRoutingDecisions(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()

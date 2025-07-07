@@ -31,6 +31,22 @@ func (s Severity) String() string {
 	}
 }
 
+// ToEmoji returns the emoji representation of the severity
+func (s Severity) ToEmoji() string {
+	switch s {
+	case SeverityDebug:
+		return "🔵" // Blue
+	case SeverityInfo:
+		return "⚪️" // White
+	case SeverityLow:
+		return "🟡" // Yellow
+	case SeverityHigh:
+		return "🔴" // Red
+	default:
+		return "⚪️" // Default white
+	}
+}
+
 // FromString converts a string to Severity
 func SeverityFromString(s string) (Severity, error) {
 	switch strings.ToUpper(s) {

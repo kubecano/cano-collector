@@ -145,3 +145,13 @@ func (s *Subject) String() string {
 	}
 	return fmt.Sprintf("%s (%s)", s.Name, s.SubjectType)
 }
+
+// FormatWithEmoji returns a formatted string representation of the subject with emoji
+func (s *Subject) FormatWithEmoji() string {
+	if s.Namespace != "" {
+		return fmt.Sprintf("🎯 Subject: %s/%s (%s)",
+			s.Namespace, s.Name, s.SubjectType.String())
+	}
+	return fmt.Sprintf("🎯 Subject: %s (%s)",
+		s.Name, s.SubjectType.String())
+}

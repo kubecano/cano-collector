@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/kubecano/cano-collector/mocks"
-	"github.com/kubecano/cano-collector/pkg/core/issue"
+	issuepkg "github.com/kubecano/cano-collector/pkg/core/issue"
 )
 
 func TestDestinationSlack_Send_DelegatesToSender(t *testing.T) {
@@ -20,10 +20,14 @@ func TestDestinationSlack_Send_DelegatesToSender(t *testing.T) {
 	mockLogger := mocks.NewMockLoggerInterface(ctrl)
 	mockClient := mocks.NewMockHTTPClient(ctrl)
 
-	// Akceptujemy dowolne wywołania Info i Error, bo slack-go może logować błąd EOF
-	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	// Accept any number of arguments for Info and Error calls
+	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
-	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 	mockClient.EXPECT().Do(gomock.Any()).Return(&http.Response{
@@ -38,17 +42,17 @@ func TestDestinationSlack_Send_DelegatesToSender(t *testing.T) {
 		UnfurlLinks:  true,
 	}
 
-	testIssue := &issue.Issue{
+	testIssue := &issuepkg.Issue{
 		Title:       "Test Issue",
 		Description: "This is a test issue",
-		Severity:    issue.SeverityHigh,
-		Status:      issue.StatusFiring,
-		Source:      issue.SourcePrometheus,
+		Severity:    issuepkg.SeverityHigh,
+		Status:      issuepkg.StatusFiring,
+		Source:      issuepkg.SourcePrometheus,
 	}
 
 	d := NewDestinationSlack(cfg, mockLogger, mockClient)
 	err := d.Send(context.Background(), testIssue)
-	// Akceptujemy zarówno brak błędu, jak i EOF, bo slack-go może zwrócić EOF przy pustym body
+	// Accept either no error or EOF, as slack-go may return EOF with empty body
 	if err != nil {
 		assert.Contains(t, err.Error(), "EOF")
 	}
@@ -61,8 +65,14 @@ func TestDestinationSlack_Send_WithError(t *testing.T) {
 	mockLogger := mocks.NewMockLoggerInterface(ctrl)
 	mockClient := mocks.NewMockHTTPClient(ctrl)
 
+	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
-	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 	mockClient.EXPECT().Do(gomock.Any()).Return(nil, assert.AnError).Times(1)
 
@@ -73,12 +83,12 @@ func TestDestinationSlack_Send_WithError(t *testing.T) {
 		UnfurlLinks:  true,
 	}
 
-	testIssue := &issue.Issue{
+	testIssue := &issuepkg.Issue{
 		Title:       "Test Issue",
 		Description: "This is a test issue",
-		Severity:    issue.SeverityHigh,
-		Status:      issue.StatusFiring,
-		Source:      issue.SourcePrometheus,
+		Severity:    issuepkg.SeverityHigh,
+		Status:      issuepkg.StatusFiring,
+		Source:      issuepkg.SourcePrometheus,
 	}
 
 	d := NewDestinationSlack(cfg, mockLogger, mockClient)
