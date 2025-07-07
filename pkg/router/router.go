@@ -11,9 +11,9 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/kubecano/cano-collector/pkg/alert"
+	alert_interfaces "github.com/kubecano/cano-collector/pkg/alert/interfaces"
 
-	"github.com/kubecano/cano-collector/pkg/tracer"
+	tracer_interfaces "github.com/kubecano/cano-collector/pkg/tracer/interfaces"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -21,7 +21,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.opentelemetry.io/otel"
 
-	"github.com/kubecano/cano-collector/pkg/logger"
+	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
 
 	sentrygin "github.com/getsentry/sentry-go/gin"
 	ginzap "github.com/gin-contrib/zap"
@@ -29,32 +29,26 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/kubecano/cano-collector/config"
-	"github.com/kubecano/cano-collector/pkg/health"
-	"github.com/kubecano/cano-collector/pkg/interfaces"
+	health_interfaces "github.com/kubecano/cano-collector/pkg/health/interfaces"
+	metric_interfaces "github.com/kubecano/cano-collector/pkg/metric/interfaces"
 )
-
-//go:generate mockgen -destination=../../mocks/router_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/router RouterInterface
-type RouterInterface interface {
-	SetupRouter() *gin.Engine
-	StartServer(router *gin.Engine)
-}
 
 type RouterManager struct {
 	cfg     config.Config
-	logger  logger.LoggerInterface
-	tracer  tracer.TracerInterface
-	metrics interfaces.MetricsInterface
-	health  health.HealthInterface
-	alerts  alert.AlertHandlerInterface
+	logger  logger_interfaces.LoggerInterface
+	tracer  tracer_interfaces.TracerInterface
+	metrics metric_interfaces.MetricsInterface
+	health  health_interfaces.HealthInterface
+	alerts  alert_interfaces.AlertHandlerInterface
 }
 
 func NewRouterManager(
 	cfg config.Config,
-	log logger.LoggerInterface,
-	tracer tracer.TracerInterface,
-	metrics interfaces.MetricsInterface,
-	health health.HealthInterface,
-	alerts alert.AlertHandlerInterface,
+	log logger_interfaces.LoggerInterface,
+	tracer tracer_interfaces.TracerInterface,
+	metrics metric_interfaces.MetricsInterface,
+	health health_interfaces.HealthInterface,
+	alerts alert_interfaces.AlertHandlerInterface,
 ) *RouterManager {
 	return &RouterManager{
 		cfg:     cfg,

@@ -10,31 +10,27 @@ import (
 	"github.com/prometheus/alertmanager/template"
 	"go.uber.org/zap"
 
+	alert_interfaces "github.com/kubecano/cano-collector/pkg/alert/interfaces"
 	"github.com/kubecano/cano-collector/pkg/alert/model"
-	"github.com/kubecano/cano-collector/pkg/interfaces"
-	"github.com/kubecano/cano-collector/pkg/logger"
+	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
+	metric_interfaces "github.com/kubecano/cano-collector/pkg/metric/interfaces"
 )
-
-//go:generate mockgen -destination=../../mocks/alert_handler_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/alert AlertHandlerInterface
-type AlertHandlerInterface interface {
-	HandleAlert(c *gin.Context)
-}
 
 // AlertHandler handles incoming alerts from Alertmanager
 type AlertHandler struct {
-	logger          logger.LoggerInterface
-	metrics         interfaces.MetricsInterface
-	teamResolver    interfaces.TeamResolverInterface
-	alertDispatcher interfaces.AlertDispatcherInterface
+	logger          logger_interfaces.LoggerInterface
+	metrics         metric_interfaces.MetricsInterface
+	teamResolver    alert_interfaces.TeamResolverInterface
+	alertDispatcher alert_interfaces.AlertDispatcherInterface
 	converter       *Converter
 }
 
 // NewAlertHandler creates a new alert handler
 func NewAlertHandler(
-	logger logger.LoggerInterface,
-	metrics interfaces.MetricsInterface,
-	teamResolver interfaces.TeamResolverInterface,
-	alertDispatcher interfaces.AlertDispatcherInterface,
+	logger logger_interfaces.LoggerInterface,
+	metrics metric_interfaces.MetricsInterface,
+	teamResolver alert_interfaces.TeamResolverInterface,
+	alertDispatcher alert_interfaces.AlertDispatcherInterface,
 	converter *Converter,
 ) *AlertHandler {
 	return &AlertHandler{

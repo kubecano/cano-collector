@@ -10,7 +10,7 @@ import (
 	"github.com/golang/mock/gomock"
 
 	"github.com/kubecano/cano-collector/mocks"
-	"github.com/kubecano/cano-collector/pkg/interfaces"
+	"github.com/kubecano/cano-collector/pkg/metric/interfaces"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"

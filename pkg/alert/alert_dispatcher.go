@@ -10,19 +10,20 @@ import (
 
 	config_team "github.com/kubecano/cano-collector/config/team"
 	"github.com/kubecano/cano-collector/pkg/core/issue"
-	"github.com/kubecano/cano-collector/pkg/interfaces"
-	"github.com/kubecano/cano-collector/pkg/logger"
+	destination_interfaces "github.com/kubecano/cano-collector/pkg/destination/interfaces"
+	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
+	metric_interfaces "github.com/kubecano/cano-collector/pkg/metric/interfaces"
 )
 
 // AlertDispatcher dispatches issues to team destinations
 type AlertDispatcher struct {
-	destinationRegistry interfaces.DestinationRegistryInterface
-	logger              logger.LoggerInterface
-	metrics             interfaces.MetricsInterface
+	destinationRegistry destination_interfaces.DestinationRegistryInterface
+	logger              logger_interfaces.LoggerInterface
+	metrics             metric_interfaces.MetricsInterface
 }
 
 // NewAlertDispatcher creates a new alert dispatcher
-func NewAlertDispatcher(registry interfaces.DestinationRegistryInterface, logger logger.LoggerInterface, metrics interfaces.MetricsInterface) *AlertDispatcher {
+func NewAlertDispatcher(registry destination_interfaces.DestinationRegistryInterface, logger logger_interfaces.LoggerInterface, metrics metric_interfaces.MetricsInterface) *AlertDispatcher {
 	return &AlertDispatcher{
 		destinationRegistry: registry,
 		logger:              logger,

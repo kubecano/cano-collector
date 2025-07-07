@@ -7,16 +7,16 @@ import (
 
 	"github.com/kubecano/cano-collector/pkg/alert/model"
 	"github.com/kubecano/cano-collector/pkg/core/issue"
-	"github.com/kubecano/cano-collector/pkg/logger"
+	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
 )
 
 // Converter handles conversion from AlertManagerEvent to Issues
 type Converter struct {
-	logger logger.LoggerInterface
+	logger logger_interfaces.LoggerInterface
 }
 
 // NewConverter creates a new Converter
-func NewConverter(logger logger.LoggerInterface) *Converter {
+func NewConverter(logger logger_interfaces.LoggerInterface) *Converter {
 	return &Converter{
 		logger: logger,
 	}

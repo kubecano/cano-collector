@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/kubecano/cano-collector/config"
-	"github.com/kubecano/cano-collector/pkg/logger"
+	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -19,20 +19,13 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-//go:generate mockgen -destination=../../mocks/tracer_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/tracer TracerInterface
-type TracerInterface interface {
-	InitTracer(ctx context.Context) error
-	TraceLoggerMiddleware() gin.HandlerFunc
-	ShutdownTracer(ctx context.Context) error
-}
-
 type TracerManager struct {
 	cfg      config.Config
-	logger   logger.LoggerInterface
+	logger   logger_interfaces.LoggerInterface
 	provider *sdktrace.TracerProvider
 }
 
-func NewTracerManager(cfg config.Config, logger logger.LoggerInterface) *TracerManager {
+func NewTracerManager(cfg config.Config, logger logger_interfaces.LoggerInterface) *TracerManager {
 	return &TracerManager{cfg: cfg, logger: logger}
 }
 
