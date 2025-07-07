@@ -2,6 +2,7 @@ package issue
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -73,7 +74,7 @@ func (i *Issue) generateFingerprint() string {
 
 	// Generate SHA256 hash
 	hash := sha256.Sum256([]byte(fingerprintStr))
-	return fmt.Sprintf("%x", hash)
+	return hex.EncodeToString(hash[:])
 }
 
 // SetFingerprint sets a custom fingerprint (e.g., from Prometheus/Alertmanager)
