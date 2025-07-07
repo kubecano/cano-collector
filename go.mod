@@ -14,7 +14,7 @@ require (
 	github.com/hellofresh/health-go/v5 v5.5.4
 	github.com/prometheus/alertmanager v0.28.1
 	github.com/prometheus/client_golang v1.22.0
-	github.com/slack-go/slack v0.17.2
+	github.com/slack-go/slack v0.17.3
 	github.com/stretchr/testify v1.10.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin v0.62.0
 	go.opentelemetry.io/otel v1.37.0
