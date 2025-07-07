@@ -75,7 +75,6 @@ func (c *Converter) convertPrometheusAlertToIssue(alert model.PrometheusAlert) (
 	iss.Severity = issue.SeverityFromPrometheusLabel(alert.Labels["severity"])
 	iss.Status = issue.StatusFromPrometheusStatus(alert.Status)
 	iss.Source = issue.SourcePrometheus
-	iss.Fingerprint = alert.Fingerprint
 	iss.StartsAt = alert.StartsAt
 
 	// Set end time if available
@@ -86,6 +85,12 @@ func (c *Converter) convertPrometheusAlertToIssue(alert model.PrometheusAlert) (
 	// Create subject from labels
 	subject := c.createSubject(alert)
 	iss.SetSubject(subject)
+
+	// Set fingerprint - use alert fingerprint if available, otherwise use generated one
+	if alert.Fingerprint != "" {
+		iss.SetFingerprint(alert.Fingerprint)
+	}
+	// If alert.Fingerprint is empty, the issue will use its generated fingerprint
 
 	// Add generator URL as link if available
 	if alert.GeneratorURL != "" {
@@ -185,6 +190,7 @@ func (c *Converter) getSubjectTypeFromLabels(labels map[string]string) issue.Sub
 		{"deployment", issue.SubjectTypeDeployment},
 		{"service", issue.SubjectTypeService},
 		{"node", issue.SubjectTypeNode},
+		{"instance", issue.SubjectTypeNode},
 		{"job", issue.SubjectTypeJob},
 		{"cronjob", issue.SubjectTypeCronJob},
 		{"daemonset", issue.SubjectTypeDaemonSet},

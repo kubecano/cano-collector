@@ -407,3 +407,115 @@ func TestConverter_WithGeneratorURL(t *testing.T) {
 	assert.Equal(t, alert.GeneratorURL, iss.Links[0].URL)
 	assert.Equal(t, issue.LinkTypePrometheusGenerator, iss.Links[0].Type)
 }
+
+func TestConverter_FingerprintHandling(t *testing.T) {
+	converter := NewConverter(logger.NewLogger("info", "test"))
+
+	t.Run("uses alert fingerprint when provided", func(t *testing.T) {
+		alert := model.PrometheusAlert{
+			Status:      "firing",
+			Fingerprint: "custom-alert-fingerprint-123",
+			StartsAt:    time.Now(),
+			Labels: map[string]string{
+				"alertname": "TestAlert",
+				"pod":       "test-pod",
+				"namespace": "default",
+			},
+		}
+
+		iss, err := converter.convertPrometheusAlertToIssue(alert)
+		require.NoError(t, err)
+		require.NotNil(t, iss)
+
+		// Should use the fingerprint from the alert
+		assert.Equal(t, "custom-alert-fingerprint-123", iss.Fingerprint)
+	})
+
+	t.Run("generates fingerprint when alert fingerprint is empty", func(t *testing.T) {
+		alert := model.PrometheusAlert{
+			Status:      "firing",
+			Fingerprint: "", // Empty fingerprint
+			StartsAt:    time.Now(),
+			Labels: map[string]string{
+				"alertname": "TestAlert",
+				"pod":       "test-pod",
+				"namespace": "default",
+			},
+		}
+
+		iss, err := converter.convertPrometheusAlertToIssue(alert)
+		require.NoError(t, err)
+		require.NotNil(t, iss)
+
+		// Should generate a fingerprint automatically
+		assert.NotEmpty(t, iss.Fingerprint)
+		assert.Len(t, iss.Fingerprint, 64) // SHA256 hex string
+		assert.Regexp(t, "^[a-f0-9]+$", iss.Fingerprint)
+	})
+
+	t.Run("different alerts generate different fingerprints", func(t *testing.T) {
+		alert1 := model.PrometheusAlert{
+			Status:      "firing",
+			Fingerprint: "", // Let it generate
+			StartsAt:    time.Now(),
+			Labels: map[string]string{
+				"alertname": "TestAlert1",
+				"pod":       "test-pod-1",
+				"namespace": "default",
+			},
+		}
+
+		alert2 := model.PrometheusAlert{
+			Status:      "firing",
+			Fingerprint: "", // Let it generate
+			StartsAt:    time.Now(),
+			Labels: map[string]string{
+				"alertname": "TestAlert2",
+				"pod":       "test-pod-2",
+				"namespace": "default",
+			},
+		}
+
+		iss1, err := converter.convertPrometheusAlertToIssue(alert1)
+		require.NoError(t, err)
+
+		iss2, err := converter.convertPrometheusAlertToIssue(alert2)
+		require.NoError(t, err)
+
+		// Should generate different fingerprints
+		assert.NotEqual(t, iss1.Fingerprint, iss2.Fingerprint)
+	})
+
+	t.Run("same alert parameters generate same fingerprint", func(t *testing.T) {
+		alert1 := model.PrometheusAlert{
+			Status:      "firing",
+			Fingerprint: "", // Let it generate
+			StartsAt:    time.Now(),
+			Labels: map[string]string{
+				"alertname": "TestAlert",
+				"pod":       "test-pod",
+				"namespace": "default",
+			},
+		}
+
+		alert2 := model.PrometheusAlert{
+			Status:      "firing",
+			Fingerprint: "", // Let it generate
+			StartsAt:    time.Now(),
+			Labels: map[string]string{
+				"alertname": "TestAlert",
+				"pod":       "test-pod",
+				"namespace": "default",
+			},
+		}
+
+		iss1, err := converter.convertPrometheusAlertToIssue(alert1)
+		require.NoError(t, err)
+
+		iss2, err := converter.convertPrometheusAlertToIssue(alert2)
+		require.NoError(t, err)
+
+		// Should generate same fingerprints for identical alerts
+		assert.Equal(t, iss1.Fingerprint, iss2.Fingerprint)
+	})
+}

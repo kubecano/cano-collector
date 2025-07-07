@@ -1,6 +1,8 @@
 package issue
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,7 +27,7 @@ type Issue struct {
 
 // NewIssue creates a new Issue with default values
 func NewIssue(title, aggregationKey string) *Issue {
-	return &Issue{
+	issue := &Issue{
 		ID:             uuid.New(),
 		Title:          title,
 		AggregationKey: aggregationKey,
@@ -36,6 +38,48 @@ func NewIssue(title, aggregationKey string) *Issue {
 		Enrichments:    make([]Enrichment, 0),
 		Links:          make([]Link, 0),
 		StartsAt:       time.Now(),
+	}
+
+	// Generate fingerprint based on issue attributes
+	issue.Fingerprint = issue.generateFingerprint()
+
+	return issue
+}
+
+// generateFingerprint generates a unique fingerprint for the issue
+// Logic similar to Robusta's implementation for deduplication
+func (i *Issue) generateFingerprint() string {
+	subjectName := ""
+	subjectNamespace := ""
+	subjectNode := ""
+	subjectType := ""
+
+	if i.Subject != nil {
+		subjectName = i.Subject.Name
+		subjectNamespace = i.Subject.Namespace
+		subjectNode = i.Subject.Node
+		subjectType = i.Subject.SubjectType.String()
+	}
+
+	// Create fingerprint string combining key attributes
+	fingerprintStr := fmt.Sprintf("%s,%s,%s,%s,%s,%s",
+		subjectType,
+		subjectName,
+		subjectNamespace,
+		subjectNode,
+		i.Source.String(),
+		i.AggregationKey,
+	)
+
+	// Generate SHA256 hash
+	hash := sha256.Sum256([]byte(fingerprintStr))
+	return fmt.Sprintf("%x", hash)
+}
+
+// SetFingerprint sets a custom fingerprint (e.g., from Prometheus/Alertmanager)
+func (i *Issue) SetFingerprint(fingerprint string) {
+	if fingerprint != "" {
+		i.Fingerprint = fingerprint
 	}
 }
 
@@ -52,6 +96,8 @@ func (i *Issue) AddLink(link Link) {
 // SetSubject sets the subject of the issue
 func (i *Issue) SetSubject(subject *Subject) {
 	i.Subject = subject
+	// Always regenerate fingerprint when subject changes
+	i.Fingerprint = i.generateFingerprint()
 }
 
 // IsResolved returns true if the issue is resolved
