@@ -38,14 +38,14 @@ func (d *AlertDispatcher) DispatchIssues(ctx context.Context, issues []*issue.Is
 	}
 
 	if len(team.Destinations) == 0 {
-		d.logger.Infof("Team has no destinations configured: %s",
+		d.logger.Info("Team has no destinations configured",
 			zap.String("team", team.Name),
 		)
 		return nil
 	}
 
 	if len(issues) == 0 {
-		d.logger.Infof("No issues to dispatch for team: %s",
+		d.logger.Info("No issues to dispatch for team",
 			zap.String("team", team.Name),
 		)
 		return nil
@@ -91,7 +91,7 @@ func (d *AlertDispatcher) DispatchIssues(ctx context.Context, issues []*issue.Is
 				d.metrics.ObserveDestinationSendDuration(destName, "unknown", duration)
 			} else {
 				duration := time.Since(start)
-				d.logger.Infof("Issue sent successfully",
+				d.logger.Info("Issue sent successfully",
 					zap.String("issue", iss.Title),
 					zap.String("destination", destName),
 					zap.String("team", team.Name),
