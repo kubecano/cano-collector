@@ -6,44 +6,50 @@ import (
 	"strings"
 	"time"
 
+	"go.uber.org/zap"
+
 	config_team "github.com/kubecano/cano-collector/config/team"
-	"github.com/kubecano/cano-collector/pkg/alert/model"
+	"github.com/kubecano/cano-collector/pkg/core/issue"
 	"github.com/kubecano/cano-collector/pkg/interfaces"
 	"github.com/kubecano/cano-collector/pkg/logger"
 )
 
-// AlertDispatcher dispatches alerts to team destinations
+// AlertDispatcher dispatches issues to team destinations
 type AlertDispatcher struct {
 	destinationRegistry interfaces.DestinationRegistryInterface
-	alertFormatter      interfaces.AlertFormatterInterface
 	logger              logger.LoggerInterface
 	metrics             interfaces.MetricsInterface
 }
 
 // NewAlertDispatcher creates a new alert dispatcher
-func NewAlertDispatcher(registry interfaces.DestinationRegistryInterface, formatter interfaces.AlertFormatterInterface, logger logger.LoggerInterface, metrics interfaces.MetricsInterface) *AlertDispatcher {
+func NewAlertDispatcher(registry interfaces.DestinationRegistryInterface, logger logger.LoggerInterface, metrics interfaces.MetricsInterface) *AlertDispatcher {
 	return &AlertDispatcher{
 		destinationRegistry: registry,
-		alertFormatter:      formatter,
 		logger:              logger,
 		metrics:             metrics,
 	}
 }
 
-// DispatchAlert sends the alert to all destinations of the specified team
-func (d *AlertDispatcher) DispatchAlert(ctx context.Context, alertEvent *model.AlertManagerEvent, team *config_team.Team) error {
+// DispatchIssues sends the issues to all destinations of the specified team
+func (d *AlertDispatcher) DispatchIssues(ctx context.Context, issues []*issue.Issue, team *config_team.Team) error {
 	if team == nil {
-		d.logger.Info("No team resolved for alert, skipping dispatch")
+		d.logger.Info("No team resolved for issues, skipping dispatch")
 		return nil
 	}
 
 	if len(team.Destinations) == 0 {
-		d.logger.Info("Team has no destinations configured", "team", team.Name)
+		d.logger.Info("Team has no destinations configured",
+			zap.String("team", team.Name),
+		)
 		return nil
 	}
 
-	// Convert alert to message format using formatter
-	message := d.alertFormatter.FormatAlert(alertEvent)
+	if len(issues) == 0 {
+		d.logger.Info("No issues to dispatch for team",
+			zap.String("team", team.Name),
+		)
+		return nil
+	}
 
 	// Send to each destination individually to avoid index mismatch issues
 	var errors []string
@@ -60,33 +66,46 @@ func (d *AlertDispatcher) DispatchAlert(ctx context.Context, alertEvent *model.A
 			errorMsg := fmt.Sprintf("failed to get destination '%s': %v", destName, err)
 			errors = append(errors, errorMsg)
 			d.logger.Error("Failed to get destination",
-				"destination", destName,
-				"team", team.Name,
-				"error", err)
+				zap.String("destination", destName),
+				zap.String("team", team.Name),
+				zap.Error(err),
+			)
 			d.metrics.IncDestinationErrors(destName, "unknown", "destination_not_found")
 			continue
 		}
 
-		// Send message to destination with timing
-		start := time.Now()
-		if err := dest.Send(ctx, message); err != nil {
-			duration := time.Since(start)
-			errorMsg := fmt.Sprintf("failed to send to destination '%s': %v", destName, err)
-			errors = append(errors, errorMsg)
-			d.logger.Error("Failed to send alert to destination",
-				"destination", destName,
-				"team", team.Name,
-				"error", err)
-			d.metrics.IncDestinationErrors(destName, "unknown", "send_failed") // TODO: Get actual destination type
-			d.metrics.ObserveDestinationSendDuration(destName, "unknown", duration)
-		} else {
-			duration := time.Since(start)
-			d.logger.Info("Alert sent successfully",
-				"destination", destName,
-				"team", team.Name,
-				"alert_name", alertEvent.GetAlertName())
-			d.metrics.IncDestinationMessagesSent(destName, "unknown", "success") // TODO: Get actual destination type
-			d.metrics.ObserveDestinationSendDuration(destName, "unknown", duration)
+		// Send each issue to destination with timing
+		for _, iss := range issues {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
+
+			start := time.Now()
+			if err := dest.Send(ctx, iss); err != nil {
+				duration := time.Since(start)
+				errorMsg := fmt.Sprintf("failed to send issue to destination '%s': %v", destName, err)
+				errors = append(errors, errorMsg)
+				d.logger.Error("Failed to send issue",
+					zap.String("issue", iss.Title),
+					zap.String("destination", destName),
+					zap.String("team", team.Name),
+					zap.Error(err),
+				)
+				d.metrics.IncDestinationErrors(destName, "unknown", "send_failed") // TODO: Get actual destination type
+				d.metrics.ObserveDestinationSendDuration(destName, "unknown", duration)
+			} else {
+				duration := time.Since(start)
+				d.logger.Info("Issue sent successfully",
+					zap.String("issue", iss.Title),
+					zap.String("destination", destName),
+					zap.String("team", team.Name),
+					zap.String("severity", iss.Severity.String()),
+				)
+				d.metrics.IncDestinationMessagesSent(destName, "unknown", "success") // TODO: Get actual destination type
+				d.metrics.ObserveDestinationSendDuration(destName, "unknown", duration)
+			}
 		}
 	}
 

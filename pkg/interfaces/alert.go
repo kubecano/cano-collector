@@ -5,20 +5,14 @@ import (
 
 	config_team "github.com/kubecano/cano-collector/config/team"
 	"github.com/kubecano/cano-collector/pkg/alert/model"
+	"github.com/kubecano/cano-collector/pkg/core/issue"
 )
 
-// AlertDispatcherInterface defines the interface for dispatching alerts to team destinations.
+// AlertDispatcherInterface defines the interface for dispatching issues to team destinations.
 //
 //go:generate mockgen -destination=../../mocks/alert_dispatcher_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/interfaces AlertDispatcherInterface
 type AlertDispatcherInterface interface {
-	DispatchAlert(ctx context.Context, alert *model.AlertManagerEvent, team *config_team.Team) error
-}
-
-// AlertFormatterInterface defines the interface for formatting alerts into readable messages.
-//
-//go:generate mockgen -destination=../../mocks/alert_formatter_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/interfaces AlertFormatterInterface
-type AlertFormatterInterface interface {
-	FormatAlert(alert *model.AlertManagerEvent) string
+	DispatchIssues(ctx context.Context, issues []*issue.Issue, team *config_team.Team) error
 }
 
 // TeamResolverInterface defines the interface for resolving which team should handle an alert.

@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/kubecano/cano-collector/mocks"
+	"github.com/kubecano/cano-collector/pkg/core/issue"
 )
 
 func TestDestinationSlack_Send_DelegatesToSender(t *testing.T) {
@@ -37,8 +38,16 @@ func TestDestinationSlack_Send_DelegatesToSender(t *testing.T) {
 		UnfurlLinks:  true,
 	}
 
+	testIssue := &issue.Issue{
+		Title:       "Test Issue",
+		Description: "This is a test issue",
+		Severity:    issue.SeverityHigh,
+		Status:      issue.StatusFiring,
+		Source:      issue.SourcePrometheus,
+	}
+
 	d := NewDestinationSlack(cfg, mockLogger, mockClient)
-	err := d.Send(context.Background(), "test message")
+	err := d.Send(context.Background(), testIssue)
 	// Akceptujemy zarówno brak błędu, jak i EOF, bo slack-go może zwrócić EOF przy pustym body
 	if err != nil {
 		assert.Contains(t, err.Error(), "EOF")
@@ -64,7 +73,15 @@ func TestDestinationSlack_Send_WithError(t *testing.T) {
 		UnfurlLinks:  true,
 	}
 
+	testIssue := &issue.Issue{
+		Title:       "Test Issue",
+		Description: "This is a test issue",
+		Severity:    issue.SeverityHigh,
+		Status:      issue.StatusFiring,
+		Source:      issue.SourcePrometheus,
+	}
+
 	d := NewDestinationSlack(cfg, mockLogger, mockClient)
-	err := d.Send(context.Background(), "test message")
+	err := d.Send(context.Background(), testIssue)
 	require.Error(t, err)
 }
