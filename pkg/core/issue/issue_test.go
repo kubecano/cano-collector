@@ -159,3 +159,84 @@ func TestIssue_FingerprintDifferences(t *testing.T) {
 	issue3.Source = SourcePrometheus
 	assert.NotEqual(t, baseIssue.Fingerprint, issue3.Fingerprint)
 }
+
+func TestIssue_AddEnrichmentBlocks(t *testing.T) {
+	issue := NewIssue("Test Issue", "test-alert")
+
+	// Create some blocks
+	block1 := NewMarkdownBlock("First block")
+	block2 := NewTableBlock([]string{"Name"}, [][]string{{"John"}}, "Test Table", TableBlockFormatHorizontal)
+	blocks := []BaseBlock{block1, block2}
+
+	// Add blocks as enrichment
+	issue.AddEnrichmentBlocks(blocks)
+
+	// Check that enrichment was added
+	assert.Len(t, issue.Enrichments, 1)
+	assert.Len(t, issue.Enrichments[0].Blocks, 2)
+	assert.Equal(t, block1, issue.Enrichments[0].Blocks[0])
+	assert.Equal(t, block2, issue.Enrichments[0].Blocks[1])
+	assert.Nil(t, issue.Enrichments[0].EnrichmentType)
+	assert.Nil(t, issue.Enrichments[0].Title)
+}
+
+func TestIssue_AddEnrichmentWithType(t *testing.T) {
+	issue := NewIssue("Test Issue", "test-alert")
+
+	// Create some blocks
+	block1 := NewMarkdownBlock("Alert information")
+	block2 := NewTableBlock([]string{"Label", "Value"}, [][]string{{"severity", "high"}}, "Alert Labels", TableBlockFormatVertical)
+	blocks := []BaseBlock{block1, block2}
+
+	enrichmentType := EnrichmentTypeAlertLabels
+	title := "Alert Labels"
+
+	// Add blocks with type and title
+	issue.AddEnrichmentWithType(blocks, enrichmentType, title)
+
+	// Check that enrichment was added correctly
+	assert.Len(t, issue.Enrichments, 1)
+	assert.Len(t, issue.Enrichments[0].Blocks, 2)
+	assert.Equal(t, block1, issue.Enrichments[0].Blocks[0])
+	assert.Equal(t, block2, issue.Enrichments[0].Blocks[1])
+	assert.NotNil(t, issue.Enrichments[0].EnrichmentType)
+	assert.Equal(t, enrichmentType, *issue.Enrichments[0].EnrichmentType)
+	assert.NotNil(t, issue.Enrichments[0].Title)
+	assert.Equal(t, title, *issue.Enrichments[0].Title)
+}
+
+func TestIssue_AddEnrichmentBlocks_EmptyBlocks(t *testing.T) {
+	issue := NewIssue("Test Issue", "test-alert")
+
+	// Add empty blocks
+	issue.AddEnrichmentBlocks([]BaseBlock{})
+
+	// Check that enrichment was added but is empty
+	assert.Len(t, issue.Enrichments, 1)
+	assert.Empty(t, issue.Enrichments[0].Blocks)
+}
+
+func TestIssue_AddEnrichmentWithType_MultipleEnrichments(t *testing.T) {
+	issue := NewIssue("Test Issue", "test-alert")
+
+	// Add first enrichment
+	block1 := NewMarkdownBlock("First enrichment")
+	issue.AddEnrichmentWithType([]BaseBlock{block1}, EnrichmentTypeAlertLabels, "Labels")
+
+	// Add second enrichment
+	block2 := NewMarkdownBlock("Second enrichment")
+	issue.AddEnrichmentWithType([]BaseBlock{block2}, EnrichmentTypeGraph, "Graph")
+
+	// Check that both enrichments were added
+	assert.Len(t, issue.Enrichments, 2)
+
+	// Check first enrichment
+	assert.Equal(t, EnrichmentTypeAlertLabels, *issue.Enrichments[0].EnrichmentType)
+	assert.Equal(t, "Labels", *issue.Enrichments[0].Title)
+	assert.Equal(t, block1, issue.Enrichments[0].Blocks[0])
+
+	// Check second enrichment
+	assert.Equal(t, EnrichmentTypeGraph, *issue.Enrichments[1].EnrichmentType)
+	assert.Equal(t, "Graph", *issue.Enrichments[1].Title)
+	assert.Equal(t, block2, issue.Enrichments[1].Blocks[0])
+}
