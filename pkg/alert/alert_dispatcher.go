@@ -76,6 +76,12 @@ func (d *AlertDispatcher) DispatchIssues(ctx context.Context, issues []*issue.Is
 
 		// Send each issue to destination with timing
 		for _, iss := range issues {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
+
 			start := time.Now()
 			if err := dest.Send(ctx, iss); err != nil {
 				duration := time.Since(start)
