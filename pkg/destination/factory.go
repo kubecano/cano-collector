@@ -5,16 +5,16 @@ import (
 
 	config_destination "github.com/kubecano/cano-collector/config/destination"
 	destslack "github.com/kubecano/cano-collector/pkg/destination/slack"
-	"github.com/kubecano/cano-collector/pkg/logger"
+	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
 	"github.com/kubecano/cano-collector/pkg/util"
 )
 
 type DestinationFactory struct {
-	logger     logger.LoggerInterface
+	logger     logger_interfaces.LoggerInterface
 	httpClient util.HTTPClient
 }
 
-func NewDestinationFactory(logger logger.LoggerInterface, httpClient util.HTTPClient) *DestinationFactory {
+func NewDestinationFactory(logger logger_interfaces.LoggerInterface, httpClient util.HTTPClient) *DestinationFactory {
 	if httpClient == nil {
 		httpClient = util.DefaultHTTPClient()
 	}

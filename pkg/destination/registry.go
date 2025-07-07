@@ -5,20 +5,20 @@ import (
 	"sync"
 
 	config_destination "github.com/kubecano/cano-collector/config/destination"
-	"github.com/kubecano/cano-collector/pkg/interfaces"
-	"github.com/kubecano/cano-collector/pkg/logger"
+	"github.com/kubecano/cano-collector/pkg/destination/interfaces"
+	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
 )
 
 // DestinationRegistry manages a registry of destinations
 type DestinationRegistry struct {
 	destinations map[string]interfaces.DestinationInterface
 	factory      interfaces.DestinationFactoryInterface
-	logger       logger.LoggerInterface
+	logger       logger_interfaces.LoggerInterface
 	mu           sync.RWMutex
 }
 
 // NewDestinationRegistry creates a new destination registry
-func NewDestinationRegistry(factory interfaces.DestinationFactoryInterface, logger logger.LoggerInterface) *DestinationRegistry {
+func NewDestinationRegistry(factory interfaces.DestinationFactoryInterface, logger logger_interfaces.LoggerInterface) *DestinationRegistry {
 	return &DestinationRegistry{
 		destinations: make(map[string]interfaces.DestinationInterface),
 		factory:      factory,

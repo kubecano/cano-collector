@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/kubecano/cano-collector/pkg/interfaces"
-	"github.com/kubecano/cano-collector/pkg/logger"
+	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
+	"github.com/kubecano/cano-collector/pkg/metric/interfaces"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
@@ -24,10 +24,10 @@ type MetricsCollector struct {
 	destinationErrorsTotal       *prometheus.CounterVec
 	routingDecisionsTotal        *prometheus.CounterVec
 	teamsMatchedTotal            *prometheus.CounterVec
-	logger                       logger.LoggerInterface
+	logger                       logger_interfaces.LoggerInterface
 }
 
-func NewMetricsCollector(log logger.LoggerInterface) interfaces.MetricsInterface {
+func NewMetricsCollector(log logger_interfaces.LoggerInterface) interfaces.MetricsInterface {
 	mc := &MetricsCollector{
 		logger: log,
 	}

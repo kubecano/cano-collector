@@ -12,12 +12,13 @@ import (
 	"github.com/kubecano/cano-collector/config"
 	config_team "github.com/kubecano/cano-collector/config/team"
 	"github.com/kubecano/cano-collector/mocks"
-	"github.com/kubecano/cano-collector/pkg/alert"
-	"github.com/kubecano/cano-collector/pkg/health"
-	"github.com/kubecano/cano-collector/pkg/interfaces"
-	"github.com/kubecano/cano-collector/pkg/logger"
-	"github.com/kubecano/cano-collector/pkg/router"
-	"github.com/kubecano/cano-collector/pkg/tracer"
+	alert_interfaces "github.com/kubecano/cano-collector/pkg/alert/interfaces"
+	destination_interfaces "github.com/kubecano/cano-collector/pkg/destination/interfaces"
+	health_interfaces "github.com/kubecano/cano-collector/pkg/health/interfaces"
+	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
+	metric_interfaces "github.com/kubecano/cano-collector/pkg/metric/interfaces"
+	router_interfaces "github.com/kubecano/cano-collector/pkg/router/interfaces"
+	tracer_interfaces "github.com/kubecano/cano-collector/pkg/tracer/interfaces"
 )
 
 func resetSentryState() {
@@ -83,24 +84,30 @@ func TestRun_WithMocks(t *testing.T) {
 	mockRouter.EXPECT().StartServer(g).Times(1)
 
 	deps := AppDependencies{
-		LoggerFactory:        func(_, _ string) logger.LoggerInterface { return mockLogger },
-		HealthCheckerFactory: func(cfg config.Config, log logger.LoggerInterface) health.HealthInterface { return mockHealth },
-		TracerManagerFactory: func(cfg config.Config, log logger.LoggerInterface) tracer.TracerInterface { return mockTracer },
-		MetricsFactory:       func(log logger.LoggerInterface) interfaces.MetricsInterface { return mockMetrics },
-		DestinationFactory:   func(log logger.LoggerInterface) interfaces.DestinationFactoryInterface { return mockDestinationFactory },
-		DestinationRegistry: func(factory interfaces.DestinationFactoryInterface, log logger.LoggerInterface) interfaces.DestinationRegistryInterface {
+		LoggerFactory: func(_, _ string) logger_interfaces.LoggerInterface { return mockLogger },
+		HealthCheckerFactory: func(cfg config.Config, log logger_interfaces.LoggerInterface) health_interfaces.HealthInterface {
+			return mockHealth
+		},
+		TracerManagerFactory: func(cfg config.Config, log logger_interfaces.LoggerInterface) tracer_interfaces.TracerInterface {
+			return mockTracer
+		},
+		MetricsFactory: func(log logger_interfaces.LoggerInterface) metric_interfaces.MetricsInterface { return mockMetrics },
+		DestinationFactory: func(log logger_interfaces.LoggerInterface) destination_interfaces.DestinationFactoryInterface {
+			return mockDestinationFactory
+		},
+		DestinationRegistry: func(factory destination_interfaces.DestinationFactoryInterface, log logger_interfaces.LoggerInterface) destination_interfaces.DestinationRegistryInterface {
 			return mockDestinationRegistry
 		},
-		TeamResolverFactory: func(teams config_team.TeamsConfig, log logger.LoggerInterface, m interfaces.MetricsInterface) interfaces.TeamResolverInterface {
+		TeamResolverFactory: func(teams config_team.TeamsConfig, log logger_interfaces.LoggerInterface, m metric_interfaces.MetricsInterface) alert_interfaces.TeamResolverInterface {
 			return mockTeamResolver
 		},
-		AlertDispatcherFactory: func(registry interfaces.DestinationRegistryInterface, log logger.LoggerInterface, m interfaces.MetricsInterface) interfaces.AlertDispatcherInterface {
+		AlertDispatcherFactory: func(registry destination_interfaces.DestinationRegistryInterface, log logger_interfaces.LoggerInterface, m metric_interfaces.MetricsInterface) alert_interfaces.AlertDispatcherInterface {
 			return mockAlertDispatcher
 		},
-		AlertHandlerFactory: func(log logger.LoggerInterface, m interfaces.MetricsInterface, tr interfaces.TeamResolverInterface, ad interfaces.AlertDispatcherInterface) alert.AlertHandlerInterface {
+		AlertHandlerFactory: func(log logger_interfaces.LoggerInterface, m metric_interfaces.MetricsInterface, tr alert_interfaces.TeamResolverInterface, ad alert_interfaces.AlertDispatcherInterface) alert_interfaces.AlertHandlerInterface {
 			return mockAlerts
 		},
-		RouterManagerFactory: func(cfg config.Config, log logger.LoggerInterface, t tracer.TracerInterface, m interfaces.MetricsInterface, h health.HealthInterface, a alert.AlertHandlerInterface) router.RouterInterface {
+		RouterManagerFactory: func(cfg config.Config, log logger_interfaces.LoggerInterface, t tracer_interfaces.TracerInterface, m metric_interfaces.MetricsInterface, h health_interfaces.HealthInterface, a alert_interfaces.AlertHandlerInterface) router_interfaces.RouterInterface {
 			return mockRouter
 		},
 	}

@@ -8,7 +8,7 @@ import (
 
 // MetricsInterface defines the interface for collecting and exposing application metrics.
 //
-//go:generate mockgen -destination=../../mocks/metrics_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/interfaces MetricsInterface
+//go:generate mockgen -destination=../../../mocks/metrics_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/metric/interfaces MetricsInterface
 type MetricsInterface interface {
 	PrometheusMiddleware() gin.HandlerFunc
 	ObserveAlert(receiver string, status string)

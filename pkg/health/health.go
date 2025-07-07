@@ -6,22 +6,16 @@ import (
 	"github.com/hellofresh/health-go/v5"
 
 	"github.com/kubecano/cano-collector/config"
-	"github.com/kubecano/cano-collector/pkg/logger"
+	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
 )
-
-//go:generate mockgen -destination=../../mocks/health_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/health HealthInterface
-type HealthInterface interface {
-	RegisterHealthChecks() error
-	Handler() http.Handler
-}
 
 type HealthChecker struct {
 	cfg    config.Config
-	logger logger.LoggerInterface
+	logger logger_interfaces.LoggerInterface
 	health *health.Health
 }
 
-func NewHealthChecker(cfg config.Config, logger logger.LoggerInterface) *HealthChecker {
+func NewHealthChecker(cfg config.Config, logger logger_interfaces.LoggerInterface) *HealthChecker {
 	return &HealthChecker{cfg: cfg, logger: logger}
 }
 

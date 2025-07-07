@@ -5,19 +5,20 @@ import (
 
 	config_team "github.com/kubecano/cano-collector/config/team"
 	"github.com/kubecano/cano-collector/pkg/alert/model"
-	"github.com/kubecano/cano-collector/pkg/interfaces"
-	"github.com/kubecano/cano-collector/pkg/logger"
+	destination_interfaces "github.com/kubecano/cano-collector/pkg/destination/interfaces"
+	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
+	metric_interfaces "github.com/kubecano/cano-collector/pkg/metric/interfaces"
 )
 
 // TeamResolver resolves which team should handle an alert
 type TeamResolver struct {
 	teams   config_team.TeamsConfig
-	logger  logger.LoggerInterface
-	metrics interfaces.MetricsInterface
+	logger  logger_interfaces.LoggerInterface
+	metrics metric_interfaces.MetricsInterface
 }
 
 // NewTeamResolver creates a new team resolver
-func NewTeamResolver(teams config_team.TeamsConfig, logger logger.LoggerInterface, metrics interfaces.MetricsInterface) *TeamResolver {
+func NewTeamResolver(teams config_team.TeamsConfig, logger logger_interfaces.LoggerInterface, metrics metric_interfaces.MetricsInterface) *TeamResolver {
 	return &TeamResolver{
 		teams:   teams,
 		logger:  logger,
@@ -26,7 +27,7 @@ func NewTeamResolver(teams config_team.TeamsConfig, logger logger.LoggerInterfac
 }
 
 // ValidateTeamDestinations validates that all team destinations exist in the registry
-func (r *TeamResolver) ValidateTeamDestinations(registry interfaces.DestinationRegistryInterface) error {
+func (r *TeamResolver) ValidateTeamDestinations(registry destination_interfaces.DestinationRegistryInterface) error {
 	for _, team := range r.teams.Teams {
 		for _, destName := range team.Destinations {
 			if _, err := registry.GetDestination(destName); err != nil {

@@ -7,30 +7,21 @@ import (
 	"github.com/slack-go/slack"
 
 	"github.com/kubecano/cano-collector/pkg/core/issue"
-	"github.com/kubecano/cano-collector/pkg/logger"
+	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
+	sender_interfaces "github.com/kubecano/cano-collector/pkg/sender/interfaces"
 	"github.com/kubecano/cano-collector/pkg/util"
 )
-
-// SlackClientInterface defines the interface for Slack client
-//
-//go:generate mockgen -destination=../../mocks/slack_client_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/sender SlackClientInterface
-type SlackClientInterface interface {
-	PostMessage(channelID string, options ...slack.MsgOption) (string, string, error)
-	AuthTest() (*slack.AuthTestResponse, error)
-	UpdateMessage(channelID, timestamp string, options ...slack.MsgOption) (string, string, string, error)
-	UploadFileV2(params slack.UploadFileV2Parameters) (*slack.FileSummary, error)
-}
 
 type SenderSlack struct {
 	apiKey      string
 	channel     string
-	logger      logger.LoggerInterface
+	logger      logger_interfaces.LoggerInterface
 	unfurlLinks bool
-	slackClient SlackClientInterface
+	slackClient sender_interfaces.SlackClientInterface
 }
 
-func NewSenderSlack(apiKey, channel string, unfurlLinks bool, logger logger.LoggerInterface, client util.HTTPClient) *SenderSlack {
-	var slackClient SlackClientInterface
+func NewSenderSlack(apiKey, channel string, unfurlLinks bool, logger logger_interfaces.LoggerInterface, client util.HTTPClient) *SenderSlack {
+	var slackClient sender_interfaces.SlackClientInterface
 
 	if client != nil {
 		// Use custom HTTP client with slack-go
@@ -111,7 +102,7 @@ func (s *SenderSlack) formatIssueToString(issue *issue.Issue) string {
 	return message
 }
 
-func (s *SenderSlack) SetLogger(logger logger.LoggerInterface) {
+func (s *SenderSlack) SetLogger(logger logger_interfaces.LoggerInterface) {
 	s.logger = logger
 }
 
