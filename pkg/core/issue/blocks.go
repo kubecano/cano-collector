@@ -89,6 +89,18 @@ func (tb *TableBlock) ToMarkdown() string {
 	}
 
 	// Handle horizontal format (traditional table)
+	// Determine number of columns - either from headers or from the longest row
+	numColumns := len(tb.Headers)
+	if numColumns == 0 {
+		// If no headers, find the maximum number of columns from rows
+		for _, row := range tb.Rows {
+			if len(row) > numColumns {
+				numColumns = len(row)
+			}
+		}
+	}
+
+	// Render headers if present
 	if len(tb.Headers) > 0 {
 		// Headers
 		builder.WriteString("|")
@@ -108,10 +120,14 @@ func (tb *TableBlock) ToMarkdown() string {
 	// Rows
 	for _, row := range tb.Rows {
 		builder.WriteString("|")
-		for i, cell := range row {
-			if i < len(tb.Headers) {
-				builder.WriteString(fmt.Sprintf(" %s |", cell))
+		for i := 0; i < numColumns; i++ {
+			var cell string
+			if i < len(row) {
+				cell = row[i]
+			} else {
+				cell = "" // Pad missing cells with empty string
 			}
+			builder.WriteString(fmt.Sprintf(" %s |", cell))
 		}
 		builder.WriteString("\n")
 	}
