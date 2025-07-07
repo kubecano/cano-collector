@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.11](https://github.com/kubecano/cano-collector/compare/cano-collector-helm-v0.0.10...cano-collector-helm-v0.0.11) (2025-07-07)
+
+
+### Features
+
+* Bump Helm Chart version ([021e67a](https://github.com/kubecano/cano-collector/commit/021e67a2d902cf4c411a2d7b1c4a8bd6d09814d1))
+
 ## [0.0.10](https://github.com/kubecano/cano-collector/compare/cano-collector-helm-v0.0.9...cano-collector-helm-v0.0.10) (2025-07-01)
 
 
