@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/kubecano/cano-collector/mocks"
+	"github.com/kubecano/cano-collector/pkg/core/issue"
 )
 
 func setupSenderSlackTest(t *testing.T) (*SenderSlack, *mocks.MockSlackClientInterface) {
@@ -33,7 +34,13 @@ func TestSenderSlack_Send_Success(t *testing.T) {
 	slackSender, mockSlackClient := setupSenderSlackTest(t)
 
 	ctx := context.Background()
-	message := "This is a test message"
+	testIssue := &issue.Issue{
+		Title:       "Test Issue",
+		Description: "This is a test issue",
+		Severity:    issue.SeverityHigh,
+		Status:      issue.StatusFiring,
+		Source:      issue.SourcePrometheus,
+	}
 
 	mockSlackClient.EXPECT().PostMessage(
 		"#test-channel",
@@ -41,7 +48,7 @@ func TestSenderSlack_Send_Success(t *testing.T) {
 		gomock.Any(),
 	).Return("channel", "timestamp", nil)
 
-	err := slackSender.Send(ctx, message)
+	err := slackSender.Send(ctx, testIssue)
 	assert.NoError(t, err)
 }
 

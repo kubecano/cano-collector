@@ -60,11 +60,11 @@ func main() {
 			return alert.NewTeamResolver(teams, log, m)
 		},
 		AlertDispatcherFactory: func(registry interfaces.DestinationRegistryInterface, log logger.LoggerInterface, m interfaces.MetricsInterface) interfaces.AlertDispatcherInterface {
-			formatter := alert.NewAlertFormatter()
-			return alert.NewAlertDispatcher(registry, formatter, log, m)
+			return alert.NewAlertDispatcher(registry, log, m)
 		},
 		AlertHandlerFactory: func(log logger.LoggerInterface, m interfaces.MetricsInterface, tr interfaces.TeamResolverInterface, ad interfaces.AlertDispatcherInterface) alert.AlertHandlerInterface {
-			return alert.NewAlertHandler(log, m, tr, ad)
+			converter := alert.NewConverter(log)
+			return alert.NewAlertHandler(log, m, tr, ad, converter)
 		},
 		RouterManagerFactory: func(cfg config.Config, log logger.LoggerInterface, t tracer.TracerInterface, m interfaces.MetricsInterface, h health.HealthInterface, a alert.AlertHandlerInterface) router.RouterInterface {
 			return router.NewRouterManager(cfg, log, t, m, h, a)

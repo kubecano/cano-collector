@@ -26,6 +26,7 @@ type AlertHandler struct {
 	metrics         interfaces.MetricsInterface
 	teamResolver    interfaces.TeamResolverInterface
 	alertDispatcher interfaces.AlertDispatcherInterface
+	converter       *Converter
 }
 
 // NewAlertHandler creates a new alert handler
@@ -34,12 +35,14 @@ func NewAlertHandler(
 	metrics interfaces.MetricsInterface,
 	teamResolver interfaces.TeamResolverInterface,
 	alertDispatcher interfaces.AlertDispatcherInterface,
+	converter *Converter,
 ) *AlertHandler {
 	return &AlertHandler{
 		logger:          logger,
 		metrics:         metrics,
 		teamResolver:    teamResolver,
 		alertDispatcher: alertDispatcher,
+		converter:       converter,
 	}
 }
 
@@ -92,13 +95,22 @@ func (h *AlertHandler) HandleAlert(c *gin.Context) {
 		return
 	}
 
-	// Dispatch alert to team destinations
+	// Convert AlertManagerEvent to Issues
+	issues, err := h.converter.ConvertAlertManagerEventToIssues(alertEvent)
+	if err != nil {
+		h.logger.Error("Failed to convert alert to issues", zap.Error(err))
+		h.metrics.IncAlertErrors(alertEvent.GetAlertName(), "conversion_failed")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to convert alert"})
+		return
+	}
+
+	// Dispatch issues to team destinations
 	ctx := c.Request.Context()
-	dispatchErr := h.alertDispatcher.DispatchAlert(ctx, alertEvent, team)
+	dispatchErr := h.alertDispatcher.DispatchIssues(ctx, issues, team)
 	if dispatchErr != nil {
-		h.logger.Error("Failed to dispatch alert", zap.Error(dispatchErr))
+		h.logger.Error("Failed to dispatch issues", zap.Error(dispatchErr))
 		h.metrics.IncAlertErrors(alertEvent.GetAlertName(), "dispatch_failed")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to dispatch alert"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to dispatch issues"})
 		return
 	}
 
@@ -115,13 +127,15 @@ func (h *AlertHandler) HandleAlert(c *gin.Context) {
 		h.logger.Warn("Alert received but no team resolved - alert not processed",
 			zap.String("receiver", alertEvent.Receiver),
 			zap.String("status", alertEvent.Status),
-			zap.Int("alerts_count", len(alertEvent.Alerts)))
+			zap.Int("alerts_count", len(alertEvent.Alerts)),
+			zap.Int("issues_count", len(issues)))
 		h.metrics.IncAlertsProcessed(alertEvent.GetAlertName(), alertEvent.GetSeverity(), "no_team_resolved")
 	} else if len(team.Destinations) == 0 {
 		h.logger.Warn("Alert received for team, but team has no destinations - alert not processed",
 			zap.String("receiver", alertEvent.Receiver),
 			zap.String("status", alertEvent.Status),
 			zap.Int("alerts_count", len(alertEvent.Alerts)),
+			zap.Int("issues_count", len(issues)),
 			zap.String("team", team.Name))
 		h.metrics.IncAlertsProcessed(alertEvent.GetAlertName(), alertEvent.GetSeverity(), "no_destinations")
 	} else {
@@ -129,6 +143,7 @@ func (h *AlertHandler) HandleAlert(c *gin.Context) {
 			zap.String("receiver", alertEvent.Receiver),
 			zap.String("status", alertEvent.Status),
 			zap.Int("alerts_count", len(alertEvent.Alerts)),
+			zap.Int("issues_count", len(issues)),
 			zap.String("team", team.Name))
 		h.metrics.IncAlertsProcessed(alertEvent.GetAlertName(), alertEvent.GetSeverity(), "processed")
 	}
@@ -138,6 +153,7 @@ func (h *AlertHandler) HandleAlert(c *gin.Context) {
 		zap.String("receiver", alertEvent.Receiver),
 		zap.String("status", alertEvent.Status),
 		zap.Int("alerts_count", len(alertEvent.Alerts)),
+		zap.Int("issues_count", len(issues)),
 		zap.String("alert_name", alertEvent.GetAlertName()),
 		zap.Any("group_labels", alertEvent.GroupLabels))
 	c.JSON(http.StatusOK, gin.H{"status": "alert processed"})

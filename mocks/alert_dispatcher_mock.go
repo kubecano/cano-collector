@@ -10,7 +10,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	config_team "github.com/kubecano/cano-collector/config/team"
-	model "github.com/kubecano/cano-collector/pkg/alert/model"
+	issue "github.com/kubecano/cano-collector/pkg/core/issue"
 )
 
 // MockAlertDispatcherInterface is a mock of AlertDispatcherInterface interface.
@@ -36,16 +36,16 @@ func (m *MockAlertDispatcherInterface) EXPECT() *MockAlertDispatcherInterfaceMoc
 	return m.recorder
 }
 
-// DispatchAlert mocks base method.
-func (m *MockAlertDispatcherInterface) DispatchAlert(arg0 context.Context, arg1 *model.AlertManagerEvent, arg2 *config_team.Team) error {
+// DispatchIssues mocks base method.
+func (m *MockAlertDispatcherInterface) DispatchIssues(arg0 context.Context, arg1 []*issue.Issue, arg2 *config_team.Team) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DispatchAlert", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "DispatchIssues", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// DispatchAlert indicates an expected call of DispatchAlert.
-func (mr *MockAlertDispatcherInterfaceMockRecorder) DispatchAlert(arg0, arg1, arg2 interface{}) *gomock.Call {
+// DispatchIssues indicates an expected call of DispatchIssues.
+func (mr *MockAlertDispatcherInterfaceMockRecorder) DispatchIssues(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DispatchAlert", reflect.TypeOf((*MockAlertDispatcherInterface)(nil).DispatchAlert), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DispatchIssues", reflect.TypeOf((*MockAlertDispatcherInterface)(nil).DispatchIssues), arg0, arg1, arg2)
 }

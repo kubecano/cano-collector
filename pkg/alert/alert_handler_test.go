@@ -3,6 +3,7 @@ package alert
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -52,9 +53,10 @@ func setupTestRouter(t *testing.T) alertHandlerTestDeps {
 		Destinations: []string{"test-destination"},
 	}
 	mockTeamResolver.EXPECT().ResolveTeam(gomock.Any()).Return(mockTeam, nil).AnyTimes()
-	mockAlertDispatcher.EXPECT().DispatchAlert(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	mockAlertDispatcher.EXPECT().DispatchIssues(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
-	alertHandler := NewAlertHandler(mockLogger, mockMetrics, mockTeamResolver, mockAlertDispatcher)
+	converter := NewConverter(mockLogger)
+	alertHandler := NewAlertHandler(mockLogger, mockMetrics, mockTeamResolver, mockAlertDispatcher, converter)
 
 	r := gin.Default()
 	r.POST("/alert", alertHandler.HandleAlert)
@@ -249,9 +251,10 @@ func TestAlertHandler_NoTeamResolved(t *testing.T) {
 
 	// Edge case - no team resolved
 	mockTeamResolver.EXPECT().ResolveTeam(gomock.Any()).Return(nil, nil).AnyTimes()
-	mockAlertDispatcher.EXPECT().DispatchAlert(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	mockAlertDispatcher.EXPECT().DispatchIssues(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
-	alertHandler := NewAlertHandler(mockLogger, mockMetrics, mockTeamResolver, mockAlertDispatcher)
+	converter := NewConverter(mockLogger)
+	alertHandler := NewAlertHandler(mockLogger, mockMetrics, mockTeamResolver, mockAlertDispatcher, converter)
 
 	r := gin.Default()
 	r.POST("/alert", alertHandler.HandleAlert)
@@ -276,4 +279,54 @@ func TestAlertHandler_NoTeamResolved(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), "alert processed")
+}
+
+func TestAlertHandler_TeamResolutionFailed(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+	mockTeamResolver := mocks.NewMockTeamResolverInterface(ctrl)
+	mockAlertDispatcher := mocks.NewMockAlertDispatcherInterface(ctrl)
+
+	mockLogger.EXPECT().Error(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debugf(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Warn(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Warnf(gomock.Any(), gomock.Any()).AnyTimes()
+
+	mockMetrics := metric.NewMetricsCollector(mockLogger)
+
+	// Edge case - team resolution failed
+	mockTeamResolver.EXPECT().ResolveTeam(gomock.Any()).Return(nil, errors.New("team resolution failed"))
+	mockAlertDispatcher.EXPECT().DispatchIssues(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
+	converter := NewConverter(mockLogger)
+	alertHandler := NewAlertHandler(mockLogger, mockMetrics, mockTeamResolver, mockAlertDispatcher, converter)
+
+	r := gin.Default()
+	r.POST("/alert", alertHandler.HandleAlert)
+
+	alert := template.Data{
+		Receiver: "test-receiver",
+		Status:   "firing",
+		Alerts: []template.Alert{
+			{
+				Status:   "firing",
+				Labels:   map[string]string{"alertname": "HighCPUUsage"},
+				StartsAt: time.Now(),
+			},
+		},
+	}
+	jsonAlert, _ := json.Marshal(alert)
+	req, _ := http.NewRequest(http.MethodPost, "/alert", bytes.NewBuffer(jsonAlert))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Contains(t, w.Body.String(), "failed to resolve team")
 }

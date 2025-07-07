@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	issue "github.com/kubecano/cano-collector/pkg/core/issue"
 )
 
 // MockDestinationInterface is a mock of DestinationInterface interface.
@@ -35,7 +36,7 @@ func (m *MockDestinationInterface) EXPECT() *MockDestinationInterfaceMockRecorde
 }
 
 // Send mocks base method.
-func (m *MockDestinationInterface) Send(arg0 context.Context, arg1 string) error {
+func (m *MockDestinationInterface) Send(arg0 context.Context, arg1 *issue.Issue) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Send", arg0, arg1)
 	ret0, _ := ret[0].(error)
