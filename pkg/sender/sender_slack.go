@@ -5,8 +5,9 @@ import (
 	"fmt"
 
 	"github.com/slack-go/slack"
+	"go.uber.org/zap"
 
-	"github.com/kubecano/cano-collector/pkg/core/issue"
+	issuepkg "github.com/kubecano/cano-collector/pkg/core/issue"
 	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
 	sender_interfaces "github.com/kubecano/cano-collector/pkg/sender/interfaces"
 	"github.com/kubecano/cano-collector/pkg/util"
@@ -40,11 +41,17 @@ func NewSenderSlack(apiKey, channel string, unfurlLinks bool, logger logger_inte
 	}
 }
 
-func (s *SenderSlack) Send(ctx context.Context, issue *issue.Issue) error {
-	s.logger.Info("Sending Slack notification", "channel", s.channel)
+func (s *SenderSlack) Send(ctx context.Context, issue *issuepkg.Issue) error {
+	s.logger.Info("Sending Slack notification",
+		zap.String("channel", s.channel),
+	)
 
-	// Convert Issue to message string
-	message := s.formatIssueToString(issue)
+	// Create formatted blocks
+	blocks := s.buildSlackBlocks(issue)
+	attachments := s.buildSlackAttachments(issue)
+
+	// Fallback text for notifications
+	fallbackText := s.formatIssueToString(issue)
 
 	params := slack.PostMessageParameters{
 		UnfurlLinks: s.unfurlLinks,
@@ -53,21 +60,177 @@ func (s *SenderSlack) Send(ctx context.Context, issue *issue.Issue) error {
 
 	_, _, err := s.slackClient.PostMessage(
 		s.channel,
-		slack.MsgOptionText(message, false),
+		slack.MsgOptionText(fallbackText, false),
+		slack.MsgOptionBlocks(blocks...),
+		slack.MsgOptionAttachments(attachments...),
 		slack.MsgOptionPostMessageParameters(params),
 	)
 	if err != nil {
-		s.logger.Error("Failed to send Slack message", "error", err, "channel", s.channel)
+		s.logger.Error("Failed to send Slack message",
+			zap.Error(err),
+			zap.String("channel", s.channel),
+		)
 		return err
 	}
 
-	s.logger.Info("Slack message sent successfully", "channel", s.channel, "message", message)
+	s.logger.Info("Slack message sent successfully",
+		zap.String("channel", s.channel),
+	)
 	return nil
 }
 
-// formatIssueToString converts an Issue to a formatted string message
-// This is temporary - in the future this will be replaced with Slack Block Kit formatting
-func (s *SenderSlack) formatIssueToString(issue *issue.Issue) string {
+// buildSlackBlocks creates the main message blocks
+func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slack.Block {
+	var blocks []slack.Block
+
+	// Header block with status and severity
+	headerText := s.formatHeader(issue)
+	headerBlock := slack.NewSectionBlock(
+		slack.NewTextBlockObject("mrkdwn", headerText, false, false),
+		nil, nil,
+	)
+	blocks = append(blocks, headerBlock)
+
+	// Links as action buttons (without AI/Dashboard buttons for now)
+	if len(issue.Links) > 0 {
+		linkButtons := s.buildLinkButtons(issue.Links)
+		if len(linkButtons) > 0 {
+			actionBlock := slack.NewActionBlock("links", linkButtons...)
+			blocks = append(blocks, actionBlock)
+		}
+	}
+
+	return blocks
+}
+
+// buildSlackAttachments creates colored attachment with issue details
+func (s *SenderSlack) buildSlackAttachments(issue *issuepkg.Issue) []slack.Attachment {
+	var attachments []slack.Attachment
+
+	// Main attachment with issue details
+	color := s.getSeverityColor(issue.Severity)
+
+	var attachmentBlocks []slack.Block
+
+	// Source information
+	if issue.Source != issuepkg.SourceUnknown {
+		sourceText := fmt.Sprintf("Source: `%s`", issue.Source.String())
+		sourceBlock := slack.NewSectionBlock(
+			slack.NewTextBlockObject("mrkdwn", sourceText, false, false),
+			nil, nil,
+		)
+		attachmentBlocks = append(attachmentBlocks, sourceBlock)
+	}
+
+	// Alert description with icon
+	if issue.Description != "" {
+		alertText := "🚨 Alert: " + issue.Description
+		alertBlock := slack.NewSectionBlock(
+			slack.NewTextBlockObject("mrkdwn", alertText, false, false),
+			nil, nil,
+		)
+		attachmentBlocks = append(attachmentBlocks, alertBlock)
+	}
+
+	// Subject information if available
+	if issue.Subject != nil && issue.Subject.Name != "" {
+		subjectText := issue.Subject.FormatWithEmoji()
+		subjectBlock := slack.NewSectionBlock(
+			slack.NewTextBlockObject("mrkdwn", subjectText, false, false),
+			nil, nil,
+		)
+		attachmentBlocks = append(attachmentBlocks, subjectBlock)
+
+		// Add subject labels if available
+		if len(issue.Subject.Labels) > 0 {
+			labelsText := s.formatLabels(issue.Subject.Labels)
+			labelsBlock := slack.NewSectionBlock(
+				slack.NewTextBlockObject("mrkdwn", labelsText, false, false),
+				nil, nil,
+			)
+			attachmentBlocks = append(attachmentBlocks, labelsBlock)
+		}
+	}
+
+	attachment := slack.Attachment{
+		Color:  color,
+		Blocks: slack.Blocks{BlockSet: attachmentBlocks},
+	}
+
+	attachments = append(attachments, attachment)
+	return attachments
+}
+
+// formatHeader creates the header text with status and severity
+func (s *SenderSlack) formatHeader(issue *issuepkg.Issue) string {
+	statusEmoji := issue.Status.ToEmoji()
+	severityEmoji := issue.Severity.ToEmoji()
+
+	var statusText string
+	if issue.IsResolved() {
+		statusText = "*Prometheus resolved*"
+	} else {
+		statusText = "`Prometheus Alert Firing`"
+	}
+
+	return fmt.Sprintf("%s %s %s *%s*\n*%s*",
+		statusEmoji, statusText, severityEmoji,
+		issue.Severity.String(), issue.Title)
+}
+
+// formatLabels formats subject labels
+func (s *SenderSlack) formatLabels(labels map[string]string) string {
+	if len(labels) == 0 {
+		return ""
+	}
+
+	text := "*Alert labels*\n"
+	for key, value := range labels {
+		text += fmt.Sprintf("• %s `%s`\n", key, value)
+	}
+	return text
+}
+
+// buildLinkButtons creates action buttons for links
+func (s *SenderSlack) buildLinkButtons(links []issuepkg.Link) []slack.BlockElement {
+	var buttons []slack.BlockElement
+
+	for i, link := range links {
+		// Limit to first 5 links to avoid Slack limits
+		if i >= 5 {
+			break
+		}
+
+		button := slack.NewButtonBlockElement(
+			fmt.Sprintf("link_%d", i),
+			link.URL,
+			slack.NewTextBlockObject("plain_text", link.Text, false, false),
+		)
+		button.URL = link.URL
+		buttons = append(buttons, button)
+	}
+
+	return buttons
+}
+
+// getSeverityColor returns Slack color for severity
+func (s *SenderSlack) getSeverityColor(severity issuepkg.Severity) string {
+	switch severity {
+	case issuepkg.SeverityHigh:
+		return "#EF311F" // Red - podobnie jak FIRING w Robusta
+	case issuepkg.SeverityLow:
+		return "#FFCC00" // Yellow
+	case issuepkg.SeverityInfo:
+		return "#00B302" // Green - podobnie jak RESOLVED w Robusta
+	case issuepkg.SeverityDebug:
+		return "#36a64f" // Gray/Green
+	default:
+		return "#00B302" // Default green
+	}
+}
+
+// formatIssueToString converts an Issue to a formatted string message (fallback)
+func (s *SenderSlack) formatIssueToString(issue *issuepkg.Issue) string {
 	statusPrefix := ""
 	if issue.IsResolved() {
 		statusPrefix = "[RESOLVED] "
@@ -83,13 +246,7 @@ func (s *SenderSlack) formatIssueToString(issue *issue.Issue) string {
 	message += fmt.Sprintf("📍 Source: %s\n", issue.Source.String())
 
 	if issue.Subject != nil && issue.Subject.Name != "" {
-		if issue.Subject.Namespace != "" {
-			message += fmt.Sprintf("🎯 Subject: %s/%s (%s)\n",
-				issue.Subject.Namespace, issue.Subject.Name, issue.Subject.SubjectType.String())
-		} else {
-			message += fmt.Sprintf("🎯 Subject: %s (%s)\n",
-				issue.Subject.Name, issue.Subject.SubjectType.String())
-		}
+		message += issue.Subject.FormatWithEmoji() + "\n"
 	}
 
 	if len(issue.Links) > 0 {

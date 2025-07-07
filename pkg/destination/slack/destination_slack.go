@@ -3,7 +3,7 @@ package destslack
 import (
 	"context"
 
-	"github.com/kubecano/cano-collector/pkg/core/issue"
+	issuepkg "github.com/kubecano/cano-collector/pkg/core/issue"
 	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
 	"github.com/kubecano/cano-collector/pkg/sender"
 	"github.com/kubecano/cano-collector/pkg/util"
@@ -29,7 +29,7 @@ func NewDestinationSlack(cfg *DestinationSlackConfig, logger logger_interfaces.L
 }
 
 // Send implements the destination interface
-func (d *DestinationSlack) Send(ctx context.Context, issue *issue.Issue) error {
+func (d *DestinationSlack) Send(ctx context.Context, issue *issuepkg.Issue) error {
 	d.logger.Info("Sending to Slack destination", "destination", d.cfg.Name)
 
 	// Send issue directly using sender
