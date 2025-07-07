@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.0.12](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.11...cano-collector-v0.0.12) (2025-07-07)
+
+
+### Features
+
+* CU-8699hqkbv - Alert Data Structure and Validation ([#137](https://github.com/kubecano/cano-collector/issues/137)) ([d77aea1](https://github.com/kubecano/cano-collector/commit/d77aea109a4e4b332967c71b11a5777b8a88ac4a))
+* CU-8699hqkp6 - Alert to Issue Conversion ([#140](https://github.com/kubecano/cano-collector/issues/140)) ([4686e47](https://github.com/kubecano/cano-collector/commit/4686e479cb579388f81ae538c23fbff3d50bd068))
+* CU-8699hu9hk - Health Checks and Basic Metrics ([#139](https://github.com/kubecano/cano-collector/issues/139)) ([54eb50f](https://github.com/kubecano/cano-collector/commit/54eb50f870b0779d1edbe4e234ba9d46209e038c))
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/slack-go/slack to v0.17.3 ([#142](https://github.com/kubecano/cano-collector/issues/142)) ([cb633c6](https://github.com/kubecano/cano-collector/commit/cb633c640010dbab9f3e41b287612d57f6a47c0c))
+
 ## [0.0.11](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.10...cano-collector-v0.0.11) (2025-07-01)
 
 
