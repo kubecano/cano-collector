@@ -152,3 +152,82 @@ func TestTableBlockFormat_String(t *testing.T) {
 		assert.Equal(t, test.expected, test.format.String())
 	}
 }
+
+func TestTableBlock_ToMarkdown_NoHeaders(t *testing.T) {
+	// Test case for bug fix: table without headers should render row data
+	rows := [][]string{
+		{"John", "25", "NYC"},
+		{"Jane", "30", "LA"},
+	}
+
+	block := NewTableBlock([]string{}, rows, "", TableBlockFormatHorizontal)
+	markdown := block.ToMarkdown()
+
+	expected := `| John | 25 | NYC |
+| Jane | 30 | LA |
+`
+	assert.Equal(t, expected, markdown)
+}
+
+func TestTableBlock_ToMarkdown_UnevenRows(t *testing.T) {
+	// Test case for bug fix: rows with fewer cells than headers should be padded
+	headers := []string{"Name", "Age", "City", "Country"}
+	rows := [][]string{
+		{"John", "25"},              // Missing City and Country
+		{"Jane", "30", "LA"},        // Missing Country
+		{"Bob", "35", "NYC", "USA"}, // All fields present
+	}
+
+	block := NewTableBlock(headers, rows, "", TableBlockFormatHorizontal)
+	markdown := block.ToMarkdown()
+
+	expected := `| Name | Age | City | Country |
+| --- | --- | --- | --- |
+| John | 25 |  |  |
+| Jane | 30 | LA |  |
+| Bob | 35 | NYC | USA |
+`
+	assert.Equal(t, expected, markdown)
+}
+
+func TestTableBlock_ToMarkdown_RowsWithMoreColumnsThanHeaders(t *testing.T) {
+	// Test case for bug fix: rows with more columns than headers should expand table
+	headers := []string{"Name", "Age"}
+	rows := [][]string{
+		{"John", "25", "NYC", "USA"},
+		{"Jane", "30", "LA"},
+	}
+
+	block := NewTableBlock(headers, rows, "", TableBlockFormatHorizontal)
+	markdown := block.ToMarkdown()
+
+	expected := `| Name | Age |  |  |
+| --- | --- | --- | --- |
+| John | 25 | NYC | USA |
+| Jane | 30 | LA |  |
+`
+	assert.Equal(t, expected, markdown)
+}
+
+func TestTableBlock_GetColumnCount_WithUnevenRows(t *testing.T) {
+	// Test GetColumnCount with rows that have different numbers of columns
+	headers := []string{"Name", "Age"}
+	rows := [][]string{
+		{"John", "25", "NYC", "USA"}, // 4 columns
+		{"Jane", "30"},               // 2 columns
+	}
+
+	block := NewTableBlock(headers, rows, "", TableBlockFormatHorizontal)
+	assert.Equal(t, 4, block.GetColumnCount()) // Should return max columns from all rows
+}
+
+func TestTableBlock_GetColumnCount_NoHeaders(t *testing.T) {
+	// Test GetColumnCount when there are no headers
+	rows := [][]string{
+		{"John", "25", "NYC"},
+		{"Jane", "30"},
+	}
+
+	block := NewTableBlock([]string{}, rows, "", TableBlockFormatHorizontal)
+	assert.Equal(t, 3, block.GetColumnCount()) // Should return max columns from rows
+}

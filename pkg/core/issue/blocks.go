@@ -89,29 +89,39 @@ func (tb *TableBlock) ToMarkdown() string {
 	}
 
 	// Handle horizontal format (traditional table)
-	// Determine number of columns - either from headers or from the longest row
+	// Determine number of columns - consider both headers and all rows
 	numColumns := len(tb.Headers)
-	if numColumns == 0 {
-		// If no headers, find the maximum number of columns from rows
-		for _, row := range tb.Rows {
-			if len(row) > numColumns {
-				numColumns = len(row)
-			}
+
+	// Always check all rows to find the maximum number of columns
+	for _, row := range tb.Rows {
+		if len(row) > numColumns {
+			numColumns = len(row)
 		}
+	}
+
+	// If no columns at all, return empty string
+	if numColumns == 0 {
+		return ""
 	}
 
 	// Render headers if present
 	if len(tb.Headers) > 0 {
 		// Headers
 		builder.WriteString("|")
-		for _, header := range tb.Headers {
+		for i := 0; i < numColumns; i++ {
+			var header string
+			if i < len(tb.Headers) {
+				header = tb.Headers[i]
+			} else {
+				header = "" // Pad missing headers with empty string
+			}
 			builder.WriteString(fmt.Sprintf(" %s |", header))
 		}
 		builder.WriteString("\n")
 
-		// Separator
+		// Separator - use numColumns, not len(tb.Headers)
 		builder.WriteString("|")
-		for range tb.Headers {
+		for i := 0; i < numColumns; i++ {
 			builder.WriteString(" --- |")
 		}
 		builder.WriteString("\n")
@@ -147,5 +157,14 @@ func (tb *TableBlock) GetRowCount() int {
 
 // GetColumnCount returns the number of columns in the table
 func (tb *TableBlock) GetColumnCount() int {
-	return len(tb.Headers)
+	// Use the same logic as ToMarkdown() method
+	numColumns := len(tb.Headers)
+
+	// Always check all rows to find the maximum number of columns
+	for _, row := range tb.Rows {
+		if len(row) > numColumns {
+			numColumns = len(row)
+		}
+	}
+	return numColumns
 }
