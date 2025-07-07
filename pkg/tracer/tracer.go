@@ -6,6 +6,7 @@ import (
 	"net/url"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 
 	"github.com/kubecano/cano-collector/config"
 	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
@@ -106,7 +107,10 @@ func (tm *TracerManager) TraceLoggerMiddleware() gin.HandlerFunc {
 			c.Set("trace_id", traceID)
 			c.Set("span_id", spanID)
 
-			tm.logger.Debug("Request Trace Info:", "trace_id:", traceID, "span_id:", spanID)
+			tm.logger.Debug("Request Trace Info:",
+				zap.String("trace_id", traceID),
+				zap.String("span_id", spanID),
+			)
 		} else {
 			tm.logger.Debug("No active trace found for request.")
 		}

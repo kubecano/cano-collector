@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sync"
 
+	"go.uber.org/zap"
+
 	config_destination "github.com/kubecano/cano-collector/config/destination"
 	"github.com/kubecano/cano-collector/pkg/destination/interfaces"
 	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
@@ -40,7 +42,10 @@ func (r *DestinationRegistry) LoadFromConfig(config config_destination.Destinati
 
 		if dest, ok := destination.(interfaces.DestinationInterface); ok {
 			r.destinations[slackConfig.Name] = dest
-			r.logger.Info("Registered destination", "name", slackConfig.Name, "type", "slack")
+			r.logger.Info("Registered destination",
+				zap.String("name", slackConfig.Name),
+				zap.String("type", "slack"),
+			)
 		} else {
 			return fmt.Errorf("destination '%s' does not implement DestinationInterface", slackConfig.Name)
 		}
@@ -83,5 +88,7 @@ func (r *DestinationRegistry) RegisterDestination(name string, destination inter
 	defer r.mu.Unlock()
 
 	r.destinations[name] = destination
-	r.logger.Info("Manually registered destination", "name", name)
+	r.logger.Info("Manually registered destination",
+		zap.String("name", name),
+	)
 }

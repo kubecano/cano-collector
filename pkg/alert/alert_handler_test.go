@@ -38,11 +38,11 @@ func setupTestRouter(t *testing.T) alertHandlerTestDeps {
 	mockTeamResolver := mocks.NewMockTeamResolverInterface(ctrl)
 	mockAlertDispatcher := mocks.NewMockAlertDispatcherInterface(ctrl)
 
-	mockLogger.EXPECT().Error(gomock.Any()).AnyTimes()
-	mockLogger.EXPECT().Debug(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Debugf(gomock.Any(), gomock.Any()).AnyTimes()
-	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
-	mockLogger.EXPECT().Warn(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Warn(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Warnf(gomock.Any(), gomock.Any()).AnyTimes()
 
 	mockMetrics := metric.NewMetricsCollector(mockLogger)
@@ -240,11 +240,11 @@ func TestAlertHandler_NoTeamResolved(t *testing.T) {
 	mockTeamResolver := mocks.NewMockTeamResolverInterface(ctrl)
 	mockAlertDispatcher := mocks.NewMockAlertDispatcherInterface(ctrl)
 
-	mockLogger.EXPECT().Error(gomock.Any()).AnyTimes()
-	mockLogger.EXPECT().Debug(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Debugf(gomock.Any(), gomock.Any()).AnyTimes()
-	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
-	mockLogger.EXPECT().Warn(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Warn(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Warnf(gomock.Any(), gomock.Any()).AnyTimes()
 
 	mockMetrics := metric.NewMetricsCollector(mockLogger)
@@ -290,11 +290,11 @@ func TestAlertHandler_TeamResolutionFailed(t *testing.T) {
 	mockTeamResolver := mocks.NewMockTeamResolverInterface(ctrl)
 	mockAlertDispatcher := mocks.NewMockAlertDispatcherInterface(ctrl)
 
-	mockLogger.EXPECT().Error(gomock.Any()).AnyTimes()
-	mockLogger.EXPECT().Debug(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Debugf(gomock.Any(), gomock.Any()).AnyTimes()
-	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
-	mockLogger.EXPECT().Warn(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Warn(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Warnf(gomock.Any(), gomock.Any()).AnyTimes()
 
 	mockMetrics := metric.NewMetricsCollector(mockLogger)

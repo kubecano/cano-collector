@@ -3,6 +3,8 @@ package alert
 import (
 	"fmt"
 
+	"go.uber.org/zap"
+
 	config_team "github.com/kubecano/cano-collector/config/team"
 	"github.com/kubecano/cano-collector/pkg/alert/model"
 	destination_interfaces "github.com/kubecano/cano-collector/pkg/destination/interfaces"
@@ -50,9 +52,9 @@ func (r *TeamResolver) ResolveTeam(alertEvent *model.AlertManagerEvent) (*config
 	// For now, return the first team as the default team
 	defaultTeam := r.teams.Teams[0]
 	r.logger.Info("Resolved team for alert",
-		"team", defaultTeam.Name,
-		"destinations", defaultTeam.Destinations,
-		"alert_name", alertEvent.GetAlertName())
+		zap.String("team", defaultTeam.Name),
+		zap.Strings("destinations", defaultTeam.Destinations),
+		zap.String("alert_name", alertEvent.GetAlertName()))
 
 	// Record team matching metrics
 	r.metrics.IncTeamsMatched(defaultTeam.Name, alertEvent.GetAlertName())

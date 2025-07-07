@@ -3,6 +3,8 @@ package destslack
 import (
 	"context"
 
+	"go.uber.org/zap"
+
 	issuepkg "github.com/kubecano/cano-collector/pkg/core/issue"
 	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
 	"github.com/kubecano/cano-collector/pkg/sender"
@@ -30,7 +32,7 @@ func NewDestinationSlack(cfg *DestinationSlackConfig, logger logger_interfaces.L
 
 // Send implements the destination interface
 func (d *DestinationSlack) Send(ctx context.Context, issue *issuepkg.Issue) error {
-	d.logger.Info("Sending to Slack destination", "destination", d.cfg.Name)
+	d.logger.Info("Sending to Slack destination", zap.String("destination", d.cfg.Name))
 
 	// Send issue directly using sender
 	return d.sender.Send(ctx, issue)

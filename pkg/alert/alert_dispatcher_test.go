@@ -31,9 +31,9 @@ func setupAlertDispatcherTest(t *testing.T) *alertDispatcherTestDeps {
 	mockMetrics := mocks.NewMockMetricsInterface(ctrl)
 
 	// Mock logger calls that are always made (variadic arguments)
-	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Infof(gomock.Any(), gomock.Any()).AnyTimes()
-	mockLogger.EXPECT().Error(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Errorf(gomock.Any(), gomock.Any()).AnyTimes()
 
 	// Mock metrics calls
