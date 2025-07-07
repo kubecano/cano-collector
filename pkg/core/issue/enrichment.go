@@ -49,8 +49,10 @@ type BaseBlock interface {
 
 // Enrichment provides additional context to an Issue
 type Enrichment struct {
-	Blocks      []BaseBlock       `json:"blocks"`
-	Annotations map[string]string `json:"annotations,omitempty"`
+	Blocks         []BaseBlock       `json:"blocks"`
+	Annotations    map[string]string `json:"annotations,omitempty"`
+	EnrichmentType *EnrichmentType   `json:"enrichment_type,omitempty"`
+	Title          *string           `json:"title,omitempty"`
 }
 
 // NewEnrichment creates a new Enrichment
@@ -58,6 +60,16 @@ func NewEnrichment() *Enrichment {
 	return &Enrichment{
 		Blocks:      make([]BaseBlock, 0),
 		Annotations: make(map[string]string),
+	}
+}
+
+// NewEnrichmentWithType creates a new Enrichment with type and title
+func NewEnrichmentWithType(enrichmentType EnrichmentType, title string) *Enrichment {
+	return &Enrichment{
+		Blocks:         make([]BaseBlock, 0),
+		Annotations:    make(map[string]string),
+		EnrichmentType: &enrichmentType,
+		Title:          &title,
 	}
 }
 

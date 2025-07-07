@@ -89,6 +89,24 @@ func (i *Issue) AddEnrichment(enrichment Enrichment) {
 	i.Enrichments = append(i.Enrichments, enrichment)
 }
 
+// AddEnrichmentBlocks adds blocks as enrichment to the issue
+func (i *Issue) AddEnrichmentBlocks(blocks []BaseBlock) {
+	enrichment := NewEnrichment()
+	for _, block := range blocks {
+		enrichment.AddBlock(block)
+	}
+	i.AddEnrichment(*enrichment)
+}
+
+// AddEnrichmentWithType adds blocks with enrichment type and title to the issue
+func (i *Issue) AddEnrichmentWithType(blocks []BaseBlock, enrichmentType EnrichmentType, title string) {
+	enrichment := NewEnrichmentWithType(enrichmentType, title)
+	for _, block := range blocks {
+		enrichment.AddBlock(block)
+	}
+	i.AddEnrichment(*enrichment)
+}
+
 // AddLink adds a link to the issue
 func (i *Issue) AddLink(link Link) {
 	i.Links = append(i.Links, link)
