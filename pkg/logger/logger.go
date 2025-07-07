@@ -71,9 +71,9 @@ func (l *Logger) WithContextLogger(ctx context.Context) *zap.Logger {
 	return l.zapLogger
 }
 
-// Debug logs a message at DebugLevel. The message includes any fields passed at the log site.
-func (l *Logger) Debug(args ...interface{}) {
-	l.zapLogger.Sugar().Debug(args...)
+// Debug logs a message at DebugLevel with structured fields
+func (l *Logger) Debug(msg string, fields ...zapcore.Field) {
+	l.zapLogger.Debug(msg, fields...)
 }
 
 // Debugf logs a formatted message at DebugLevel. The message includes any fields passed at the log site.
@@ -81,9 +81,9 @@ func (l *Logger) Debugf(template string, args ...interface{}) {
 	l.zapLogger.Sugar().Debugf(template, args...)
 }
 
-// Info logs a message at InfoLevel. The message includes any fields passed at the log site.
-func (l *Logger) Info(args ...interface{}) {
-	l.zapLogger.Sugar().Info(args...)
+// Info logs a message at InfoLevel with structured fields
+func (l *Logger) Info(msg string, fields ...zapcore.Field) {
+	l.zapLogger.Info(msg, fields...)
 }
 
 // Infof logs a formatted message at InfoLevel. The message includes any fields passed at the log site.
@@ -91,9 +91,9 @@ func (l *Logger) Infof(template string, args ...interface{}) {
 	l.zapLogger.Sugar().Infof(template, args...)
 }
 
-// Warn logs a message at WarnLevel. The message includes any fields passed at the log site.
-func (l *Logger) Warn(args ...interface{}) {
-	l.zapLogger.Sugar().Warn(args...)
+// Warn logs a message at WarnLevel with structured fields
+func (l *Logger) Warn(msg string, fields ...zapcore.Field) {
+	l.zapLogger.Warn(msg, fields...)
 }
 
 // Warnf logs a formatted message at WarnLevel. The message includes any fields passed at the log site.
@@ -101,19 +101,19 @@ func (l *Logger) Warnf(template string, args ...interface{}) {
 	l.zapLogger.Sugar().Warnf(template, args...)
 }
 
-// Error logs a message at ErrorLevel. The message includes any fields passed at the log site.
-func (l *Logger) Error(args ...interface{}) {
-	l.zapLogger.Sugar().Error(args...)
+// Error logs a message at ErrorLevel with structured fields
+func (l *Logger) Error(msg string, fields ...zapcore.Field) {
+	l.zapLogger.Error(msg, fields...)
 }
 
-// Errorf logs a message at ErrorLevel. The message includes any fields passed at the log site.
+// Errorf logs a formatted message at ErrorLevel. The message includes any fields passed at the log site.
 func (l *Logger) Errorf(template string, args ...interface{}) {
 	l.zapLogger.Sugar().Errorf(template, args...)
 }
 
-// Fatal logs a message at FatalLevel and calls os.Exit. The message includes any fields passed at the log site.
-func (l *Logger) Fatal(args ...interface{}) {
-	l.zapLogger.Sugar().Fatal(args...)
+// Fatal logs a message at FatalLevel with structured fields and calls os.Exit
+func (l *Logger) Fatal(msg string, fields ...zapcore.Field) {
+	l.zapLogger.Fatal(msg, fields...)
 }
 
 // Fatalf logs a message at FatalLevel and calls os.Exit. The message includes any fields passed at the log site.
@@ -121,9 +121,9 @@ func (l *Logger) Fatalf(template string, args ...interface{}) {
 	l.zapLogger.Sugar().Fatalf(template, args...)
 }
 
-// Panic logs a message at PanicLevel and panics. The message includes any fields passed at the log site.
-func (l *Logger) Panic(args ...interface{}) {
-	l.zapLogger.Sugar().Panic(args...)
+// Panic logs a message at PanicLevel with structured fields and panics
+func (l *Logger) Panic(msg string, fields ...zapcore.Field) {
+	l.zapLogger.Panic(msg, fields...)
 }
 
 // Panicf logs a message at PanicLevel and panics. The message includes any fields passed at the log site.

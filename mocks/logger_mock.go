@@ -10,6 +10,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	zap "go.uber.org/zap"
+	zapcore "go.uber.org/zap/zapcore"
 )
 
 // MockLoggerInterface is a mock of LoggerInterface interface.
@@ -36,19 +37,20 @@ func (m *MockLoggerInterface) EXPECT() *MockLoggerInterfaceMockRecorder {
 }
 
 // Debug mocks base method.
-func (m *MockLoggerInterface) Debug(arg0 ...interface{}) {
+func (m *MockLoggerInterface) Debug(arg0 string, arg1 ...zapcore.Field) {
 	m.ctrl.T.Helper()
-	varargs := []interface{}{}
-	for _, a := range arg0 {
+	varargs := []interface{}{arg0}
+	for _, a := range arg1 {
 		varargs = append(varargs, a)
 	}
 	m.ctrl.Call(m, "Debug", varargs...)
 }
 
 // Debug indicates an expected call of Debug.
-func (mr *MockLoggerInterfaceMockRecorder) Debug(arg0 ...interface{}) *gomock.Call {
+func (mr *MockLoggerInterfaceMockRecorder) Debug(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Debug", reflect.TypeOf((*MockLoggerInterface)(nil).Debug), arg0...)
+	varargs := append([]interface{}{arg0}, arg1...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Debug", reflect.TypeOf((*MockLoggerInterface)(nil).Debug), varargs...)
 }
 
 // Debugf mocks base method.
@@ -69,19 +71,20 @@ func (mr *MockLoggerInterfaceMockRecorder) Debugf(arg0 interface{}, arg1 ...inte
 }
 
 // Error mocks base method.
-func (m *MockLoggerInterface) Error(arg0 ...interface{}) {
+func (m *MockLoggerInterface) Error(arg0 string, arg1 ...zapcore.Field) {
 	m.ctrl.T.Helper()
-	varargs := []interface{}{}
-	for _, a := range arg0 {
+	varargs := []interface{}{arg0}
+	for _, a := range arg1 {
 		varargs = append(varargs, a)
 	}
 	m.ctrl.Call(m, "Error", varargs...)
 }
 
 // Error indicates an expected call of Error.
-func (mr *MockLoggerInterfaceMockRecorder) Error(arg0 ...interface{}) *gomock.Call {
+func (mr *MockLoggerInterfaceMockRecorder) Error(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Error", reflect.TypeOf((*MockLoggerInterface)(nil).Error), arg0...)
+	varargs := append([]interface{}{arg0}, arg1...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Error", reflect.TypeOf((*MockLoggerInterface)(nil).Error), varargs...)
 }
 
 // Errorf mocks base method.
@@ -102,19 +105,20 @@ func (mr *MockLoggerInterfaceMockRecorder) Errorf(arg0 interface{}, arg1 ...inte
 }
 
 // Fatal mocks base method.
-func (m *MockLoggerInterface) Fatal(arg0 ...interface{}) {
+func (m *MockLoggerInterface) Fatal(arg0 string, arg1 ...zapcore.Field) {
 	m.ctrl.T.Helper()
-	varargs := []interface{}{}
-	for _, a := range arg0 {
+	varargs := []interface{}{arg0}
+	for _, a := range arg1 {
 		varargs = append(varargs, a)
 	}
 	m.ctrl.Call(m, "Fatal", varargs...)
 }
 
 // Fatal indicates an expected call of Fatal.
-func (mr *MockLoggerInterfaceMockRecorder) Fatal(arg0 ...interface{}) *gomock.Call {
+func (mr *MockLoggerInterfaceMockRecorder) Fatal(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Fatal", reflect.TypeOf((*MockLoggerInterface)(nil).Fatal), arg0...)
+	varargs := append([]interface{}{arg0}, arg1...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Fatal", reflect.TypeOf((*MockLoggerInterface)(nil).Fatal), varargs...)
 }
 
 // Fatalf mocks base method.
@@ -149,19 +153,20 @@ func (mr *MockLoggerInterfaceMockRecorder) GetLogger() *gomock.Call {
 }
 
 // Info mocks base method.
-func (m *MockLoggerInterface) Info(arg0 ...interface{}) {
+func (m *MockLoggerInterface) Info(arg0 string, arg1 ...zapcore.Field) {
 	m.ctrl.T.Helper()
-	varargs := []interface{}{}
-	for _, a := range arg0 {
+	varargs := []interface{}{arg0}
+	for _, a := range arg1 {
 		varargs = append(varargs, a)
 	}
 	m.ctrl.Call(m, "Info", varargs...)
 }
 
 // Info indicates an expected call of Info.
-func (mr *MockLoggerInterfaceMockRecorder) Info(arg0 ...interface{}) *gomock.Call {
+func (mr *MockLoggerInterfaceMockRecorder) Info(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Info", reflect.TypeOf((*MockLoggerInterface)(nil).Info), arg0...)
+	varargs := append([]interface{}{arg0}, arg1...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Info", reflect.TypeOf((*MockLoggerInterface)(nil).Info), varargs...)
 }
 
 // Infof mocks base method.
@@ -182,19 +187,20 @@ func (mr *MockLoggerInterfaceMockRecorder) Infof(arg0 interface{}, arg1 ...inter
 }
 
 // Panic mocks base method.
-func (m *MockLoggerInterface) Panic(arg0 ...interface{}) {
+func (m *MockLoggerInterface) Panic(arg0 string, arg1 ...zapcore.Field) {
 	m.ctrl.T.Helper()
-	varargs := []interface{}{}
-	for _, a := range arg0 {
+	varargs := []interface{}{arg0}
+	for _, a := range arg1 {
 		varargs = append(varargs, a)
 	}
 	m.ctrl.Call(m, "Panic", varargs...)
 }
 
 // Panic indicates an expected call of Panic.
-func (mr *MockLoggerInterfaceMockRecorder) Panic(arg0 ...interface{}) *gomock.Call {
+func (mr *MockLoggerInterfaceMockRecorder) Panic(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Panic", reflect.TypeOf((*MockLoggerInterface)(nil).Panic), arg0...)
+	varargs := append([]interface{}{arg0}, arg1...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Panic", reflect.TypeOf((*MockLoggerInterface)(nil).Panic), varargs...)
 }
 
 // Panicf mocks base method.
@@ -215,19 +221,20 @@ func (mr *MockLoggerInterfaceMockRecorder) Panicf(arg0 interface{}, arg1 ...inte
 }
 
 // Warn mocks base method.
-func (m *MockLoggerInterface) Warn(arg0 ...interface{}) {
+func (m *MockLoggerInterface) Warn(arg0 string, arg1 ...zapcore.Field) {
 	m.ctrl.T.Helper()
-	varargs := []interface{}{}
-	for _, a := range arg0 {
+	varargs := []interface{}{arg0}
+	for _, a := range arg1 {
 		varargs = append(varargs, a)
 	}
 	m.ctrl.Call(m, "Warn", varargs...)
 }
 
 // Warn indicates an expected call of Warn.
-func (mr *MockLoggerInterfaceMockRecorder) Warn(arg0 ...interface{}) *gomock.Call {
+func (mr *MockLoggerInterfaceMockRecorder) Warn(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Warn", reflect.TypeOf((*MockLoggerInterface)(nil).Warn), arg0...)
+	varargs := append([]interface{}{arg0}, arg1...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Warn", reflect.TypeOf((*MockLoggerInterface)(nil).Warn), varargs...)
 }
 
 // Warnf mocks base method.
