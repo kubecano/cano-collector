@@ -32,13 +32,13 @@ type SlackThreadingConfig struct {
 	CacheTTL              string `yaml:"cache_ttl,omitempty"`               // Duration string like "10m"
 	SearchLimit           int    `yaml:"search_limit,omitempty"`            // Max messages to search in history
 	SearchWindow          string `yaml:"search_window,omitempty"`           // Time window string like "24h"
-	FingerprintInMetadata bool   `yaml:"fingerprint_in_metadata,omitempty"` // Include fingerprint in message metadata
+	FingerprintInMetadata *bool  `yaml:"fingerprint_in_metadata,omitempty"` // Include fingerprint in message metadata
 }
 
 // SlackEnrichmentsConfig represents enrichment display settings for Slack
 type SlackEnrichmentsConfig struct {
-	FormatAsBlocks      bool   `yaml:"format_as_blocks,omitempty"`     // Use Slack blocks instead of plain text
-	ColorCoding         bool   `yaml:"color_coding,omitempty"`         // Color-code enrichments by type
+	FormatAsBlocks      *bool  `yaml:"format_as_blocks,omitempty"`     // Use Slack blocks instead of plain text
+	ColorCoding         *bool  `yaml:"color_coding,omitempty"`         // Color-code enrichments by type
 	TableFormatting     string `yaml:"table_formatting,omitempty"`     // "simple", "enhanced", or "attachment"
 	MaxTableRows        int    `yaml:"max_table_rows,omitempty"`       // Convert large tables to files
 	AttachmentThreshold int    `yaml:"attachment_threshold,omitempty"` // Characters threshold for file conversion
@@ -118,20 +118,24 @@ func setSlackDefaults(d DestinationSlack) DestinationSlack {
 		// FingerprintInMetadata defaults to true when threading is enabled
 		if !d.Threading.Enabled {
 			// If threading is explicitly disabled, ensure defaults don't override
-		} else {
-			d.Threading.FingerprintInMetadata = true
+		} else if d.Threading.FingerprintInMetadata == nil {
+			// Only set default if not explicitly configured
+			fingerprintDefault := true
+			d.Threading.FingerprintInMetadata = &fingerprintDefault
 		}
 	}
 
 	// Set enrichments defaults if enrichments config is present
 	if d.Enrichments != nil {
-		// FormatAsBlocks defaults to true
-		if !d.Enrichments.FormatAsBlocks {
-			d.Enrichments.FormatAsBlocks = true
+		// FormatAsBlocks defaults to true if not explicitly set
+		if d.Enrichments.FormatAsBlocks == nil {
+			formatDefault := true
+			d.Enrichments.FormatAsBlocks = &formatDefault
 		}
-		// ColorCoding defaults to true
-		if !d.Enrichments.ColorCoding {
-			d.Enrichments.ColorCoding = true
+		// ColorCoding defaults to true if not explicitly set
+		if d.Enrichments.ColorCoding == nil {
+			colorDefault := true
+			d.Enrichments.ColorCoding = &colorDefault
 		}
 		if d.Enrichments.TableFormatting == "" {
 			d.Enrichments.TableFormatting = "enhanced"

@@ -273,12 +273,15 @@ destinations:
 	assert.Equal(t, "15m", slackDest.Threading.CacheTTL)
 	assert.Equal(t, 150, slackDest.Threading.SearchLimit)
 	assert.Equal(t, "48h", slackDest.Threading.SearchWindow)
-	assert.True(t, slackDest.Threading.FingerprintInMetadata)
+	assert.NotNil(t, slackDest.Threading.FingerprintInMetadata)
+	assert.True(t, *slackDest.Threading.FingerprintInMetadata)
 
 	// Validate enrichments configuration
 	assert.NotNil(t, slackDest.Enrichments)
-	assert.True(t, slackDest.Enrichments.FormatAsBlocks)
-	assert.True(t, slackDest.Enrichments.ColorCoding)
+	assert.NotNil(t, slackDest.Enrichments.FormatAsBlocks)
+	assert.True(t, *slackDest.Enrichments.FormatAsBlocks)
+	assert.NotNil(t, slackDest.Enrichments.ColorCoding)
+	assert.True(t, *slackDest.Enrichments.ColorCoding)
 	assert.Equal(t, "enhanced", slackDest.Enrichments.TableFormatting)
 	assert.Equal(t, 25, slackDest.Enrichments.MaxTableRows)
 	assert.Equal(t, 1500, slackDest.Enrichments.AttachmentThreshold)
@@ -315,11 +318,14 @@ destinations:
 	assert.Equal(t, "10m", slackDest.Threading.CacheTTL)
 	assert.Equal(t, 100, slackDest.Threading.SearchLimit)
 	assert.Equal(t, "24h", slackDest.Threading.SearchWindow)
-	assert.True(t, slackDest.Threading.FingerprintInMetadata)
+	assert.NotNil(t, slackDest.Threading.FingerprintInMetadata)
+	assert.True(t, *slackDest.Threading.FingerprintInMetadata)
 
 	// Enrichments defaults
-	assert.True(t, slackDest.Enrichments.FormatAsBlocks)
-	assert.True(t, slackDest.Enrichments.ColorCoding)
+	assert.NotNil(t, slackDest.Enrichments.FormatAsBlocks)
+	assert.True(t, *slackDest.Enrichments.FormatAsBlocks)
+	assert.NotNil(t, slackDest.Enrichments.ColorCoding)
+	assert.True(t, *slackDest.Enrichments.ColorCoding)
 	assert.Equal(t, "enhanced", slackDest.Enrichments.TableFormatting)
 	assert.Equal(t, 20, slackDest.Enrichments.MaxTableRows)
 	assert.Equal(t, 1000, slackDest.Enrichments.AttachmentThreshold)
@@ -339,7 +345,7 @@ func TestValidateThreadingConfig(t *testing.T) {
 				CacheTTL:              "10m",
 				SearchLimit:           100,
 				SearchWindow:          "24h",
-				FingerprintInMetadata: true,
+				FingerprintInMetadata: &[]bool{true}[0],
 			},
 			wantErr: false,
 		},
@@ -400,8 +406,8 @@ func TestValidateEnrichmentsConfig(t *testing.T) {
 		{
 			name: "valid config",
 			config: SlackEnrichmentsConfig{
-				FormatAsBlocks:      true,
-				ColorCoding:         true,
+				FormatAsBlocks:      &[]bool{true}[0],
+				ColorCoding:         &[]bool{true}[0],
 				TableFormatting:     "enhanced",
 				MaxTableRows:        20,
 				AttachmentThreshold: 1000,
@@ -445,4 +451,54 @@ func TestValidateEnrichmentsConfig(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestLoadDestinationsConfig_ExplicitFalseValues(t *testing.T) {
+	// Test case to verify that explicitly set false values are respected, not overridden by defaults
+	yamlContent := `
+destinations:
+  slack:
+    - name: "explicit-false-config"
+      api_key: "xoxb-test-token"
+      slack_channel: "#test"
+      threading:
+        enabled: true
+        fingerprint_in_metadata: false
+      enrichments:
+        format_as_blocks: false
+        color_coding: false
+        table_formatting: "simple"
+`
+
+	// Create temporary file
+	tmpDir := t.TempDir()
+	tmpFile := filepath.Join(tmpDir, "destinations.yaml")
+	err := os.WriteFile(tmpFile, []byte(yamlContent), 0o644)
+	require.NoError(t, err)
+
+	loader := NewFileDestinationsLoader(tmpFile)
+	cfg, err := loader.Load()
+	require.NoError(t, err)
+	assert.NotNil(t, cfg)
+
+	// Validate that explicitly set false values are preserved
+	slackDest := cfg.Destinations.Slack[0]
+
+	// Threading configuration - fingerprint_in_metadata explicitly set to false should remain false
+	assert.NotNil(t, slackDest.Threading)
+	assert.True(t, slackDest.Threading.Enabled)
+	assert.NotNil(t, slackDest.Threading.FingerprintInMetadata)
+	assert.False(t, *slackDest.Threading.FingerprintInMetadata, "Explicitly set false value should be preserved")
+
+	// Enrichments configuration - both fields explicitly set to false should remain false
+	assert.NotNil(t, slackDest.Enrichments)
+	assert.NotNil(t, slackDest.Enrichments.FormatAsBlocks)
+	assert.False(t, *slackDest.Enrichments.FormatAsBlocks, "Explicitly set false value should be preserved")
+	assert.NotNil(t, slackDest.Enrichments.ColorCoding)
+	assert.False(t, *slackDest.Enrichments.ColorCoding, "Explicitly set false value should be preserved")
+
+	// Other fields should still get defaults
+	assert.Equal(t, "simple", slackDest.Enrichments.TableFormatting)
+	assert.Equal(t, 20, slackDest.Enrichments.MaxTableRows)
+	assert.Equal(t, 1000, slackDest.Enrichments.AttachmentThreshold)
 }

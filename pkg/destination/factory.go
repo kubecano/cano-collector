@@ -53,15 +53,15 @@ func (f *DestinationFactory) createSlackDestination(d *config_destination.Destin
 			CacheTTL:              d.Threading.CacheTTL,
 			SearchLimit:           d.Threading.SearchLimit,
 			SearchWindow:          d.Threading.SearchWindow,
-			FingerprintInMetadata: d.Threading.FingerprintInMetadata,
+			FingerprintInMetadata: d.Threading.FingerprintInMetadata != nil && *d.Threading.FingerprintInMetadata,
 		}
 	}
 
 	// Convert enrichments configuration if present
 	if d.Enrichments != nil {
 		cfg.Enrichments = &destslack.SlackEnrichmentsConfig{
-			FormatAsBlocks:      d.Enrichments.FormatAsBlocks,
-			ColorCoding:         d.Enrichments.ColorCoding,
+			FormatAsBlocks:      d.Enrichments.FormatAsBlocks != nil && *d.Enrichments.FormatAsBlocks,
+			ColorCoding:         d.Enrichments.ColorCoding != nil && *d.Enrichments.ColorCoding,
 			TableFormatting:     d.Enrichments.TableFormatting,
 			MaxTableRows:        d.Enrichments.MaxTableRows,
 			AttachmentThreshold: d.Enrichments.AttachmentThreshold,
