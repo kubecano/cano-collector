@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/kubecano/cano-collector/pkg/core/issue"
 	"github.com/kubecano/cano-collector/pkg/logger"
@@ -58,7 +59,7 @@ func TestLabelEnrichment_EnrichIssue(t *testing.T) {
 
 		err := enricher.EnrichIssue(nil)
 
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "issue is nil")
 	})
 
@@ -69,8 +70,8 @@ func TestLabelEnrichment_EnrichIssue(t *testing.T) {
 
 		err := enricher.EnrichIssue(iss)
 
-		assert.NoError(t, err)
-		assert.Len(t, iss.Enrichments, 0)
+		require.NoError(t, err)
+		assert.Empty(t, iss.Enrichments)
 	})
 
 	t.Run("adds labels enrichment", func(t *testing.T) {
@@ -79,7 +80,7 @@ func TestLabelEnrichment_EnrichIssue(t *testing.T) {
 
 		err := enricher.EnrichIssue(iss)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, iss.Enrichments, 2) // labels + annotations
 
 		// Check labels enrichment
@@ -105,7 +106,7 @@ func TestLabelEnrichment_EnrichIssue(t *testing.T) {
 
 		err := enricher.EnrichIssue(iss)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, iss.Enrichments, 1) // only annotations
 	})
 
@@ -119,7 +120,7 @@ func TestLabelEnrichment_EnrichIssue(t *testing.T) {
 
 		err := enricher.EnrichIssue(iss)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, iss.Enrichments, 1) // only labels
 	})
 }
@@ -267,7 +268,7 @@ func TestLabelEnrichment_filterAnnotations(t *testing.T) {
 
 		filtered := enricher.filterAnnotations(map[string]string{})
 
-		assert.Len(t, filtered, 0)
+		assert.Empty(t, filtered)
 	})
 }
 
@@ -354,7 +355,7 @@ func TestLabelEnrichment_DisplayFormats(t *testing.T) {
 
 		err := enricher.EnrichIssue(iss)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, iss.Enrichments, 2)
 
 		// Check that blocks are table blocks
@@ -376,7 +377,7 @@ func TestLabelEnrichment_DisplayFormats(t *testing.T) {
 
 		err := enricher.EnrichIssue(iss)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, iss.Enrichments, 2)
 
 		// Check that blocks are json blocks
@@ -474,7 +475,7 @@ func TestLabelEnrichment_EmptyMaps(t *testing.T) {
 
 		err := enricher.EnrichIssue(iss)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, iss.Enrichments, 1) // only annotations
 		assert.Equal(t, "Alert Annotations", *iss.Enrichments[0].Title)
 	})
@@ -490,7 +491,7 @@ func TestLabelEnrichment_EmptyMaps(t *testing.T) {
 
 		err := enricher.EnrichIssue(iss)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, iss.Enrichments, 1) // only labels
 		assert.Equal(t, "Alert Labels", *iss.Enrichments[0].Title)
 	})

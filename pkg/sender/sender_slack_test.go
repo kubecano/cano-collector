@@ -7,10 +7,12 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/slack-go/slack"
 
 	"github.com/kubecano/cano-collector/mocks"
 	issuepkg "github.com/kubecano/cano-collector/pkg/core/issue"
-	"github.com/slack-go/slack"
 )
 
 func setupSenderSlackTest(t *testing.T) (*SenderSlack, *mocks.MockSlackClientInterface) {
@@ -59,7 +61,7 @@ func TestSenderSlack_Send_Success(t *testing.T) {
 	).Return("channel", "timestamp", nil)
 
 	err := slackSender.Send(ctx, testIssue)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestSenderSlack_Config(t *testing.T) {
@@ -351,7 +353,7 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 		err := slackSender.Send(context.Background(), issue)
 
 		// Verify
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// Test attachment building directly
 		attachments := slackSender.buildSlackAttachments(issue)

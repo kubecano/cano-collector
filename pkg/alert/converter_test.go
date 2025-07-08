@@ -760,7 +760,7 @@ func TestNewConverterWithConfig(t *testing.T) {
 		require.NoError(t, err)
 
 		// Should have no enrichments
-		assert.Len(t, iss.Enrichments, 0)
+		assert.Empty(t, iss.Enrichments)
 	})
 
 	t.Run("creates converter with custom include/exclude filters", func(t *testing.T) {
@@ -809,9 +809,10 @@ func TestNewConverterWithConfig(t *testing.T) {
 		var labelsEnrichment *issue.Enrichment
 		var annotationsEnrichment *issue.Enrichment
 		for i := range iss.Enrichments {
-			if *iss.Enrichments[i].EnrichmentType == issue.EnrichmentTypeAlertLabels {
+			switch *iss.Enrichments[i].EnrichmentType {
+			case issue.EnrichmentTypeAlertLabels:
 				labelsEnrichment = &iss.Enrichments[i]
-			} else if *iss.Enrichments[i].EnrichmentType == issue.EnrichmentTypeAlertAnnotations {
+			case issue.EnrichmentTypeAlertAnnotations:
 				annotationsEnrichment = &iss.Enrichments[i]
 			}
 		}

@@ -230,7 +230,7 @@ func (s *SenderSlack) convertBlockToSlack(block issuepkg.BaseBlock) slack.Block 
 	default:
 		// Fallback - convert unknown block to text
 		return slack.NewSectionBlock(
-			slack.NewTextBlockObject("mrkdwn", fmt.Sprintf("Unknown block type: %s", block.BlockType()), false, false),
+			slack.NewTextBlockObject("mrkdwn", "Unknown block type: "+block.BlockType(), false, false),
 			nil, nil,
 		)
 	}
