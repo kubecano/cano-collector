@@ -226,3 +226,223 @@ destinations:
 	assert.Equal(t, expectedToken, prodDest.APIKey)
 	assert.Equal(t, "#prod-alerts", prodDest.SlackChannel)
 }
+
+func TestLoadDestinationsConfig_WithThreadingAndEnrichments(t *testing.T) {
+	// Sample YAML config with threading and enrichments configuration
+	yamlContent := `
+destinations:
+  slack:
+    - name: "enhanced-alerts"
+      api_key: "xoxb-enhanced-token"
+      slack_channel: "#enhanced-alerts"
+      threading:
+        enabled: true
+        cache_ttl: "15m"
+        search_limit: 150
+        search_window: "48h"
+        fingerprint_in_metadata: true
+      enrichments:
+        format_as_blocks: true
+        color_coding: true
+        table_formatting: "enhanced"
+        max_table_rows: 25
+        attachment_threshold: 1500
+`
+
+	// Create temporary file
+	tmpDir := t.TempDir()
+	tmpFile := filepath.Join(tmpDir, "destinations.yaml")
+	err := os.WriteFile(tmpFile, []byte(yamlContent), 0o644)
+	require.NoError(t, err)
+
+	loader := NewFileDestinationsLoader(tmpFile)
+	cfg, err := loader.Load()
+	require.NoError(t, err)
+	assert.NotNil(t, cfg)
+
+	// Validate Slack destination with enhanced config
+	assert.Len(t, cfg.Destinations.Slack, 1)
+	slackDest := cfg.Destinations.Slack[0]
+	assert.Equal(t, "enhanced-alerts", slackDest.Name)
+	assert.Equal(t, "xoxb-enhanced-token", slackDest.APIKey)
+	assert.Equal(t, "#enhanced-alerts", slackDest.SlackChannel)
+
+	// Validate threading configuration
+	assert.NotNil(t, slackDest.Threading)
+	assert.True(t, slackDest.Threading.Enabled)
+	assert.Equal(t, "15m", slackDest.Threading.CacheTTL)
+	assert.Equal(t, 150, slackDest.Threading.SearchLimit)
+	assert.Equal(t, "48h", slackDest.Threading.SearchWindow)
+	assert.True(t, slackDest.Threading.FingerprintInMetadata)
+
+	// Validate enrichments configuration
+	assert.NotNil(t, slackDest.Enrichments)
+	assert.True(t, slackDest.Enrichments.FormatAsBlocks)
+	assert.True(t, slackDest.Enrichments.ColorCoding)
+	assert.Equal(t, "enhanced", slackDest.Enrichments.TableFormatting)
+	assert.Equal(t, 25, slackDest.Enrichments.MaxTableRows)
+	assert.Equal(t, 1500, slackDest.Enrichments.AttachmentThreshold)
+}
+
+func TestLoadDestinationsConfig_WithDefaults(t *testing.T) {
+	// Sample YAML config with minimal threading/enrichments configuration
+	yamlContent := `
+destinations:
+  slack:
+    - name: "default-alerts"
+      api_key: "xoxb-default-token"
+      slack_channel: "#default-alerts"
+      threading:
+        enabled: true
+      enrichments: {}
+`
+
+	// Create temporary file
+	tmpDir := t.TempDir()
+	tmpFile := filepath.Join(tmpDir, "destinations.yaml")
+	err := os.WriteFile(tmpFile, []byte(yamlContent), 0o644)
+	require.NoError(t, err)
+
+	loader := NewFileDestinationsLoader(tmpFile)
+	cfg, err := loader.Load()
+	require.NoError(t, err)
+	assert.NotNil(t, cfg)
+
+	// Validate defaults were applied
+	slackDest := cfg.Destinations.Slack[0]
+
+	// Threading defaults
+	assert.Equal(t, "10m", slackDest.Threading.CacheTTL)
+	assert.Equal(t, 100, slackDest.Threading.SearchLimit)
+	assert.Equal(t, "24h", slackDest.Threading.SearchWindow)
+	assert.True(t, slackDest.Threading.FingerprintInMetadata)
+
+	// Enrichments defaults
+	assert.True(t, slackDest.Enrichments.FormatAsBlocks)
+	assert.True(t, slackDest.Enrichments.ColorCoding)
+	assert.Equal(t, "enhanced", slackDest.Enrichments.TableFormatting)
+	assert.Equal(t, 20, slackDest.Enrichments.MaxTableRows)
+	assert.Equal(t, 1000, slackDest.Enrichments.AttachmentThreshold)
+}
+
+func TestValidateThreadingConfig(t *testing.T) {
+	tests := []struct {
+		name    string
+		config  SlackThreadingConfig
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "valid config",
+			config: SlackThreadingConfig{
+				Enabled:               true,
+				CacheTTL:              "10m",
+				SearchLimit:           100,
+				SearchWindow:          "24h",
+				FingerprintInMetadata: true,
+			},
+			wantErr: false,
+		},
+		{
+			name: "negative search limit",
+			config: SlackThreadingConfig{
+				SearchLimit: -1,
+			},
+			wantErr: true,
+			errMsg:  "search_limit must be non-negative",
+		},
+		{
+			name: "search limit too high",
+			config: SlackThreadingConfig{
+				SearchLimit: 1001,
+			},
+			wantErr: true,
+			errMsg:  "search_limit must not exceed 1000",
+		},
+		{
+			name: "invalid cache_ttl format",
+			config: SlackThreadingConfig{
+				CacheTTL: "invalid",
+			},
+			wantErr: true,
+			errMsg:  "cache_ttl must be a valid duration",
+		},
+		{
+			name: "invalid search_window format",
+			config: SlackThreadingConfig{
+				SearchWindow: "xyz",
+			},
+			wantErr: true,
+			errMsg:  "search_window must be a valid duration",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateThreadingConfig(tt.config)
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errMsg)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateEnrichmentsConfig(t *testing.T) {
+	tests := []struct {
+		name    string
+		config  SlackEnrichmentsConfig
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "valid config",
+			config: SlackEnrichmentsConfig{
+				FormatAsBlocks:      true,
+				ColorCoding:         true,
+				TableFormatting:     "enhanced",
+				MaxTableRows:        20,
+				AttachmentThreshold: 1000,
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid table formatting",
+			config: SlackEnrichmentsConfig{
+				TableFormatting: "invalid",
+			},
+			wantErr: true,
+			errMsg:  "table_formatting must be one of: simple, enhanced, attachment",
+		},
+		{
+			name: "negative max table rows",
+			config: SlackEnrichmentsConfig{
+				MaxTableRows: -1,
+			},
+			wantErr: true,
+			errMsg:  "max_table_rows must be non-negative",
+		},
+		{
+			name: "negative attachment threshold",
+			config: SlackEnrichmentsConfig{
+				AttachmentThreshold: -1,
+			},
+			wantErr: true,
+			errMsg:  "attachment_threshold must be non-negative",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateEnrichmentsConfig(tt.config)
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errMsg)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}

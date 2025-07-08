@@ -45,5 +45,28 @@ func (f *DestinationFactory) createSlackDestination(d *config_destination.Destin
 		GroupingInterval: d.GroupingInterval,
 		UnfurlLinks:      d.UnfurlLinks == nil || *d.UnfurlLinks,
 	}
+
+	// Convert threading configuration if present
+	if d.Threading != nil {
+		cfg.Threading = &destslack.SlackThreadingConfig{
+			Enabled:               d.Threading.Enabled,
+			CacheTTL:              d.Threading.CacheTTL,
+			SearchLimit:           d.Threading.SearchLimit,
+			SearchWindow:          d.Threading.SearchWindow,
+			FingerprintInMetadata: d.Threading.FingerprintInMetadata,
+		}
+	}
+
+	// Convert enrichments configuration if present
+	if d.Enrichments != nil {
+		cfg.Enrichments = &destslack.SlackEnrichmentsConfig{
+			FormatAsBlocks:      d.Enrichments.FormatAsBlocks,
+			ColorCoding:         d.Enrichments.ColorCoding,
+			TableFormatting:     d.Enrichments.TableFormatting,
+			MaxTableRows:        d.Enrichments.MaxTableRows,
+			AttachmentThreshold: d.Enrichments.AttachmentThreshold,
+		}
+	}
+
 	return destslack.NewDestinationSlack(cfg, f.logger, f.httpClient), nil
 }

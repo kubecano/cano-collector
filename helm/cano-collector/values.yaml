@@ -36,6 +36,22 @@ destinations:
     #   slack_channel: "#prod-alerts"
     #   grouping_interval: 30
     #   unfurl_links: true
+    #   
+    #   # Thread Management Settings
+    #   threading:
+    #     enabled: true
+    #     cache_ttl: "10m"              # Cache duration for thread relationships
+    #     search_limit: 100             # Max messages to search in history
+    #     search_window: "24h"          # Time window for history search
+    #     fingerprint_in_metadata: true # Include fingerprint in message metadata
+    #   
+    #   # Enrichment Display Settings
+    #   enrichments:
+    #     format_as_blocks: true        # Use Slack blocks instead of plain text
+    #     color_coding: true            # Color-code enrichments by type
+    #     table_formatting: "enhanced"  # "simple", "enhanced", or "attachment"
+    #     max_table_rows: 20           # Convert large tables to files
+    #     attachment_threshold: 1000    # Characters threshold for file conversion
 
 teams: [ ]
 

@@ -17,6 +17,28 @@ type DestinationSlackConfig struct {
 	SlackChannel     string
 	GroupingInterval int
 	UnfurlLinks      bool
+	// Threading configuration
+	Threading *SlackThreadingConfig
+	// Enrichments configuration
+	Enrichments *SlackEnrichmentsConfig
+}
+
+// SlackThreadingConfig contains threading-specific configuration
+type SlackThreadingConfig struct {
+	Enabled               bool
+	CacheTTL              string
+	SearchLimit           int
+	SearchWindow          string
+	FingerprintInMetadata bool
+}
+
+// SlackEnrichmentsConfig contains enrichments formatting configuration
+type SlackEnrichmentsConfig struct {
+	FormatAsBlocks      bool
+	ColorCoding         bool
+	TableFormatting     string // "simple", "enhanced", or "attachment"
+	MaxTableRows        int
+	AttachmentThreshold int
 }
 
 type DestinationSlack struct {

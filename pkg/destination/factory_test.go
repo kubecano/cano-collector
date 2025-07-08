@@ -63,3 +63,38 @@ func TestDestinationFactory_CreateDestination_UnsupportedType(t *testing.T) {
 	assert.Nil(t, d)
 	assert.Contains(t, err.Error(), "unsupported destination type")
 }
+
+func TestDestinationFactory_CreateDestinationSlack_WithThreadingAndEnrichments(t *testing.T) {
+	factory, ctrl := setupTest(t)
+	defer ctrl.Finish()
+
+	unfurlLinks := true
+	dest := destination_config.DestinationSlack{
+		Name:         "test-slack-advanced",
+		APIKey:       "xoxb-test-token",
+		SlackChannel: "#test-channel",
+		UnfurlLinks:  &unfurlLinks,
+		Threading: &destination_config.SlackThreadingConfig{
+			Enabled:               true,
+			CacheTTL:              "15m",
+			SearchLimit:           50,
+			SearchWindow:          "12h",
+			FingerprintInMetadata: true,
+		},
+		Enrichments: &destination_config.SlackEnrichmentsConfig{
+			FormatAsBlocks:      true,
+			ColorCoding:         true,
+			TableFormatting:     "enhanced",
+			MaxTableRows:        25,
+			AttachmentThreshold: 2000,
+		},
+	}
+
+	d, err := factory.CreateDestination(dest)
+	require.NoError(t, err)
+	assert.NotNil(t, d)
+
+	// Verify that it created a Slack destination
+	// Note: We can't easily test the internal configuration conversion without exposing internal fields
+	// This test mainly ensures the factory doesn't crash with extended configuration
+}

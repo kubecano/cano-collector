@@ -17,11 +17,31 @@ type DestinationsConfig struct {
 
 // SlackDestination represents a Slack notification destination
 type DestinationSlack struct {
-	Name             string `yaml:"name"`
-	APIKey           string `yaml:"api_key"`
-	SlackChannel     string `yaml:"slack_channel"`
-	GroupingInterval int    `yaml:"grouping_interval,omitempty"`
-	UnfurlLinks      *bool  `yaml:"unfurl_links,omitempty"`
+	Name             string                  `yaml:"name"`
+	APIKey           string                  `yaml:"api_key"`
+	SlackChannel     string                  `yaml:"slack_channel"`
+	GroupingInterval int                     `yaml:"grouping_interval,omitempty"`
+	UnfurlLinks      *bool                   `yaml:"unfurl_links,omitempty"`
+	Threading        *SlackThreadingConfig   `yaml:"threading,omitempty"`
+	Enrichments      *SlackEnrichmentsConfig `yaml:"enrichments,omitempty"`
+}
+
+// SlackThreadingConfig represents thread management settings for Slack
+type SlackThreadingConfig struct {
+	Enabled               bool   `yaml:"enabled"`
+	CacheTTL              string `yaml:"cache_ttl,omitempty"`               // Duration string like "10m"
+	SearchLimit           int    `yaml:"search_limit,omitempty"`            // Max messages to search in history
+	SearchWindow          string `yaml:"search_window,omitempty"`           // Time window string like "24h"
+	FingerprintInMetadata bool   `yaml:"fingerprint_in_metadata,omitempty"` // Include fingerprint in message metadata
+}
+
+// SlackEnrichmentsConfig represents enrichment display settings for Slack
+type SlackEnrichmentsConfig struct {
+	FormatAsBlocks      bool   `yaml:"format_as_blocks,omitempty"`     // Use Slack blocks instead of plain text
+	ColorCoding         bool   `yaml:"color_coding,omitempty"`         // Color-code enrichments by type
+	TableFormatting     string `yaml:"table_formatting,omitempty"`     // "simple", "enhanced", or "attachment"
+	MaxTableRows        int    `yaml:"max_table_rows,omitempty"`       // Convert large tables to files
+	AttachmentThreshold int    `yaml:"attachment_threshold,omitempty"` // Characters threshold for file conversion
 }
 
 //go:generate mockgen -destination=../../mocks/destinations_loader_mock.go -package=mocks github.com/kubecano/cano-collector/config/destination DestinationsLoader
@@ -57,7 +77,7 @@ func parseDestinationsYAML(r io.Reader) (*DestinationsConfig, error) {
 		return nil, fmt.Errorf("failed to decode destinations YAML: %w", err)
 	}
 
-	// Replace environment variable placeholders in Slack destinations
+	// Replace environment variable placeholders and set defaults for Slack destinations
 	for i, d := range config.Destinations.Slack {
 		if strings.HasPrefix(d.APIKey, "${") && strings.HasSuffix(d.APIKey, "}") {
 			envVar := strings.TrimSuffix(strings.TrimPrefix(d.APIKey, "${"), "}")
@@ -67,9 +87,12 @@ func parseDestinationsYAML(r io.Reader) (*DestinationsConfig, error) {
 			}
 			config.Destinations.Slack[i].APIKey = val
 		}
+
+		// Set default values for new configuration options
+		config.Destinations.Slack[i] = setSlackDefaults(config.Destinations.Slack[i])
 	}
 
-	// Validate Slack destinations after environment variables have been replaced
+	// Validate Slack destinations after environment variables have been replaced and defaults set
 	for _, d := range config.Destinations.Slack {
 		if err := validateSlackDestination(d); err != nil {
 			return nil, fmt.Errorf("invalid Slack destination '%s': %w", d.Name, err)
@@ -77,6 +100,51 @@ func parseDestinationsYAML(r io.Reader) (*DestinationsConfig, error) {
 	}
 
 	return &config, nil
+}
+
+// setSlackDefaults sets default values for Slack destination configuration
+func setSlackDefaults(d DestinationSlack) DestinationSlack {
+	// Set threading defaults if threading config is present
+	if d.Threading != nil {
+		if d.Threading.CacheTTL == "" {
+			d.Threading.CacheTTL = "10m"
+		}
+		if d.Threading.SearchLimit == 0 {
+			d.Threading.SearchLimit = 100
+		}
+		if d.Threading.SearchWindow == "" {
+			d.Threading.SearchWindow = "24h"
+		}
+		// FingerprintInMetadata defaults to true when threading is enabled
+		if !d.Threading.Enabled {
+			// If threading is explicitly disabled, ensure defaults don't override
+		} else {
+			d.Threading.FingerprintInMetadata = true
+		}
+	}
+
+	// Set enrichments defaults if enrichments config is present
+	if d.Enrichments != nil {
+		// FormatAsBlocks defaults to true
+		if !d.Enrichments.FormatAsBlocks {
+			d.Enrichments.FormatAsBlocks = true
+		}
+		// ColorCoding defaults to true
+		if !d.Enrichments.ColorCoding {
+			d.Enrichments.ColorCoding = true
+		}
+		if d.Enrichments.TableFormatting == "" {
+			d.Enrichments.TableFormatting = "enhanced"
+		}
+		if d.Enrichments.MaxTableRows == 0 {
+			d.Enrichments.MaxTableRows = 20
+		}
+		if d.Enrichments.AttachmentThreshold == 0 {
+			d.Enrichments.AttachmentThreshold = 1000
+		}
+	}
+
+	return d
 }
 
 func validateSlackDestination(d DestinationSlack) error {
@@ -100,6 +168,74 @@ func validateSlackDestination(d DestinationSlack) error {
 	// Validate grouping_interval if provided
 	if d.GroupingInterval < 0 {
 		return fmt.Errorf("grouping_interval must be non-negative")
+	}
+
+	// Validate threading configuration
+	if d.Threading != nil {
+		if err := validateThreadingConfig(*d.Threading); err != nil {
+			return fmt.Errorf("invalid threading config: %w", err)
+		}
+	}
+
+	// Validate enrichments configuration
+	if d.Enrichments != nil {
+		if err := validateEnrichmentsConfig(*d.Enrichments); err != nil {
+			return fmt.Errorf("invalid enrichments config: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func validateThreadingConfig(c SlackThreadingConfig) error {
+	if c.SearchLimit < 0 {
+		return fmt.Errorf("search_limit must be non-negative")
+	}
+	if c.SearchLimit > 1000 {
+		return fmt.Errorf("search_limit must not exceed 1000")
+	}
+
+	// Validate cache_ttl duration string format if provided
+	if c.CacheTTL != "" {
+		// Simple validation - more detailed parsing will be done at runtime
+		if !strings.HasSuffix(c.CacheTTL, "s") && !strings.HasSuffix(c.CacheTTL, "m") &&
+			!strings.HasSuffix(c.CacheTTL, "h") {
+			return fmt.Errorf("cache_ttl must be a valid duration (e.g., '10m', '1h')")
+		}
+	}
+
+	// Validate search_window duration string format if provided
+	if c.SearchWindow != "" {
+		if !strings.HasSuffix(c.SearchWindow, "s") && !strings.HasSuffix(c.SearchWindow, "m") &&
+			!strings.HasSuffix(c.SearchWindow, "h") && !strings.HasSuffix(c.SearchWindow, "d") {
+			return fmt.Errorf("search_window must be a valid duration (e.g., '24h', '1d')")
+		}
+	}
+
+	return nil
+}
+
+func validateEnrichmentsConfig(c SlackEnrichmentsConfig) error {
+	if c.TableFormatting != "" {
+		validFormats := []string{"simple", "enhanced", "attachment"}
+		valid := false
+		for _, format := range validFormats {
+			if c.TableFormatting == format {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			return fmt.Errorf("table_formatting must be one of: %s", strings.Join(validFormats, ", "))
+		}
+	}
+
+	if c.MaxTableRows < 0 {
+		return fmt.Errorf("max_table_rows must be non-negative")
+	}
+
+	if c.AttachmentThreshold < 0 {
+		return fmt.Errorf("attachment_threshold must be non-negative")
 	}
 
 	return nil
