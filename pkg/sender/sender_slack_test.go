@@ -468,29 +468,6 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 		assert.Contains(t, text, "\"test\": \"value\"")
 	})
 
-	// Note: getEnrichmentColor method is no longer used with blocks implementation
-	// but keeping test for potential future use or backwards compatibility
-	t.Run("returns correct colors for enrichment types", func(t *testing.T) {
-		tests := []struct {
-			enrichmentType issuepkg.EnrichmentType
-			expectedColor  string
-		}{
-			{issuepkg.EnrichmentTypeAlertLabels, "#17A2B8"},
-			{issuepkg.EnrichmentTypeAlertAnnotations, "#6610F2"},
-			{issuepkg.EnrichmentTypeGraph, "#28A745"},
-			{issuepkg.EnrichmentTypeAIAnalysis, "#FD7E14"},
-		}
-
-		for _, test := range tests {
-			color := slackSender.getEnrichmentColor(&test.enrichmentType)
-			assert.Equal(t, test.expectedColor, color)
-		}
-
-		// Test nil enrichment type
-		color := slackSender.getEnrichmentColor(nil)
-		assert.Equal(t, "#E8E8E8", color)
-	})
-
 	t.Run("formats header blocks correctly", func(t *testing.T) {
 		headerBlock := &issuepkg.HeaderBlock{
 			Text: "Test Header",
@@ -581,7 +558,7 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 	t.Run("formats divider blocks correctly", func(t *testing.T) {
 		dividerBlock := &issuepkg.DividerBlock{}
 
-		slackBlock := slackSender.convertDividerBlockToSlack(dividerBlock)
+		slackBlock := slackSender.convertBlockToSlack(dividerBlock)
 
 		_, ok := slackBlock.(*slack.DividerBlock)
 		assert.True(t, ok, "Expected divider block")
