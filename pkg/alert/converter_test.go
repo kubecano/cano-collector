@@ -9,6 +9,7 @@ import (
 
 	"github.com/kubecano/cano-collector/pkg/alert/model"
 	"github.com/kubecano/cano-collector/pkg/core/issue"
+	"github.com/kubecano/cano-collector/pkg/enrichment"
 	"github.com/kubecano/cano-collector/pkg/logger"
 )
 
@@ -517,5 +518,134 @@ func TestConverter_FingerprintHandling(t *testing.T) {
 
 		// Should generate same fingerprints for identical alerts
 		assert.Equal(t, iss1.Fingerprint, iss2.Fingerprint)
+	})
+}
+
+func TestConverter_LabelEnrichmentIntegration(t *testing.T) {
+	converter := NewConverter(logger.NewLogger("info", "test"))
+
+	t.Run("adds label and annotation enrichments", func(t *testing.T) {
+		alert := model.PrometheusAlert{
+			Status:      "firing",
+			Fingerprint: "test-fingerprint",
+			StartsAt:    time.Now(),
+			Labels: map[string]string{
+				"alertname": "HighCPUUsage",
+				"severity":  "critical",
+				"pod":       "test-pod",
+				"namespace": "test-namespace",
+				"job":       "prometheus", // This should be excluded by default
+			},
+			Annotations: map[string]string{
+				"summary":     "High CPU usage detected",
+				"description": "CPU usage is above 90%",
+			},
+		}
+
+		iss, err := converter.convertPrometheusAlertToIssue(alert)
+
+		require.NoError(t, err)
+		require.NotNil(t, iss)
+
+		// Verify that enrichments were added
+		assert.Len(t, iss.Enrichments, 2) // labels + annotations
+
+		// Verify labels enrichment
+		labelsEnrichment := iss.Enrichments[0]
+		assert.Equal(t, "Alert Labels", *labelsEnrichment.Title)
+		assert.Equal(t, issue.EnrichmentTypeAlertLabels, *labelsEnrichment.EnrichmentType)
+		assert.Len(t, labelsEnrichment.Blocks, 1)
+
+		// Verify that the labels block is a table
+		tableBlock, ok := labelsEnrichment.Blocks[0].(*issue.TableBlock)
+		require.True(t, ok, "Expected table block for labels")
+		assert.Equal(t, []string{"Label", "Value"}, tableBlock.Headers)
+
+		// Verify that "job" label was excluded by default
+		jobFound := false
+		for _, row := range tableBlock.Rows {
+			if len(row) >= 2 && row[0] == "job" {
+				jobFound = true
+				break
+			}
+		}
+		assert.False(t, jobFound, "Expected 'job' label to be excluded by default")
+
+		// Verify annotations enrichment
+		annotationsEnrichment := iss.Enrichments[1]
+		assert.Equal(t, "Alert Annotations", *annotationsEnrichment.Title)
+		assert.Equal(t, issue.EnrichmentTypeAlertAnnotations, *annotationsEnrichment.EnrichmentType)
+		assert.Len(t, annotationsEnrichment.Blocks, 1)
+
+		// Verify that the annotations block is a table
+		annotationsTableBlock, ok := annotationsEnrichment.Blocks[0].(*issue.TableBlock)
+		require.True(t, ok, "Expected table block for annotations")
+		assert.Equal(t, []string{"Annotation", "Value"}, annotationsTableBlock.Headers)
+		assert.Len(t, annotationsTableBlock.Rows, 2) // summary + description
+	})
+
+	t.Run("works with custom enrichment config", func(t *testing.T) {
+		// Create converter with custom config that includes "job" label
+		enrichmentConfig := &enrichment.LabelEnrichmentConfig{
+			EnableLabels:      true,
+			EnableAnnotations: false,                // Disable annotations
+			ExcludeLabels:     []string{"__name__"}, // Only exclude __name__
+			DisplayFormat:     "json",
+		}
+		customConverter := NewConverterWithEnrichmentConfig(logger.NewLogger("info", "test"), enrichmentConfig)
+
+		alert := model.PrometheusAlert{
+			Status:      "firing",
+			Fingerprint: "test-fingerprint",
+			StartsAt:    time.Now(),
+			Labels: map[string]string{
+				"alertname": "HighCPUUsage",
+				"severity":  "critical",
+				"job":       "prometheus", // This should now be included
+			},
+			Annotations: map[string]string{
+				"summary": "High CPU usage detected",
+			},
+		}
+
+		iss, err := customConverter.convertPrometheusAlertToIssue(alert)
+
+		require.NoError(t, err)
+		require.NotNil(t, iss)
+
+		// Should only have labels enrichment (annotations disabled)
+		assert.Len(t, iss.Enrichments, 1)
+
+		// Verify that the block is a JSON block
+		jsonBlock, ok := iss.Enrichments[0].Blocks[0].(*issue.JsonBlock)
+		require.True(t, ok, "Expected JSON block for labels")
+
+		// Verify that "job" label is included
+		labelsData, ok := jsonBlock.Data.(map[string]string)
+		require.True(t, ok, "Expected map[string]string data")
+		assert.Contains(t, labelsData, "job")
+		assert.Equal(t, "prometheus", labelsData["job"])
+	})
+
+	t.Run("handles enrichment errors gracefully", func(t *testing.T) {
+		// Create alert without labels/annotations to test edge case
+		alert := model.PrometheusAlert{
+			Status:      "firing",
+			Fingerprint: "test-fingerprint",
+			StartsAt:    time.Now(),
+			Labels: map[string]string{
+				"alertname": "TestAlert",
+			},
+			Annotations: map[string]string{},
+		}
+
+		iss, err := converter.convertPrometheusAlertToIssue(alert)
+
+		// Should not fail even if enrichment has issues
+		require.NoError(t, err)
+		require.NotNil(t, iss)
+
+		// Should have one enrichment (labels only, since annotations is empty)
+		assert.Len(t, iss.Enrichments, 1)
 	})
 }

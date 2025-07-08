@@ -10,6 +10,7 @@ import (
 
 	"github.com/kubecano/cano-collector/mocks"
 	issuepkg "github.com/kubecano/cano-collector/pkg/core/issue"
+	"github.com/slack-go/slack"
 )
 
 func setupSenderSlackTest(t *testing.T) (*SenderSlack, *mocks.MockSlackClientInterface) {
@@ -297,4 +298,184 @@ func TestSenderSlack_BuildLinkButtons_LimitToFive(t *testing.T) {
 
 	// Should limit to 5 buttons to avoid Slack limits
 	assert.Len(t, buttons, 5)
+}
+
+func TestSenderSlack_EnrichmentSupport(t *testing.T) {
+	slackSender, mockClient := setupSenderSlackTest(t)
+
+	t.Run("builds enrichment attachments for table blocks", func(t *testing.T) {
+		// Create issue with table enrichments
+		issue := &issuepkg.Issue{
+			Title:       "Test Alert with Enrichments",
+			Description: "Alert with label and annotation enrichments",
+			Severity:    issuepkg.SeverityHigh,
+			Status:      issuepkg.StatusFiring,
+			Source:      issuepkg.SourcePrometheus,
+		}
+
+		// Add label enrichment
+		labelEnrichment := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertLabels, "Alert Labels")
+		tableBlock := &issuepkg.TableBlock{
+			Headers: []string{"Label", "Value"},
+			Rows: [][]string{
+				{"alertname", "TestAlert"},
+				{"severity", "critical"},
+				{"namespace", "default"},
+			},
+		}
+		labelEnrichment.AddBlock(tableBlock)
+		issue.AddEnrichment(*labelEnrichment)
+
+		// Add annotation enrichment
+		annotationEnrichment := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertAnnotations, "Alert Annotations")
+		annotationTableBlock := &issuepkg.TableBlock{
+			Headers: []string{"Annotation", "Value"},
+			Rows: [][]string{
+				{"summary", "Test alert summary"},
+				{"description", "Test alert description"},
+			},
+		}
+		annotationEnrichment.AddBlock(annotationTableBlock)
+		issue.AddEnrichment(*annotationEnrichment)
+
+		// Mock successful Slack API call
+		mockClient.EXPECT().PostMessage(
+			"#test-channel",
+			gomock.Any(),
+			gomock.Any(),
+			gomock.Any(),
+			gomock.Any(),
+		).Return("", "", nil)
+
+		// Send the issue
+		err := slackSender.Send(context.Background(), issue)
+
+		// Verify
+		assert.NoError(t, err)
+
+		// Test attachment building directly
+		attachments := slackSender.buildSlackAttachments(issue)
+
+		// Should have main attachment + 2 enrichment attachments
+		assert.Len(t, attachments, 3)
+
+		// Verify enrichment attachments have the right colors
+		assert.Equal(t, "#17A2B8", attachments[1].Color) // Blue for labels
+		assert.Equal(t, "#6610F2", attachments[2].Color) // Purple for annotations
+	})
+
+	t.Run("builds enrichment attachments for json blocks", func(t *testing.T) {
+		issue := &issuepkg.Issue{
+			Title:    "Test Alert with JSON Enrichment",
+			Severity: issuepkg.SeverityLow,
+			Status:   issuepkg.StatusFiring,
+			Source:   issuepkg.SourcePrometheus,
+		}
+
+		// Add JSON enrichment
+		jsonEnrichment := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertLabels, "Alert Labels (JSON)")
+		jsonBlock := &issuepkg.JsonBlock{
+			Data: map[string]string{
+				"alertname": "TestAlert",
+				"severity":  "warning",
+			},
+		}
+		jsonEnrichment.AddBlock(jsonBlock)
+		issue.AddEnrichment(*jsonEnrichment)
+
+		// Test attachment building
+		attachments := slackSender.buildSlackAttachments(issue)
+
+		// Should have main attachment + 1 enrichment attachment
+		assert.Len(t, attachments, 2)
+
+		// Verify the JSON enrichment attachment
+		jsonAttachment := attachments[1]
+		assert.Equal(t, "#17A2B8", jsonAttachment.Color) // Blue for labels
+		assert.Len(t, jsonAttachment.Blocks.BlockSet, 2) // Title + JSON content
+
+		// Verify that the JSON block was converted to a section block
+		contentBlock := jsonAttachment.Blocks.BlockSet[1]
+		sectionBlock, ok := contentBlock.(*slack.SectionBlock)
+		assert.True(t, ok, "Expected section block for JSON content")
+		assert.Contains(t, sectionBlock.Text.Text, "```") // Should be wrapped in code block
+	})
+
+	t.Run("handles empty enrichments gracefully", func(t *testing.T) {
+		issue := &issuepkg.Issue{
+			Title:    "Test Alert with Empty Enrichments",
+			Severity: issuepkg.SeverityInfo,
+			Status:   issuepkg.StatusFiring,
+			Source:   issuepkg.SourcePrometheus,
+		}
+
+		// Add enrichment with no blocks
+		emptyEnrichment := issuepkg.NewEnrichment()
+		issue.AddEnrichment(*emptyEnrichment)
+
+		// Test attachment building
+		attachments := slackSender.buildSlackAttachments(issue)
+
+		// Should only have main attachment (empty enrichment should be skipped)
+		assert.Len(t, attachments, 1)
+	})
+
+	t.Run("formats table blocks correctly", func(t *testing.T) {
+		tableBlock := &issuepkg.TableBlock{
+			Headers:   []string{"Label", "Value"},
+			TableName: "Test Table",
+			Rows: [][]string{
+				{"key1", "value1"},
+				{"key2", "value2"},
+			},
+		}
+
+		slackBlock := slackSender.convertTableBlockToSlack(tableBlock)
+
+		sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+		assert.True(t, ok, "Expected section block")
+
+		text := sectionBlock.Text.Text
+		assert.Contains(t, text, "*Test Table*")
+		assert.Contains(t, text, "• key1: `value1`")
+		assert.Contains(t, text, "• key2: `value2`")
+	})
+
+	t.Run("formats json blocks correctly", func(t *testing.T) {
+		jsonBlock := &issuepkg.JsonBlock{
+			Data: map[string]string{
+				"test": "value",
+			},
+		}
+
+		slackBlock := slackSender.convertJsonBlockToSlack(jsonBlock)
+
+		sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+		assert.True(t, ok, "Expected section block")
+
+		text := sectionBlock.Text.Text
+		assert.Contains(t, text, "```")
+		assert.Contains(t, text, "\"test\": \"value\"")
+	})
+
+	t.Run("returns correct colors for enrichment types", func(t *testing.T) {
+		tests := []struct {
+			enrichmentType issuepkg.EnrichmentType
+			expectedColor  string
+		}{
+			{issuepkg.EnrichmentTypeAlertLabels, "#17A2B8"},
+			{issuepkg.EnrichmentTypeAlertAnnotations, "#6610F2"},
+			{issuepkg.EnrichmentTypeGraph, "#28A745"},
+			{issuepkg.EnrichmentTypeAIAnalysis, "#FD7E14"},
+		}
+
+		for _, test := range tests {
+			color := slackSender.getEnrichmentColor(&test.enrichmentType)
+			assert.Equal(t, test.expectedColor, color)
+		}
+
+		// Test nil enrichment type
+		color := slackSender.getEnrichmentColor(nil)
+		assert.Equal(t, "#E8E8E8", color)
+	})
 }

@@ -1,6 +1,7 @@
 package issue
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -167,4 +168,30 @@ func (tb *TableBlock) GetColumnCount() int {
 		}
 	}
 	return numColumns
+}
+
+// JsonBlock represents a block of JSON content
+type JsonBlock struct {
+	Data interface{} `json:"data"`
+}
+
+// BlockType returns the type of this block
+func (jb *JsonBlock) BlockType() string {
+	return "json"
+}
+
+// NewJsonBlock creates a new JsonBlock
+func NewJsonBlock(data interface{}) *JsonBlock {
+	return &JsonBlock{
+		Data: data,
+	}
+}
+
+// ToJson converts the data to JSON string
+func (jb *JsonBlock) ToJson() string {
+	jsonBytes, err := json.MarshalIndent(jb.Data, "", "  ")
+	if err != nil {
+		return fmt.Sprintf("Error marshaling JSON: %v", err)
+	}
+	return string(jsonBytes)
 }

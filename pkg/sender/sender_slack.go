@@ -158,7 +158,146 @@ func (s *SenderSlack) buildSlackAttachments(issue *issuepkg.Issue) []slack.Attac
 	}
 
 	attachments = append(attachments, attachment)
+
+	// Add enrichments as separate attachments
+	enrichmentAttachments := s.buildEnrichmentAttachments(issue.Enrichments)
+	attachments = append(attachments, enrichmentAttachments...)
+
 	return attachments
+}
+
+// buildEnrichmentAttachments creates separate attachments for each enrichment
+func (s *SenderSlack) buildEnrichmentAttachments(enrichments []issuepkg.Enrichment) []slack.Attachment {
+	var attachments []slack.Attachment
+
+	for _, enrichment := range enrichments {
+		attachment := s.buildSingleEnrichmentAttachment(enrichment)
+		if attachment != nil {
+			attachments = append(attachments, *attachment)
+		}
+	}
+
+	return attachments
+}
+
+// buildSingleEnrichmentAttachment creates an attachment for a single enrichment
+func (s *SenderSlack) buildSingleEnrichmentAttachment(enrichment issuepkg.Enrichment) *slack.Attachment {
+	if len(enrichment.Blocks) == 0 {
+		return nil
+	}
+
+	var attachmentBlocks []slack.Block
+
+	// Add title if available
+	if enrichment.Title != nil && *enrichment.Title != "" {
+		titleBlock := slack.NewSectionBlock(
+			slack.NewTextBlockObject("mrkdwn", fmt.Sprintf("*%s*", *enrichment.Title), false, false),
+			nil, nil,
+		)
+		attachmentBlocks = append(attachmentBlocks, titleBlock)
+	}
+
+	// Process each block in the enrichment
+	for _, block := range enrichment.Blocks {
+		slackBlock := s.convertBlockToSlack(block)
+		if slackBlock != nil {
+			attachmentBlocks = append(attachmentBlocks, slackBlock)
+		}
+	}
+
+	if len(attachmentBlocks) == 0 {
+		return nil
+	}
+
+	// Choose color based on enrichment type
+	color := s.getEnrichmentColor(enrichment.EnrichmentType)
+
+	return &slack.Attachment{
+		Color:  color,
+		Blocks: slack.Blocks{BlockSet: attachmentBlocks},
+	}
+}
+
+// convertBlockToSlack converts an issue block to a Slack block
+func (s *SenderSlack) convertBlockToSlack(block issuepkg.BaseBlock) slack.Block {
+	switch b := block.(type) {
+	case *issuepkg.TableBlock:
+		return s.convertTableBlockToSlack(b)
+	case *issuepkg.JsonBlock:
+		return s.convertJsonBlockToSlack(b)
+	case *issuepkg.MarkdownBlock:
+		return s.convertMarkdownBlockToSlack(b)
+	default:
+		// Fallback - convert unknown block to text
+		return slack.NewSectionBlock(
+			slack.NewTextBlockObject("mrkdwn", fmt.Sprintf("Unknown block type: %s", block.BlockType()), false, false),
+			nil, nil,
+		)
+	}
+}
+
+// convertTableBlockToSlack converts a table block to Slack section block
+func (s *SenderSlack) convertTableBlockToSlack(table *issuepkg.TableBlock) slack.Block {
+	// Slack has limitations on table formatting, so we'll use a formatted text block
+	// For better display, we'll format it as a list
+	var text string
+	if table.TableName != "" {
+		text = fmt.Sprintf("*%s*\n", table.TableName)
+	}
+
+	// Add rows as key-value pairs for better readability
+	for _, row := range table.Rows {
+		if len(row) >= 2 {
+			text += fmt.Sprintf("• %s: `%s`\n", row[0], row[1])
+		}
+	}
+
+	return slack.NewSectionBlock(
+		slack.NewTextBlockObject("mrkdwn", text, false, false),
+		nil, nil,
+	)
+}
+
+// convertJsonBlockToSlack converts a JSON block to Slack section block
+func (s *SenderSlack) convertJsonBlockToSlack(jsonBlock *issuepkg.JsonBlock) slack.Block {
+	// Convert JSON to formatted string
+	jsonStr := jsonBlock.ToJson()
+
+	// Wrap in code block for better formatting
+	text := fmt.Sprintf("```\n%s\n```", jsonStr)
+
+	return slack.NewSectionBlock(
+		slack.NewTextBlockObject("mrkdwn", text, false, false),
+		nil, nil,
+	)
+}
+
+// convertMarkdownBlockToSlack converts a markdown block to Slack section block
+func (s *SenderSlack) convertMarkdownBlockToSlack(markdown *issuepkg.MarkdownBlock) slack.Block {
+	return slack.NewSectionBlock(
+		slack.NewTextBlockObject("mrkdwn", markdown.Text, false, false),
+		nil, nil,
+	)
+}
+
+// getEnrichmentColor returns color for enrichment attachments based on type
+func (s *SenderSlack) getEnrichmentColor(enrichmentType *issuepkg.EnrichmentType) string {
+	if enrichmentType == nil {
+		return "#E8E8E8" // Light gray for unknown
+	}
+
+	switch *enrichmentType {
+	case issuepkg.EnrichmentTypeAlertLabels:
+		return "#17A2B8" // Blue for labels
+	case issuepkg.EnrichmentTypeAlertAnnotations:
+		return "#6610F2" // Purple for annotations
+	case issuepkg.EnrichmentTypeGraph:
+		return "#28A745" // Green for graphs
+	case issuepkg.EnrichmentTypeAIAnalysis:
+		return "#FD7E14" // Orange for AI
+	default:
+		return "#E8E8E8" // Light gray for others
+	}
 }
 
 // formatHeader creates the header text with status and severity
