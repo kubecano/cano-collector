@@ -381,10 +381,10 @@ func TestValidateThreadingConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateThreadingConfig(tt.config)
 			if tt.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errMsg)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -438,10 +438,10 @@ func TestValidateEnrichmentsConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateEnrichmentsConfig(tt.config)
 			if tt.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errMsg)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}
