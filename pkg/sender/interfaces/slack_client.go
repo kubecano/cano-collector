@@ -12,4 +12,5 @@ type SlackClientInterface interface {
 	AuthTest() (*slack.AuthTestResponse, error)
 	UpdateMessage(channelID, timestamp string, options ...slack.MsgOption) (string, string, string, error)
 	UploadFileV2(params slack.UploadFileV2Parameters) (*slack.FileSummary, error)
+	GetConversationHistory(params *slack.GetConversationHistoryParameters) (*slack.GetConversationHistoryResponse, error)
 }

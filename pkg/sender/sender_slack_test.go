@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -15,7 +16,7 @@ import (
 	issuepkg "github.com/kubecano/cano-collector/pkg/core/issue"
 )
 
-func setupSenderSlackTest(t *testing.T) (*SenderSlack, *mocks.MockSlackClientInterface) {
+func setupSenderSlackTest(t *testing.T) (*SenderSlack, *mocks.MockSlackClientInterface, *mocks.MockLoggerInterface) {
 	t.Helper()
 	ctrl := gomock.NewController(t)
 
@@ -37,11 +38,11 @@ func setupSenderSlackTest(t *testing.T) (*SenderSlack, *mocks.MockSlackClientInt
 		unfurlLinks: true,
 		slackClient: mockSlackClient,
 	}
-	return sender, mockSlackClient
+	return sender, mockSlackClient, mockLogger
 }
 
 func TestSenderSlack_Send_Success(t *testing.T) {
-	slackSender, mockSlackClient := setupSenderSlackTest(t)
+	slackSender, mockSlackClient, _ := setupSenderSlackTest(t)
 
 	ctx := context.Background()
 	testIssue := &issuepkg.Issue{
@@ -76,7 +77,7 @@ func TestSenderSlack_Config(t *testing.T) {
 }
 
 func TestSlackSender_SetUnfurlLinks(t *testing.T) {
-	slackSender, _ := setupSenderSlackTest(t)
+	slackSender, _, _ := setupSenderSlackTest(t)
 
 	slackSender.SetUnfurlLinks(false)
 	assert.False(t, slackSender.unfurlLinks)
@@ -88,7 +89,7 @@ func TestSlackSender_SetUnfurlLinks(t *testing.T) {
 // Formatting tests
 
 func TestSenderSlack_GetSeverityColor(t *testing.T) {
-	slackSender, _ := setupSenderSlackTest(t)
+	slackSender, _, _ := setupSenderSlackTest(t)
 
 	tests := []struct {
 		severity issuepkg.Severity
@@ -107,7 +108,7 @@ func TestSenderSlack_GetSeverityColor(t *testing.T) {
 }
 
 func TestSenderSlack_FormatHeader(t *testing.T) {
-	slackSender, _ := setupSenderSlackTest(t)
+	slackSender, _, _ := setupSenderSlackTest(t)
 
 	// Test firing alert
 	firingIssue := &issuepkg.Issue{
@@ -137,7 +138,7 @@ func TestSenderSlack_FormatHeader(t *testing.T) {
 }
 
 func TestSenderSlack_FormatLabels(t *testing.T) {
-	slackSender, _ := setupSenderSlackTest(t)
+	slackSender, _, _ := setupSenderSlackTest(t)
 
 	// Test with labels
 	labels := map[string]string{
@@ -158,7 +159,7 @@ func TestSenderSlack_FormatLabels(t *testing.T) {
 }
 
 func TestSenderSlack_BuildSlackBlocks(t *testing.T) {
-	slackSender, _ := setupSenderSlackTest(t)
+	slackSender, _, _ := setupSenderSlackTest(t)
 
 	// Test issue with links
 	issue := &issuepkg.Issue{
@@ -188,7 +189,7 @@ func TestSenderSlack_BuildSlackBlocks(t *testing.T) {
 }
 
 func TestSenderSlack_BuildSlackAttachments(t *testing.T) {
-	slackSender, _ := setupSenderSlackTest(t)
+	slackSender, _, _ := setupSenderSlackTest(t)
 
 	// Test issue with subject and labels
 	subject := issuepkg.NewSubject("test-pod", issuepkg.SubjectTypePod)
@@ -222,7 +223,7 @@ func TestSenderSlack_BuildSlackAttachments(t *testing.T) {
 }
 
 func TestSenderSlack_FormatIssueToString(t *testing.T) {
-	slackSender, _ := setupSenderSlackTest(t)
+	slackSender, _, _ := setupSenderSlackTest(t)
 
 	// Test firing issue
 	firingIssue := &issuepkg.Issue{
@@ -263,7 +264,7 @@ func TestSenderSlack_FormatIssueToString(t *testing.T) {
 }
 
 func TestSenderSlack_BuildLinkButtons(t *testing.T) {
-	slackSender, _ := setupSenderSlackTest(t)
+	slackSender, _, _ := setupSenderSlackTest(t)
 
 	links := []issuepkg.Link{
 		{Text: "Dashboard", URL: "https://example.com/dashboard"},
@@ -285,7 +286,7 @@ func TestSenderSlack_BuildLinkButtons(t *testing.T) {
 }
 
 func TestSenderSlack_BuildLinkButtons_LimitToFive(t *testing.T) {
-	slackSender, _ := setupSenderSlackTest(t)
+	slackSender, _, _ := setupSenderSlackTest(t)
 
 	// Create more than 5 links
 	links := make([]issuepkg.Link, 7)
@@ -303,70 +304,68 @@ func TestSenderSlack_BuildLinkButtons_LimitToFive(t *testing.T) {
 }
 
 func TestSenderSlack_EnrichmentSupport(t *testing.T) {
-	slackSender, mockClient := setupSenderSlackTest(t)
+	slackSender, _, _ := setupSenderSlackTest(t)
 
-	t.Run("builds enrichment attachments for table blocks", func(t *testing.T) {
-		// Create issue with table enrichments
+	t.Run("builds enrichment blocks for table blocks", func(t *testing.T) {
 		issue := &issuepkg.Issue{
-			Title:       "Test Alert with Enrichments",
-			Description: "Alert with label and annotation enrichments",
-			Severity:    issuepkg.SeverityHigh,
-			Status:      issuepkg.StatusFiring,
-			Source:      issuepkg.SourcePrometheus,
+			Title:    "Test Alert with Table Enrichments",
+			Severity: issuepkg.SeverityHigh,
+			Status:   issuepkg.StatusFiring,
+			Source:   issuepkg.SourcePrometheus,
 		}
 
-		// Add label enrichment
-		labelEnrichment := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertLabels, "Alert Labels")
-		tableBlock := &issuepkg.TableBlock{
-			Headers: []string{"Label", "Value"},
+		// Add labels enrichment with table block
+		labelsEnrichment := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertLabels, "Alert Labels")
+		labelsTable := &issuepkg.TableBlock{
+			Headers:   []string{"Label", "Value"},
+			TableName: "Alert Labels",
 			Rows: [][]string{
 				{"alertname", "TestAlert"},
-				{"severity", "critical"},
-				{"namespace", "default"},
+				{"severity", "warning"},
 			},
 		}
-		labelEnrichment.AddBlock(tableBlock)
-		issue.AddEnrichment(*labelEnrichment)
+		labelsEnrichment.AddBlock(labelsTable)
+		issue.AddEnrichment(*labelsEnrichment)
 
-		// Add annotation enrichment
-		annotationEnrichment := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertAnnotations, "Alert Annotations")
-		annotationTableBlock := &issuepkg.TableBlock{
-			Headers: []string{"Annotation", "Value"},
+		// Add annotations enrichment with table block
+		annotationsEnrichment := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertAnnotations, "Alert Annotations")
+		annotationsTable := &issuepkg.TableBlock{
+			Headers:   []string{"Annotation", "Value"},
+			TableName: "Alert Annotations",
 			Rows: [][]string{
-				{"summary", "Test alert summary"},
-				{"description", "Test alert description"},
+				{"summary", "Test summary"},
+				{"description", "Test description"},
 			},
 		}
-		annotationEnrichment.AddBlock(annotationTableBlock)
-		issue.AddEnrichment(*annotationEnrichment)
+		annotationsEnrichment.AddBlock(annotationsTable)
+		issue.AddEnrichment(*annotationsEnrichment)
 
-		// Mock successful Slack API call
-		mockClient.EXPECT().PostMessage(
-			"#test-channel",
-			gomock.Any(),
-			gomock.Any(),
-			gomock.Any(),
-			gomock.Any(),
-		).Return("", "", nil)
+		// Test block building directly
+		blocks := slackSender.buildSlackBlocks(issue)
 
-		// Send the issue
-		err := slackSender.Send(context.Background(), issue)
+		// Should have: header + enrichment blocks + links
+		// Each enrichment: header + section + divider = 3 blocks per enrichment
+		// Total: 1 (header) + 6 (2 enrichments * 3) + 0 (no links) = 7 blocks
+		assert.GreaterOrEqual(t, len(blocks), 6, "Should have header block + enrichment blocks")
 
-		// Verify
-		require.NoError(t, err)
+		// Test enrichment blocks building directly
+		enrichmentBlocks := slackSender.buildEnrichmentBlocks(issue.Enrichments)
 
-		// Test attachment building directly
-		attachments := slackSender.buildSlackAttachments(issue)
+		// Should have 6 blocks: 2 enrichments * (header + section + divider) = 6 blocks
+		assert.Len(t, enrichmentBlocks, 6)
 
-		// Should have main attachment + 2 enrichment attachments
-		assert.Len(t, attachments, 3)
+		// Verify first enrichment blocks (labels)
+		headerBlock1, ok := enrichmentBlocks[0].(*slack.HeaderBlock)
+		assert.True(t, ok, "First block should be header")
+		assert.Equal(t, "Alert Labels", headerBlock1.Text.Text)
 
-		// Verify enrichment attachments have the right colors
-		assert.Equal(t, "#17A2B8", attachments[1].Color) // Blue for labels
-		assert.Equal(t, "#6610F2", attachments[2].Color) // Purple for annotations
+		// Verify second enrichment blocks (annotations)
+		headerBlock2, ok := enrichmentBlocks[3].(*slack.HeaderBlock)
+		assert.True(t, ok, "Fourth block should be header")
+		assert.Equal(t, "Alert Annotations", headerBlock2.Text.Text)
 	})
 
-	t.Run("builds enrichment attachments for json blocks", func(t *testing.T) {
+	t.Run("builds enrichment blocks for json blocks", func(t *testing.T) {
 		issue := &issuepkg.Issue{
 			Title:    "Test Alert with JSON Enrichment",
 			Severity: issuepkg.SeverityLow,
@@ -385,22 +384,26 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 		jsonEnrichment.AddBlock(jsonBlock)
 		issue.AddEnrichment(*jsonEnrichment)
 
-		// Test attachment building
-		attachments := slackSender.buildSlackAttachments(issue)
+		// Test enrichment blocks building
+		enrichmentBlocks := slackSender.buildEnrichmentBlocks(issue.Enrichments)
 
-		// Should have main attachment + 1 enrichment attachment
-		assert.Len(t, attachments, 2)
+		// Should have 3 blocks: header + section + divider
+		assert.Len(t, enrichmentBlocks, 3)
 
-		// Verify the JSON enrichment attachment
-		jsonAttachment := attachments[1]
-		assert.Equal(t, "#17A2B8", jsonAttachment.Color) // Blue for labels
-		assert.Len(t, jsonAttachment.Blocks.BlockSet, 2) // Title + JSON content
+		// Verify header block
+		headerBlock, ok := enrichmentBlocks[0].(*slack.HeaderBlock)
+		assert.True(t, ok, "First block should be header")
+		assert.Equal(t, "Alert Labels (JSON)", headerBlock.Text.Text)
 
-		// Verify that the JSON block was converted to a section block
-		contentBlock := jsonAttachment.Blocks.BlockSet[1]
+		// Verify the JSON block was converted to a section block
+		contentBlock := enrichmentBlocks[1]
 		sectionBlock, ok := contentBlock.(*slack.SectionBlock)
-		assert.True(t, ok, "Expected section block for JSON content")
+		assert.True(t, ok, "Second block should be section block for JSON content")
 		assert.Contains(t, sectionBlock.Text.Text, "```") // Should be wrapped in code block
+
+		// Verify divider block
+		_, ok = enrichmentBlocks[2].(*slack.DividerBlock)
+		assert.True(t, ok, "Third block should be divider")
 	})
 
 	t.Run("handles empty enrichments gracefully", func(t *testing.T) {
@@ -415,11 +418,16 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 		emptyEnrichment := issuepkg.NewEnrichment()
 		issue.AddEnrichment(*emptyEnrichment)
 
-		// Test attachment building
-		attachments := slackSender.buildSlackAttachments(issue)
+		// Test enrichment blocks building
+		enrichmentBlocks := slackSender.buildEnrichmentBlocks(issue.Enrichments)
 
-		// Should only have main attachment (empty enrichment should be skipped)
-		assert.Len(t, attachments, 1)
+		// Should have no blocks (empty enrichment should be skipped)
+		assert.Empty(t, enrichmentBlocks)
+
+		// Test that main blocks building also handles this correctly
+		blocks := slackSender.buildSlackBlocks(issue)
+		// Should only have header block (no enrichment blocks, no links)
+		assert.Len(t, blocks, 1)
 	})
 
 	t.Run("formats table blocks correctly", func(t *testing.T) {
@@ -460,6 +468,8 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 		assert.Contains(t, text, "\"test\": \"value\"")
 	})
 
+	// Note: getEnrichmentColor method is no longer used with blocks implementation
+	// but keeping test for potential future use or backwards compatibility
 	t.Run("returns correct colors for enrichment types", func(t *testing.T) {
 		tests := []struct {
 			enrichmentType issuepkg.EnrichmentType
@@ -480,4 +490,222 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 		color := slackSender.getEnrichmentColor(nil)
 		assert.Equal(t, "#E8E8E8", color)
 	})
+}
+
+// Test threading functionality
+
+func TestSenderSlack_GenerateFingerprint(t *testing.T) {
+	slackSender, _, _ := setupSenderSlackTest(t)
+
+	// Test with issue that has existing fingerprint
+	issueWithFingerprint := &issuepkg.Issue{
+		Title:       "Test Issue",
+		Fingerprint: "existing-fingerprint-123",
+	}
+
+	fingerprint := slackSender.generateFingerprint(issueWithFingerprint)
+	assert.Equal(t, "existing-fingerprint-123", fingerprint)
+
+	// Test with issue without fingerprint - create new sender with additional Debug expectation
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+	mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+
+	testSender := &SenderSlack{
+		logger: mockLogger,
+	}
+
+	subject := issuepkg.NewSubject("test-pod", issuepkg.SubjectTypePod)
+	subject.Namespace = "default"
+
+	issueWithoutFingerprint := &issuepkg.Issue{
+		Title:    "Test Issue Without Fingerprint",
+		Source:   issuepkg.SourcePrometheus,
+		Subject:  subject,
+		StartsAt: time.Unix(1640995200, 0), // Fixed timestamp for test
+	}
+
+	fingerprint = testSender.generateFingerprint(issueWithoutFingerprint)
+	assert.NotEmpty(t, fingerprint)
+	assert.Contains(t, fingerprint, "alert:")
+}
+
+func TestSenderSlack_SetThreadManager(t *testing.T) {
+	slackSender, _, _ := setupSenderSlackTest(t)
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockThreadManager := mocks.NewMockSlackThreadManagerInterface(ctrl)
+	slackSender.SetThreadManager(mockThreadManager)
+
+	assert.Equal(t, mockThreadManager, slackSender.threadManager)
+}
+
+func TestSenderSlack_EnableThreading(t *testing.T) {
+	slackSender, _, _ := setupSenderSlackTest(t)
+
+	// Enable threading with valid configuration
+	cacheTTL := 10 * time.Minute
+	searchLimit := 50
+	searchWindow := 24 * time.Hour
+
+	slackSender.EnableThreading(cacheTTL, searchLimit, searchWindow)
+
+	// Verify that threadManager was set (we can't check internal details)
+	assert.NotNil(t, slackSender.threadManager)
+}
+
+func TestSenderSlack_SetLogger(t *testing.T) {
+	slackSender, _, _ := setupSenderSlackTest(t)
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	newMockLogger := mocks.NewMockLoggerInterface(ctrl)
+	slackSender.SetLogger(newMockLogger)
+
+	assert.Equal(t, newMockLogger, slackSender.logger)
+}
+
+func TestSenderSlack_ConvertMarkdownBlockToSlack(t *testing.T) {
+	slackSender, _, _ := setupSenderSlackTest(t)
+
+	markdownBlock := &issuepkg.MarkdownBlock{
+		Text: "**This is bold text** and *this is italic*",
+	}
+
+	slackBlock := slackSender.convertMarkdownBlockToSlack(markdownBlock)
+
+	sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+	assert.True(t, ok, "Expected section block")
+	assert.Equal(t, "**This is bold text** and *this is italic*", sectionBlock.Text.Text)
+	assert.Equal(t, "mrkdwn", sectionBlock.Text.Type)
+}
+
+func TestSenderSlack_ConvertBlockToSlack_WithMarkdown(t *testing.T) {
+	slackSender, _, _ := setupSenderSlackTest(t)
+
+	// Test with markdown block (this should improve coverage of convertBlockToSlack)
+	markdownBlock := &issuepkg.MarkdownBlock{
+		Text: "# Header\n\nSome **bold** text",
+	}
+
+	slackBlock := slackSender.convertBlockToSlack(markdownBlock)
+
+	sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+	assert.True(t, ok, "Expected section block")
+	assert.Equal(t, "# Header\n\nSome **bold** text", sectionBlock.Text.Text)
+	assert.Equal(t, "mrkdwn", sectionBlock.Text.Type)
+}
+
+// mockUnsupportedBlock is a test mock for unsupported block type
+type mockUnsupportedBlock struct {
+	blockType string
+}
+
+func (m *mockUnsupportedBlock) BlockType() string {
+	return m.blockType
+}
+
+func TestSenderSlack_ConvertBlockToSlack_WithUnsupportedBlock(t *testing.T) {
+	slackSender, _, _ := setupSenderSlackTest(t)
+
+	// Test with unsupported block type (should return fallback section block)
+	mockBlock := &mockUnsupportedBlock{blockType: "unsupported"}
+	slackBlock := slackSender.convertBlockToSlack(mockBlock)
+
+	// Should return a section block with fallback text
+	assert.NotNil(t, slackBlock, "Expected non-nil block for unsupported type")
+	sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+	assert.True(t, ok, "Expected section block for unsupported type")
+	assert.Contains(t, sectionBlock.Text.Text, "Unknown block type: unsupported")
+}
+
+func TestSenderSlack_ConvertBlockToSlack_AllTypes(t *testing.T) {
+	slackSender, _, _ := setupSenderSlackTest(t)
+
+	// Test all supported block types
+	tests := []struct {
+		name  string
+		block issuepkg.BaseBlock
+	}{
+		{
+			name: "TableBlock",
+			block: &issuepkg.TableBlock{
+				Headers:   []string{"Key", "Value"},
+				TableName: "Test Table",
+				Rows: [][]string{
+					{"key1", "value1"},
+				},
+			},
+		},
+		{
+			name: "JsonBlock",
+			block: &issuepkg.JsonBlock{
+				Data: map[string]string{"test": "value"},
+			},
+		},
+		{
+			name: "MarkdownBlock",
+			block: &issuepkg.MarkdownBlock{
+				Text: "**Bold text**",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			slackBlock := slackSender.convertBlockToSlack(tt.block)
+			assert.NotNil(t, slackBlock, "Expected non-nil block for %s", tt.name)
+
+			sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+			assert.True(t, ok, "Expected section block for %s", tt.name)
+			assert.NotEmpty(t, sectionBlock.Text.Text, "Expected non-empty text for %s", tt.name)
+		})
+	}
+}
+
+func TestSenderSlack_EnrichmentBlocks_WithMarkdown(t *testing.T) {
+	slackSender, _, _ := setupSenderSlackTest(t)
+
+	issue := &issuepkg.Issue{
+		Title:    "Test Alert with Markdown Enrichment",
+		Severity: issuepkg.SeverityInfo,
+		Status:   issuepkg.StatusFiring,
+		Source:   issuepkg.SourcePrometheus,
+	}
+
+	// Add markdown enrichment
+	markdownEnrichment := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAIAnalysis, "AI Analysis")
+	markdownBlock := &issuepkg.MarkdownBlock{
+		Text: "## Analysis Result\n\nThis alert indicates a **high CPU usage** on the pod.",
+	}
+	markdownEnrichment.AddBlock(markdownBlock)
+	issue.AddEnrichment(*markdownEnrichment)
+
+	// Test enrichment blocks building
+	enrichmentBlocks := slackSender.buildEnrichmentBlocks(issue.Enrichments)
+
+	// Should have 3 blocks: header + section + divider
+	assert.Len(t, enrichmentBlocks, 3)
+
+	// Verify header block
+	headerBlock, ok := enrichmentBlocks[0].(*slack.HeaderBlock)
+	assert.True(t, ok, "First block should be header")
+	assert.Equal(t, "AI Analysis", headerBlock.Text.Text)
+
+	// Verify the markdown block was converted to a section block
+	contentBlock := enrichmentBlocks[1]
+	sectionBlock, ok := contentBlock.(*slack.SectionBlock)
+	assert.True(t, ok, "Second block should be section block for markdown content")
+	assert.Contains(t, sectionBlock.Text.Text, "## Analysis Result")
+	assert.Contains(t, sectionBlock.Text.Text, "**high CPU usage**")
+	assert.Equal(t, "mrkdwn", sectionBlock.Text.Type)
+
+	// Verify divider block
+	_, ok = enrichmentBlocks[2].(*slack.DividerBlock)
+	assert.True(t, ok, "Third block should be divider")
 }

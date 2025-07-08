@@ -2,7 +2,11 @@ package sender
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/slack-go/slack"
 	"go.uber.org/zap"
@@ -10,6 +14,7 @@ import (
 	issuepkg "github.com/kubecano/cano-collector/pkg/core/issue"
 	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
 	sender_interfaces "github.com/kubecano/cano-collector/pkg/sender/interfaces"
+	slackpkg "github.com/kubecano/cano-collector/pkg/sender/slack"
 	"github.com/kubecano/cano-collector/pkg/util"
 )
 
@@ -19,6 +24,8 @@ type SenderSlack struct {
 	logger      logger_interfaces.LoggerInterface
 	unfurlLinks bool
 	slackClient sender_interfaces.SlackClientInterface
+	// Threading configuration - will be added in next step
+	threadManager sender_interfaces.SlackThreadManagerInterface
 }
 
 func NewSenderSlack(apiKey, channel string, unfurlLinks bool, logger logger_interfaces.LoggerInterface, client util.HTTPClient) *SenderSlack {
@@ -44,6 +51,7 @@ func NewSenderSlack(apiKey, channel string, unfurlLinks bool, logger logger_inte
 func (s *SenderSlack) Send(ctx context.Context, issue *issuepkg.Issue) error {
 	s.logger.Info("Sending Slack notification",
 		zap.String("channel", s.channel),
+		zap.String("status", issue.Status.String()),
 	)
 
 	// Create formatted blocks
@@ -58,13 +66,60 @@ func (s *SenderSlack) Send(ctx context.Context, issue *issuepkg.Issue) error {
 		UnfurlMedia: s.unfurlLinks,
 	}
 
-	_, _, err := s.slackClient.PostMessage(
-		s.channel,
-		slack.MsgOptionText(fallbackText, false),
-		slack.MsgOptionBlocks(blocks...),
-		slack.MsgOptionAttachments(attachments...),
-		slack.MsgOptionPostMessageParameters(params),
-	)
+	var msgOptions []slack.MsgOption
+	msgOptions = append(msgOptions, slack.MsgOptionText(fallbackText, false))
+	msgOptions = append(msgOptions, slack.MsgOptionBlocks(blocks...))
+	msgOptions = append(msgOptions, slack.MsgOptionAttachments(attachments...))
+	msgOptions = append(msgOptions, slack.MsgOptionPostMessageParameters(params))
+
+	// Threading logic: check if we should post as thread reply
+	var threadTS string
+	if s.threadManager != nil {
+		fingerprint := s.generateFingerprint(issue)
+
+		if issue.Status == issuepkg.StatusResolved {
+			// For resolved alerts, try to find existing thread
+			ts, err := s.threadManager.GetThreadTS(ctx, fingerprint)
+			if err != nil {
+				s.logger.Warn("Failed to get thread timestamp",
+					zap.Error(err),
+					zap.String("fingerprint", fingerprint))
+			} else if ts != "" {
+				threadTS = ts
+				s.logger.Debug("Posting resolved alert as thread reply",
+					zap.String("threadTS", threadTS),
+					zap.String("fingerprint", fingerprint))
+			}
+		}
+
+		// Optionally add fingerprint to message metadata for searching
+		// This adds the fingerprint as invisible metadata that can be searched later
+		// We add it as a code block in the message for simple searching
+		fingerprintBlock := slack.NewSectionBlock(
+			slack.NewTextBlockObject("mrkdwn", fmt.Sprintf("```%s```", fingerprint), false, false),
+			nil, nil,
+		)
+		// Add fingerprint block to the end (it will be small and relatively unobtrusive)
+		blocks = append(blocks, fingerprintBlock)
+
+		// Update msgOptions with new blocks that include fingerprint
+		// Find and replace the blocks option instead of recreating the entire slice
+		for i := range msgOptions {
+			// Check if this is the blocks option by trying to replace it
+			if i == 1 { // blocks option is typically the second one
+				msgOptions[i] = slack.MsgOptionBlocks(blocks...)
+				break
+			}
+		}
+
+		// Add thread timestamp if this is a thread reply
+		if threadTS != "" {
+			msgOptions = append(msgOptions, slack.MsgOptionTS(threadTS))
+		}
+	}
+
+	// Send the message
+	_, timestamp, err := s.slackClient.PostMessage(s.channel, msgOptions...)
 	if err != nil {
 		s.logger.Error("Failed to send Slack message",
 			zap.Error(err),
@@ -73,8 +128,18 @@ func (s *SenderSlack) Send(ctx context.Context, issue *issuepkg.Issue) error {
 		return err
 	}
 
+	// For firing alerts, cache the thread timestamp for future resolved alerts
+	if s.threadManager != nil && issue.Status == issuepkg.StatusFiring {
+		fingerprint := s.generateFingerprint(issue)
+		s.threadManager.SetThreadTS(fingerprint, timestamp)
+		s.logger.Debug("Cached thread timestamp for firing alert",
+			zap.String("fingerprint", fingerprint),
+			zap.String("timestamp", timestamp))
+	}
+
 	s.logger.Info("Slack message sent successfully",
 		zap.String("channel", s.channel),
+		zap.String("timestamp", timestamp),
 	)
 	return nil
 }
@@ -90,6 +155,10 @@ func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slack.Block {
 		nil, nil,
 	)
 	blocks = append(blocks, headerBlock)
+
+	// Add enrichments as blocks directly in main message for better visibility
+	enrichmentBlocks := s.buildEnrichmentBlocks(issue.Enrichments)
+	blocks = append(blocks, enrichmentBlocks...)
 
 	// Links as action buttons (without AI/Dashboard buttons for now)
 	if len(issue.Links) > 0 {
@@ -159,63 +228,52 @@ func (s *SenderSlack) buildSlackAttachments(issue *issuepkg.Issue) []slack.Attac
 
 	attachments = append(attachments, attachment)
 
-	// Add enrichments as separate attachments
-	enrichmentAttachments := s.buildEnrichmentAttachments(issue.Enrichments)
-	attachments = append(attachments, enrichmentAttachments...)
-
 	return attachments
 }
 
-// buildEnrichmentAttachments creates separate attachments for each enrichment
-func (s *SenderSlack) buildEnrichmentAttachments(enrichments []issuepkg.Enrichment) []slack.Attachment {
-	var attachments []slack.Attachment
+// buildEnrichmentBlocks creates blocks for enrichments in the main message
+func (s *SenderSlack) buildEnrichmentBlocks(enrichments []issuepkg.Enrichment) []slack.Block {
+	var blocks []slack.Block
 
 	for _, enrichment := range enrichments {
-		attachment := s.buildSingleEnrichmentAttachment(enrichment)
-		if attachment != nil {
-			attachments = append(attachments, *attachment)
-		}
+		enrichmentBlocks := s.convertEnrichmentToBlocks(enrichment)
+		blocks = append(blocks, enrichmentBlocks...)
 	}
 
-	return attachments
+	return blocks
 }
 
-// buildSingleEnrichmentAttachment creates an attachment for a single enrichment
-func (s *SenderSlack) buildSingleEnrichmentAttachment(enrichment issuepkg.Enrichment) *slack.Attachment {
+// convertEnrichmentToBlocks converts a single enrichment to Slack blocks
+func (s *SenderSlack) convertEnrichmentToBlocks(enrichment issuepkg.Enrichment) []slack.Block {
+	var blocks []slack.Block
+
 	if len(enrichment.Blocks) == 0 {
-		return nil
+		return blocks
 	}
 
-	var attachmentBlocks []slack.Block
-
-	// Add title if available
+	// Add enrichment title as header if available
 	if enrichment.Title != nil && *enrichment.Title != "" {
-		titleBlock := slack.NewSectionBlock(
-			slack.NewTextBlockObject("mrkdwn", fmt.Sprintf("*%s*", *enrichment.Title), false, false),
-			nil, nil,
+		titleBlock := slack.NewHeaderBlock(
+			slack.NewTextBlockObject("plain_text", *enrichment.Title, false, false),
 		)
-		attachmentBlocks = append(attachmentBlocks, titleBlock)
+		blocks = append(blocks, titleBlock)
 	}
 
 	// Process each block in the enrichment
 	for _, block := range enrichment.Blocks {
 		slackBlock := s.convertBlockToSlack(block)
 		if slackBlock != nil {
-			attachmentBlocks = append(attachmentBlocks, slackBlock)
+			blocks = append(blocks, slackBlock)
 		}
 	}
 
-	if len(attachmentBlocks) == 0 {
-		return nil
+	// Add divider for visual separation between enrichments
+	if len(blocks) > 0 {
+		dividerBlock := slack.NewDividerBlock()
+		blocks = append(blocks, dividerBlock)
 	}
 
-	// Choose color based on enrichment type
-	color := s.getEnrichmentColor(enrichment.EnrichmentType)
-
-	return &slack.Attachment{
-		Color:  color,
-		Blocks: slack.Blocks{BlockSet: attachmentBlocks},
-	}
+	return blocks
 }
 
 // convertBlockToSlack converts an issue block to a Slack block
@@ -404,4 +462,82 @@ func (s *SenderSlack) SetLogger(logger logger_interfaces.LoggerInterface) {
 
 func (s *SenderSlack) SetUnfurlLinks(unfurl bool) {
 	s.unfurlLinks = unfurl
+}
+
+// SetThreadManager sets the thread manager for handling threading
+func (s *SenderSlack) SetThreadManager(threadManager sender_interfaces.SlackThreadManagerInterface) {
+	s.threadManager = threadManager
+}
+
+// EnableThreading configures and enables thread management for this sender
+func (s *SenderSlack) EnableThreading(cacheTTL time.Duration, searchLimit int, searchWindow time.Duration) {
+	s.threadManager = slackpkg.NewThreadManager(
+		s.slackClient,
+		s.channel,
+		s.logger,
+		cacheTTL,
+		searchLimit,
+		searchWindow,
+	)
+
+	s.logger.Info("Thread management enabled",
+		zap.String("channel", s.channel),
+		zap.String("cacheTTL", cacheTTL.String()),
+		zap.String("searchWindow", searchWindow.String()),
+		zap.Int("searchLimit", searchLimit),
+	)
+}
+
+// generateFingerprint creates a unique fingerprint for the issue to identify related alerts
+func (s *SenderSlack) generateFingerprint(issue *issuepkg.Issue) string {
+	// Use existing fingerprint if available
+	if issue.Fingerprint != "" {
+		return issue.Fingerprint
+	}
+
+	// Create a stable identifier based on issue characteristics
+	// This allows firing and resolved alerts to be grouped together
+
+	var parts []string
+
+	// Add issue title (normalized)
+	if issue.Title != "" {
+		parts = append(parts, issue.Title)
+	}
+
+	// Add source
+	if issue.Source != issuepkg.SourceUnknown {
+		parts = append(parts, issue.Source.String())
+	}
+
+	// Add subject information if available
+	if issue.Subject != nil {
+		if issue.Subject.Name != "" {
+			parts = append(parts, issue.Subject.Name)
+		}
+		if issue.Subject.Namespace != "" {
+			parts = append(parts, issue.Subject.Namespace)
+		}
+		if issue.Subject.SubjectType != issuepkg.SubjectTypeNone {
+			parts = append(parts, issue.Subject.SubjectType.String())
+		}
+	}
+
+	// Join all parts with a separator
+	if len(parts) == 0 {
+		return fmt.Sprintf("issue-%d", issue.StartsAt.Unix())
+	}
+
+	// Create a simple but stable fingerprint by hashing the joined parts
+	joinedParts := strings.Join(parts, "|")
+	hash := sha256.Sum256([]byte(joinedParts))
+	fingerprint := "alert:" + hex.EncodeToString(hash[:8]) // Use first 8 bytes for shorter fingerprint
+
+	s.logger.Debug("Generated fingerprint for issue",
+		zap.String("fingerprint", fingerprint),
+		zap.String("title", issue.Title),
+		zap.String("status", issue.Status.String()),
+	)
+
+	return fingerprint
 }
