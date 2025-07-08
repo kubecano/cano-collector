@@ -3,6 +3,7 @@ package sender
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"strings"
 	"time"
@@ -537,7 +538,7 @@ func (s *SenderSlack) generateFingerprint(issue *issuepkg.Issue) string {
 	// Create a simple but stable fingerprint by hashing the joined parts
 	joinedParts := strings.Join(parts, "|")
 	hash := sha256.Sum256([]byte(joinedParts))
-	fingerprint := "alert:" + fmt.Sprintf("%x", hash[:8]) // Use first 8 bytes for shorter fingerprint
+	fingerprint := "alert:" + hex.EncodeToString(hash[:8]) // Use first 8 bytes for shorter fingerprint
 
 	s.logger.Debug("Generated fingerprint for issue",
 		zap.String("fingerprint", fingerprint),
