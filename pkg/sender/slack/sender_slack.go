@@ -392,6 +392,15 @@ func (s *SenderSlack) convertTableToEnhancedBlock(table *issuepkg.TableBlock) sl
 			text += rowLine + "\n"
 		}
 		text += "```"
+	} else {
+		// For headerless tables, use enhanced key-value format similar to two-column tables
+		for _, row := range table.Rows {
+			if len(row) >= 2 {
+				text += fmt.Sprintf("▸ *%s*: `%s`\n", row[0], row[1])
+			} else if len(row) == 1 {
+				text += fmt.Sprintf("▸ %s\n", row[0])
+			}
+		}
 	}
 
 	return slackapi.NewSectionBlock(

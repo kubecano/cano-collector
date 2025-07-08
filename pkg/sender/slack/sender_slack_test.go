@@ -16,6 +16,15 @@ import (
 	issuepkg "github.com/kubecano/cano-collector/pkg/core/issue"
 )
 
+// mockUnsupportedBlock is a test mock for unsupported block type
+type mockUnsupportedBlock struct {
+	blockType string
+}
+
+func (m *mockUnsupportedBlock) BlockType() string {
+	return m.blockType
+}
+
 func setupSenderSlackTest(t *testing.T) (*SenderSlack, *mocks.MockSlackClientInterface, *mocks.MockLoggerInterface) {
 	t.Helper()
 	ctrl := gomock.NewController(t)
@@ -566,13 +575,13 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 
 	t.Run("handles unknown block types gracefully", func(t *testing.T) {
 		// Create a mock unknown block type
-		unknownBlock := &issuepkg.MarkdownBlock{Text: "unknown"}
+		unknownBlock := &mockUnsupportedBlock{blockType: "unsupported-test-type"}
 
 		slackBlock := slackSender.convertBlockToSlack(unknownBlock)
 
 		sectionBlock, ok := slackBlock.(*slack.SectionBlock)
 		assert.True(t, ok, "Expected section block for unknown type")
-		assert.Contains(t, sectionBlock.Text.Text, "unknown")
+		assert.Contains(t, sectionBlock.Text.Text, "Unknown block type: unsupported-test-type")
 	})
 
 	t.Run("adaptive formatting - simple table format", func(t *testing.T) {
@@ -842,27 +851,18 @@ func TestSenderSlack_ConvertBlockToSlack_WithMarkdown(t *testing.T) {
 	assert.Equal(t, "mrkdwn", sectionBlock.Text.Type)
 }
 
-// mockUnsupportedBlock is a test mock for unsupported block type
-type mockUnsupportedBlock struct {
-	blockType string
-}
-
-func (m *mockUnsupportedBlock) BlockType() string {
-	return m.blockType
-}
-
 func TestSenderSlack_ConvertBlockToSlack_WithUnsupportedBlock(t *testing.T) {
 	slackSender, _, _ := setupSenderSlackTest(t)
 
 	// Test with unsupported block type (should return fallback section block)
-	mockBlock := &mockUnsupportedBlock{blockType: "unsupported"}
+	mockBlock := &mockUnsupportedBlock{blockType: "unsupported-test-type"}
 	slackBlock := slackSender.convertBlockToSlack(mockBlock)
 
 	// Should return a section block with fallback text
 	assert.NotNil(t, slackBlock, "Expected non-nil block for unsupported type")
 	sectionBlock, ok := slackBlock.(*slack.SectionBlock)
 	assert.True(t, ok, "Expected section block for unsupported type")
-	assert.Contains(t, sectionBlock.Text.Text, "Unknown block type: unsupported")
+	assert.Contains(t, sectionBlock.Text.Text, "Unknown block type: unsupported-test-type")
 }
 
 func TestSenderSlack_ConvertBlockToSlack_AllTypes(t *testing.T) {
