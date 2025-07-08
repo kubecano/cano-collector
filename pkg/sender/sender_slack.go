@@ -156,6 +156,10 @@ func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slack.Block {
 	)
 	blocks = append(blocks, headerBlock)
 
+	// Add enrichments as blocks directly in main message for better visibility
+	enrichmentBlocks := s.buildEnrichmentBlocks(issue.Enrichments)
+	blocks = append(blocks, enrichmentBlocks...)
+
 	// Links as action buttons (without AI/Dashboard buttons for now)
 	if len(issue.Links) > 0 {
 		linkButtons := s.buildLinkButtons(issue.Links)
@@ -224,63 +228,52 @@ func (s *SenderSlack) buildSlackAttachments(issue *issuepkg.Issue) []slack.Attac
 
 	attachments = append(attachments, attachment)
 
-	// Add enrichments as separate attachments
-	enrichmentAttachments := s.buildEnrichmentAttachments(issue.Enrichments)
-	attachments = append(attachments, enrichmentAttachments...)
-
 	return attachments
 }
 
-// buildEnrichmentAttachments creates separate attachments for each enrichment
-func (s *SenderSlack) buildEnrichmentAttachments(enrichments []issuepkg.Enrichment) []slack.Attachment {
-	var attachments []slack.Attachment
+// buildEnrichmentBlocks creates blocks for enrichments in the main message
+func (s *SenderSlack) buildEnrichmentBlocks(enrichments []issuepkg.Enrichment) []slack.Block {
+	var blocks []slack.Block
 
 	for _, enrichment := range enrichments {
-		attachment := s.buildSingleEnrichmentAttachment(enrichment)
-		if attachment != nil {
-			attachments = append(attachments, *attachment)
-		}
+		enrichmentBlocks := s.convertEnrichmentToBlocks(enrichment)
+		blocks = append(blocks, enrichmentBlocks...)
 	}
 
-	return attachments
+	return blocks
 }
 
-// buildSingleEnrichmentAttachment creates an attachment for a single enrichment
-func (s *SenderSlack) buildSingleEnrichmentAttachment(enrichment issuepkg.Enrichment) *slack.Attachment {
+// convertEnrichmentToBlocks converts a single enrichment to Slack blocks
+func (s *SenderSlack) convertEnrichmentToBlocks(enrichment issuepkg.Enrichment) []slack.Block {
+	var blocks []slack.Block
+
 	if len(enrichment.Blocks) == 0 {
-		return nil
+		return blocks
 	}
 
-	var attachmentBlocks []slack.Block
-
-	// Add title if available
+	// Add enrichment title as header if available
 	if enrichment.Title != nil && *enrichment.Title != "" {
-		titleBlock := slack.NewSectionBlock(
-			slack.NewTextBlockObject("mrkdwn", fmt.Sprintf("*%s*", *enrichment.Title), false, false),
-			nil, nil,
+		titleBlock := slack.NewHeaderBlock(
+			slack.NewTextBlockObject("plain_text", *enrichment.Title, false, false),
 		)
-		attachmentBlocks = append(attachmentBlocks, titleBlock)
+		blocks = append(blocks, titleBlock)
 	}
 
 	// Process each block in the enrichment
 	for _, block := range enrichment.Blocks {
 		slackBlock := s.convertBlockToSlack(block)
 		if slackBlock != nil {
-			attachmentBlocks = append(attachmentBlocks, slackBlock)
+			blocks = append(blocks, slackBlock)
 		}
 	}
 
-	if len(attachmentBlocks) == 0 {
-		return nil
+	// Add divider for visual separation between enrichments
+	if len(blocks) > 0 {
+		dividerBlock := slack.NewDividerBlock()
+		blocks = append(blocks, dividerBlock)
 	}
 
-	// Choose color based on enrichment type
-	color := s.getEnrichmentColor(enrichment.EnrichmentType)
-
-	return &slack.Attachment{
-		Color:  color,
-		Blocks: slack.Blocks{BlockSet: attachmentBlocks},
-	}
+	return blocks
 }
 
 // convertBlockToSlack converts an issue block to a Slack block
