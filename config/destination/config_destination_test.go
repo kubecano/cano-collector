@@ -350,6 +350,21 @@ func TestValidateThreadingConfig(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "valid complex duration formats",
+			config: SlackThreadingConfig{
+				CacheTTL:     "1h30m",
+				SearchWindow: "2h45m30s",
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid day suffix",
+			config: SlackThreadingConfig{
+				SearchWindow: "7d",
+			},
+			wantErr: false,
+		},
+		{
 			name: "negative search limit",
 			config: SlackThreadingConfig{
 				SearchLimit: -1,
@@ -374,12 +389,44 @@ func TestValidateThreadingConfig(t *testing.T) {
 			errMsg:  "cache_ttl must be a valid duration",
 		},
 		{
+			name: "invalid cache_ttl with prefix text",
+			config: SlackThreadingConfig{
+				CacheTTL: "abc10m",
+			},
+			wantErr: true,
+			errMsg:  "cache_ttl must be a valid duration",
+		},
+		{
 			name: "invalid search_window format",
 			config: SlackThreadingConfig{
 				SearchWindow: "xyz",
 			},
 			wantErr: true,
 			errMsg:  "search_window must be a valid duration",
+		},
+		{
+			name: "invalid search_window with prefix text",
+			config: SlackThreadingConfig{
+				SearchWindow: "test24h",
+			},
+			wantErr: true,
+			errMsg:  "search_window must be a valid duration",
+		},
+		{
+			name: "invalid day suffix without number",
+			config: SlackThreadingConfig{
+				SearchWindow: "d",
+			},
+			wantErr: true,
+			errMsg:  "search_window with 'd' suffix must have a numeric value",
+		},
+		{
+			name: "invalid day suffix with non-numeric prefix",
+			config: SlackThreadingConfig{
+				SearchWindow: "abcd",
+			},
+			wantErr: true,
+			errMsg:  "search_window with 'd' suffix must have a valid numeric value",
 		},
 	}
 

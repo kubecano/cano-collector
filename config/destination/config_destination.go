@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -201,18 +202,29 @@ func validateThreadingConfig(c SlackThreadingConfig) error {
 
 	// Validate cache_ttl duration string format if provided
 	if c.CacheTTL != "" {
-		// Simple validation - more detailed parsing will be done at runtime
-		if !strings.HasSuffix(c.CacheTTL, "s") && !strings.HasSuffix(c.CacheTTL, "m") &&
-			!strings.HasSuffix(c.CacheTTL, "h") {
-			return fmt.Errorf("cache_ttl must be a valid duration (e.g., '10m', '1h')")
+		if _, err := time.ParseDuration(c.CacheTTL); err != nil {
+			return fmt.Errorf("cache_ttl must be a valid duration (e.g., '10m', '1h30m'): %w", err)
 		}
 	}
 
 	// Validate search_window duration string format if provided
 	if c.SearchWindow != "" {
-		if !strings.HasSuffix(c.SearchWindow, "s") && !strings.HasSuffix(c.SearchWindow, "m") &&
-			!strings.HasSuffix(c.SearchWindow, "h") && !strings.HasSuffix(c.SearchWindow, "d") {
-			return fmt.Errorf("search_window must be a valid duration (e.g., '24h', '1d')")
+		// Handle "d" suffix which is not supported by time.ParseDuration
+		if strings.HasSuffix(c.SearchWindow, "d") {
+			// Extract numeric part and validate it's a valid number followed by 'd'
+			durationStr := strings.TrimSuffix(c.SearchWindow, "d")
+			if durationStr == "" {
+				return fmt.Errorf("search_window with 'd' suffix must have a numeric value (e.g., '1d', '7d')")
+			}
+			// Try to parse as hours to validate the numeric part
+			if _, err := time.ParseDuration(durationStr + "h"); err != nil {
+				return fmt.Errorf("search_window with 'd' suffix must have a valid numeric value (e.g., '1d', '7d'): %w", err)
+			}
+		} else {
+			// Use standard time.ParseDuration for other formats
+			if _, err := time.ParseDuration(c.SearchWindow); err != nil {
+				return fmt.Errorf("search_window must be a valid duration (e.g., '24h', '1d', '1h30m'): %w", err)
+			}
 		}
 	}
 

@@ -116,7 +116,8 @@ Thread Management Settings
           cache_ttl: "10m"              # Cache duration for thread relationships
           search_limit: 100             # Max messages to search in history
           search_window: "24h"          # Time window for history search
-          fingerprint_in_metadata: true # Include fingerprint in message metadata
+          fingerprint_in_metadata: true # Include fingerprint in message metadata (default: true when threading enabled)
+                                        # Can be explicitly set to false to disable
 
 Enrichment Display Settings
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -126,11 +127,28 @@ Enrichment Display Settings
     destinations:
       slack:
         enrichments:
-          format_as_blocks: true        # Use Slack blocks instead of plain text
-          color_coding: true            # Color-code enrichments by type
+          format_as_blocks: true        # Use Slack blocks instead of plain text (default: true)
+                                        # Can be explicitly set to false for plain text formatting
+          color_coding: true            # Color-code enrichments by type (default: true) 
+                                        # Can be explicitly set to false to disable color coding
           table_formatting: "enhanced"  # "simple", "enhanced", or "attachment"
           max_table_rows: 20           # Convert large tables to files
           attachment_threshold: 1000    # Characters threshold for file conversion
+
+.. note::
+   **Boolean Field Behavior**: The fields ``fingerprint_in_metadata``, ``format_as_blocks``, and ``color_coding`` 
+   default to ``true`` when their respective parent sections (``threading``, ``enrichments``) are present in the configuration.
+   
+   However, these can be **explicitly set to false** to disable the feature:
+   
+   .. code-block:: yaml
+   
+       enrichments:
+         format_as_blocks: false  # Explicitly disable Slack blocks, use plain text
+         color_coding: false      # Explicitly disable color coding
+       threading:
+         enabled: true
+         fingerprint_in_metadata: false  # Explicitly disable fingerprint metadata
 
 Special Features
 ----------------
