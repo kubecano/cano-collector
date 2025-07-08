@@ -5,20 +5,52 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/kubecano/cano-collector/config"
 	"github.com/kubecano/cano-collector/pkg/alert/model"
 	"github.com/kubecano/cano-collector/pkg/core/issue"
+	"github.com/kubecano/cano-collector/pkg/enrichment"
 	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
 )
 
 // Converter handles conversion from AlertManagerEvent to Issues
 type Converter struct {
-	logger logger_interfaces.LoggerInterface
+	logger          logger_interfaces.LoggerInterface
+	labelEnrichment *enrichment.LabelEnrichment
 }
 
 // NewConverter creates a new Converter
 func NewConverter(logger logger_interfaces.LoggerInterface) *Converter {
 	return &Converter{
-		logger: logger,
+		logger:          logger,
+		labelEnrichment: enrichment.NewLabelEnrichment(logger, nil), // Use default config
+	}
+}
+
+// NewConverterWithEnrichmentConfig creates a new Converter with custom enrichment configuration
+func NewConverterWithEnrichmentConfig(logger logger_interfaces.LoggerInterface, enrichmentConfig *enrichment.LabelEnrichmentConfig) *Converter {
+	return &Converter{
+		logger:          logger,
+		labelEnrichment: enrichment.NewLabelEnrichment(logger, enrichmentConfig),
+	}
+}
+
+// NewConverterWithConfig creates a new Converter with enrichment configuration from Config
+func NewConverterWithConfig(logger logger_interfaces.LoggerInterface, enrichmentConfig config.EnrichmentConfig) *Converter {
+	// Convert config types to enrichment types
+	enrichmentLabelConfig := &enrichment.LabelEnrichmentConfig{
+		EnableLabels:            enrichmentConfig.Labels.Enabled,
+		EnableAnnotations:       enrichmentConfig.Annotations.Enabled,
+		DisplayFormat:           enrichmentConfig.Labels.DisplayFormat,
+		AnnotationDisplayFormat: enrichmentConfig.Annotations.DisplayFormat,
+		IncludeLabels:           enrichmentConfig.Labels.IncludeLabels,
+		ExcludeLabels:           enrichmentConfig.Labels.ExcludeLabels,
+		IncludeAnnotations:      enrichmentConfig.Annotations.IncludeAnnotations,
+		ExcludeAnnotations:      enrichmentConfig.Annotations.ExcludeAnnotations,
+	}
+
+	return &Converter{
+		logger:          logger,
+		labelEnrichment: enrichment.NewLabelEnrichment(logger, enrichmentLabelConfig),
 	}
 }
 
@@ -96,6 +128,12 @@ func (c *Converter) convertPrometheusAlertToIssue(alert model.PrometheusAlert) (
 	if alert.GeneratorURL != "" {
 		link := issue.NewLink("Generator URL", alert.GeneratorURL, issue.LinkTypePrometheusGenerator)
 		iss.AddLink(*link)
+	}
+
+	// Apply label enrichment
+	if err := c.labelEnrichment.EnrichIssue(iss); err != nil {
+		c.logger.Warn("Failed to apply label enrichment", zap.Error(err))
+		// Don't fail the conversion, just log the warning
 	}
 
 	return iss, nil

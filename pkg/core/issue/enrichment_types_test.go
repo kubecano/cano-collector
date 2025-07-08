@@ -12,6 +12,7 @@ func TestEnrichmentType_String(t *testing.T) {
 		expected       string
 	}{
 		{EnrichmentTypeAlertLabels, "alert_labels"},
+		{EnrichmentTypeAlertAnnotations, "alert_annotations"},
 		{EnrichmentTypeGraph, "graph"},
 		{EnrichmentTypeAIAnalysis, "ai_analysis"},
 		{EnrichmentTypeNodeInfo, "node_info"},
@@ -33,14 +34,15 @@ func TestEnrichmentType_String(t *testing.T) {
 func TestEnrichmentType_Constants(t *testing.T) {
 	// Test that all constants are defined correctly
 	assert.Equal(t, EnrichmentTypeAlertLabels, EnrichmentType(0))
-	assert.Equal(t, EnrichmentTypeGraph, EnrichmentType(1))
-	assert.Equal(t, EnrichmentTypeAIAnalysis, EnrichmentType(2))
-	assert.Equal(t, EnrichmentTypeNodeInfo, EnrichmentType(3))
-	assert.Equal(t, EnrichmentTypeContainerInfo, EnrichmentType(4))
-	assert.Equal(t, EnrichmentTypeK8sEvents, EnrichmentType(5))
-	assert.Equal(t, EnrichmentTypeDiff, EnrichmentType(6))
-	assert.Equal(t, EnrichmentTypeTextFile, EnrichmentType(7))
-	assert.Equal(t, EnrichmentTypeCrashInfo, EnrichmentType(8))
-	assert.Equal(t, EnrichmentTypeImagePullBackoffInfo, EnrichmentType(9))
-	assert.Equal(t, EnrichmentTypePendingPodInfo, EnrichmentType(10))
+	assert.Equal(t, EnrichmentTypeAlertAnnotations, EnrichmentType(1))
+	assert.Equal(t, EnrichmentTypeGraph, EnrichmentType(2))
+	assert.Equal(t, EnrichmentTypeAIAnalysis, EnrichmentType(3))
+	assert.Equal(t, EnrichmentTypeNodeInfo, EnrichmentType(4))
+	assert.Equal(t, EnrichmentTypeContainerInfo, EnrichmentType(5))
+	assert.Equal(t, EnrichmentTypeK8sEvents, EnrichmentType(6))
+	assert.Equal(t, EnrichmentTypeDiff, EnrichmentType(7))
+	assert.Equal(t, EnrichmentTypeTextFile, EnrichmentType(8))
+	assert.Equal(t, EnrichmentTypeCrashInfo, EnrichmentType(9))
+	assert.Equal(t, EnrichmentTypeImagePullBackoffInfo, EnrichmentType(10))
+	assert.Equal(t, EnrichmentTypePendingPodInfo, EnrichmentType(11))
 }

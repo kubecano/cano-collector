@@ -110,6 +110,23 @@ spec:
             - name: DISABLE_HELM_MONITORING
               value: "True"
             {{- end }}
+            # Label and Annotation Enrichment configuration
+            - name: "ENRICHMENT_LABELS_ENABLED"
+              value: {{ .Values.collector.enrichment.labels.enabled | quote }}
+            - name: "ENRICHMENT_LABELS_DISPLAY_FORMAT"
+              value: {{ .Values.collector.enrichment.labels.displayFormat | quote }}
+            - name: "ENRICHMENT_LABELS_INCLUDE"
+              value: {{ .Values.collector.enrichment.labels.includeLabels | join "," | quote }}
+            - name: "ENRICHMENT_LABELS_EXCLUDE"
+              value: {{ .Values.collector.enrichment.labels.excludeLabels | join "," | quote }}
+            - name: "ENRICHMENT_ANNOTATIONS_ENABLED"
+              value: {{ .Values.collector.enrichment.annotations.enabled | quote }}
+            - name: "ENRICHMENT_ANNOTATIONS_DISPLAY_FORMAT"
+              value: {{ .Values.collector.enrichment.annotations.displayFormat | quote }}
+            - name: "ENRICHMENT_ANNOTATIONS_INCLUDE"
+              value: {{ .Values.collector.enrichment.annotations.includeAnnotations | join "," | quote }}
+            - name: "ENRICHMENT_ANNOTATIONS_EXCLUDE"
+              value: {{ .Values.collector.enrichment.annotations.excludeAnnotations | join "," | quote }}
             {{- range .Values.destinations.slack }}
               {{- if .api_key_value_from }}
             - name: SLACK_API_KEY_{{ .name | upper | replace "-" "_" }}
