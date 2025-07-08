@@ -13,13 +13,14 @@ import (
 
 // LabelEnrichmentConfig contains configuration for label enrichment
 type LabelEnrichmentConfig struct {
-	EnableLabels       bool     `json:"enable_labels" yaml:"enable_labels"`
-	EnableAnnotations  bool     `json:"enable_annotations" yaml:"enable_annotations"`
-	ExcludeLabels      []string `json:"exclude_labels" yaml:"exclude_labels"`
-	IncludeLabels      []string `json:"include_labels" yaml:"include_labels"`
-	IncludeAnnotations []string `json:"include_annotations" yaml:"include_annotations"`
-	ExcludeAnnotations []string `json:"exclude_annotations" yaml:"exclude_annotations"`
-	DisplayFormat      string   `json:"display_format" yaml:"display_format"` // "table" or "json"
+	EnableLabels            bool     `json:"enable_labels" yaml:"enable_labels"`
+	EnableAnnotations       bool     `json:"enable_annotations" yaml:"enable_annotations"`
+	ExcludeLabels           []string `json:"exclude_labels" yaml:"exclude_labels"`
+	IncludeLabels           []string `json:"include_labels" yaml:"include_labels"`
+	IncludeAnnotations      []string `json:"include_annotations" yaml:"include_annotations"`
+	ExcludeAnnotations      []string `json:"exclude_annotations" yaml:"exclude_annotations"`
+	DisplayFormat           string   `json:"display_format" yaml:"display_format"`                       // "table" or "json" for labels
+	AnnotationDisplayFormat string   `json:"annotation_display_format" yaml:"annotation_display_format"` // "table" or "json" for annotations
 }
 
 // DefaultLabelEnrichmentConfig returns default configuration
@@ -41,7 +42,8 @@ func DefaultLabelEnrichmentConfig() *LabelEnrichmentConfig {
 			"deployment.kubernetes.io/revision",
 			"control-plane.alpha.kubernetes.io/leader",
 		},
-		DisplayFormat: "table",
+		DisplayFormat:           "table",
+		AnnotationDisplayFormat: "table",
 	}
 }
 
@@ -129,7 +131,12 @@ func (le *LabelEnrichment) addAnnotationsEnrichment(iss *issue.Issue) error {
 
 	var blocks []issue.BaseBlock
 
-	switch le.config.DisplayFormat {
+	annotationFormat := le.config.AnnotationDisplayFormat
+	if annotationFormat == "" {
+		annotationFormat = le.config.DisplayFormat // fallback to main display format
+	}
+
+	switch annotationFormat {
 	case "table":
 		tableBlock := le.createAnnotationsTableBlock(filteredAnnotations)
 		blocks = append(blocks, tableBlock)

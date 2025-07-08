@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/kubecano/cano-collector/config"
 	"github.com/kubecano/cano-collector/pkg/alert/model"
 	"github.com/kubecano/cano-collector/pkg/core/issue"
 	"github.com/kubecano/cano-collector/pkg/enrichment"
@@ -647,5 +648,186 @@ func TestConverter_LabelEnrichmentIntegration(t *testing.T) {
 
 		// Should have one enrichment (labels only, since annotations is empty)
 		assert.Len(t, iss.Enrichments, 1)
+	})
+}
+
+func TestNewConverterWithConfig(t *testing.T) {
+	log := logger.NewLogger("info", "test")
+
+	t.Run("creates converter with labels disabled", func(t *testing.T) {
+		enrichmentConfig := config.EnrichmentConfig{
+			Labels: config.LabelEnrichmentConfig{
+				Enabled:       false,
+				DisplayFormat: "table",
+			},
+			Annotations: config.AnnotationEnrichmentConfig{
+				Enabled:       true,
+				DisplayFormat: "json",
+			},
+		}
+
+		converter := NewConverterWithConfig(log, enrichmentConfig)
+
+		assert.NotNil(t, converter)
+		assert.NotNil(t, converter.labelEnrichment)
+
+		// Test that labels enrichment is disabled
+		alert := model.PrometheusAlert{
+			Status:      "firing",
+			Fingerprint: "test-fingerprint",
+			StartsAt:    time.Now(),
+			Labels: map[string]string{
+				"alertname": "TestAlert",
+				"severity":  "critical",
+				"pod":       "test-pod",
+				"namespace": "test-namespace",
+			},
+			Annotations: map[string]string{
+				"summary":     "Test summary",
+				"description": "Test description",
+			},
+		}
+
+		iss, err := converter.convertPrometheusAlertToIssue(alert)
+		require.NoError(t, err)
+
+		// Should only have annotations enrichment (labels disabled)
+		assert.Len(t, iss.Enrichments, 1)
+		assert.Equal(t, issue.EnrichmentTypeAlertAnnotations, *iss.Enrichments[0].EnrichmentType)
+	})
+
+	t.Run("creates converter with annotations disabled", func(t *testing.T) {
+		enrichmentConfig := config.EnrichmentConfig{
+			Labels: config.LabelEnrichmentConfig{
+				Enabled:       true,
+				DisplayFormat: "json",
+			},
+			Annotations: config.AnnotationEnrichmentConfig{
+				Enabled:       false,
+				DisplayFormat: "table",
+			},
+		}
+
+		converter := NewConverterWithConfig(log, enrichmentConfig)
+
+		alert := model.PrometheusAlert{
+			Status:      "firing",
+			Fingerprint: "test-fingerprint",
+			StartsAt:    time.Now(),
+			Labels: map[string]string{
+				"alertname": "TestAlert",
+				"severity":  "critical",
+			},
+			Annotations: map[string]string{
+				"summary": "Test summary",
+			},
+		}
+
+		iss, err := converter.convertPrometheusAlertToIssue(alert)
+		require.NoError(t, err)
+
+		// Should only have labels enrichment (annotations disabled)
+		assert.Len(t, iss.Enrichments, 1)
+		assert.Equal(t, issue.EnrichmentTypeAlertLabels, *iss.Enrichments[0].EnrichmentType)
+	})
+
+	t.Run("creates converter with both disabled", func(t *testing.T) {
+		enrichmentConfig := config.EnrichmentConfig{
+			Labels: config.LabelEnrichmentConfig{
+				Enabled: false,
+			},
+			Annotations: config.AnnotationEnrichmentConfig{
+				Enabled: false,
+			},
+		}
+
+		converter := NewConverterWithConfig(log, enrichmentConfig)
+
+		alert := model.PrometheusAlert{
+			Status:      "firing",
+			Fingerprint: "test-fingerprint",
+			StartsAt:    time.Now(),
+			Labels: map[string]string{
+				"alertname": "TestAlert",
+				"severity":  "critical",
+			},
+			Annotations: map[string]string{
+				"summary": "Test summary",
+			},
+		}
+
+		iss, err := converter.convertPrometheusAlertToIssue(alert)
+		require.NoError(t, err)
+
+		// Should have no enrichments
+		assert.Len(t, iss.Enrichments, 0)
+	})
+
+	t.Run("creates converter with custom include/exclude filters", func(t *testing.T) {
+		enrichmentConfig := config.EnrichmentConfig{
+			Labels: config.LabelEnrichmentConfig{
+				Enabled:       true,
+				DisplayFormat: "table",
+				IncludeLabels: []string{"alertname", "severity"},
+				ExcludeLabels: []string{"instance", "job"},
+			},
+			Annotations: config.AnnotationEnrichmentConfig{
+				Enabled:            true,
+				DisplayFormat:      "json",
+				IncludeAnnotations: []string{"summary"},
+				ExcludeAnnotations: []string{"description"},
+			},
+		}
+
+		converter := NewConverterWithConfig(log, enrichmentConfig)
+
+		alert := model.PrometheusAlert{
+			Status:      "firing",
+			Fingerprint: "test-fingerprint",
+			StartsAt:    time.Now(),
+			Labels: map[string]string{
+				"alertname": "TestAlert",
+				"severity":  "critical",
+				"instance":  "localhost:9090", // should be excluded
+				"job":       "prometheus",     // should be excluded
+				"pod":       "test-pod",       // should be excluded (not in include list)
+			},
+			Annotations: map[string]string{
+				"summary":     "Test summary",     // should be included
+				"description": "Test description", // should be excluded
+				"runbook":     "Test runbook",     // should be excluded (not in include list)
+			},
+		}
+
+		iss, err := converter.convertPrometheusAlertToIssue(alert)
+		require.NoError(t, err)
+
+		// Should have both enrichments
+		assert.Len(t, iss.Enrichments, 2)
+
+		// Find labels enrichment
+		var labelsEnrichment *issue.Enrichment
+		var annotationsEnrichment *issue.Enrichment
+		for i := range iss.Enrichments {
+			if *iss.Enrichments[i].EnrichmentType == issue.EnrichmentTypeAlertLabels {
+				labelsEnrichment = &iss.Enrichments[i]
+			} else if *iss.Enrichments[i].EnrichmentType == issue.EnrichmentTypeAlertAnnotations {
+				annotationsEnrichment = &iss.Enrichments[i]
+			}
+		}
+
+		require.NotNil(t, labelsEnrichment)
+		require.NotNil(t, annotationsEnrichment)
+
+		// Check labels enrichment has table block with filtered labels
+		tableBlock, ok := labelsEnrichment.Blocks[0].(*issue.TableBlock)
+		require.True(t, ok)
+		assert.Len(t, tableBlock.Rows, 2) // only alertname and severity
+
+		// Check annotations enrichment has JSON block with filtered annotations
+		jsonBlock, ok := annotationsEnrichment.Blocks[0].(*issue.JsonBlock)
+		require.True(t, ok)
+		assert.Len(t, jsonBlock.Data, 1) // only summary
+		assert.Contains(t, jsonBlock.Data, "summary")
 	})
 }

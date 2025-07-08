@@ -38,13 +38,14 @@ func NewConverterWithEnrichmentConfig(logger logger_interfaces.LoggerInterface, 
 func NewConverterWithConfig(logger logger_interfaces.LoggerInterface, enrichmentConfig config.EnrichmentConfig) *Converter {
 	// Convert config types to enrichment types
 	enrichmentLabelConfig := &enrichment.LabelEnrichmentConfig{
-		EnableLabels:       enrichmentConfig.Labels.Enabled,
-		EnableAnnotations:  enrichmentConfig.Annotations.Enabled,
-		DisplayFormat:      enrichmentConfig.Labels.DisplayFormat,
-		IncludeLabels:      enrichmentConfig.Labels.IncludeLabels,
-		ExcludeLabels:      enrichmentConfig.Labels.ExcludeLabels,
-		IncludeAnnotations: enrichmentConfig.Annotations.IncludeAnnotations,
-		ExcludeAnnotations: enrichmentConfig.Annotations.ExcludeAnnotations,
+		EnableLabels:            enrichmentConfig.Labels.Enabled,
+		EnableAnnotations:       enrichmentConfig.Annotations.Enabled,
+		DisplayFormat:           enrichmentConfig.Labels.DisplayFormat,
+		AnnotationDisplayFormat: enrichmentConfig.Annotations.DisplayFormat,
+		IncludeLabels:           enrichmentConfig.Labels.IncludeLabels,
+		ExcludeLabels:           enrichmentConfig.Labels.ExcludeLabels,
+		IncludeAnnotations:      enrichmentConfig.Annotations.IncludeAnnotations,
+		ExcludeAnnotations:      enrichmentConfig.Annotations.ExcludeAnnotations,
 	}
 
 	return &Converter{

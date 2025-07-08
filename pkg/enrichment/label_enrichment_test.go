@@ -193,6 +193,84 @@ func TestLabelEnrichment_filterLabels(t *testing.T) {
 	})
 }
 
+func TestLabelEnrichment_filterAnnotations(t *testing.T) {
+	log := logger.NewLogger("info", "test")
+
+	t.Run("excludes annotations", func(t *testing.T) {
+		config := &LabelEnrichmentConfig{
+			ExcludeAnnotations: []string{"kubectl.kubernetes.io", "prometheus.io"},
+		}
+		enricher := NewLabelEnrichment(log, config)
+
+		annotations := map[string]string{
+			"summary":     "Test alert summary",
+			"description": "Test alert description",
+			"kubectl.kubernetes.io/last-applied-configuration": "{}",
+			"prometheus.io/scrape":                             "true",
+		}
+
+		filtered := enricher.filterAnnotations(annotations)
+
+		assert.Len(t, filtered, 2)
+		assert.Contains(t, filtered, "summary")
+		assert.Contains(t, filtered, "description")
+		assert.NotContains(t, filtered, "kubectl.kubernetes.io/last-applied-configuration")
+		assert.NotContains(t, filtered, "prometheus.io/scrape")
+	})
+
+	t.Run("includes only specified annotations", func(t *testing.T) {
+		config := &LabelEnrichmentConfig{
+			IncludeAnnotations: []string{"summary", "description"},
+		}
+		enricher := NewLabelEnrichment(log, config)
+
+		annotations := map[string]string{
+			"summary":     "Test alert summary",
+			"description": "Test alert description",
+			"runbook_url": "https://example.com/runbook",
+			"dashboard":   "https://example.com/dashboard",
+		}
+
+		filtered := enricher.filterAnnotations(annotations)
+
+		assert.Len(t, filtered, 2)
+		assert.Contains(t, filtered, "summary")
+		assert.Contains(t, filtered, "description")
+		assert.NotContains(t, filtered, "runbook_url")
+		assert.NotContains(t, filtered, "dashboard")
+	})
+
+	t.Run("empty include list includes all except excluded", func(t *testing.T) {
+		config := &LabelEnrichmentConfig{
+			IncludeAnnotations: []string{},
+			ExcludeAnnotations: []string{"kubectl.kubernetes.io"},
+		}
+		enricher := NewLabelEnrichment(log, config)
+
+		annotations := map[string]string{
+			"summary":     "Test alert summary",
+			"description": "Test alert description",
+			"kubectl.kubernetes.io/last-applied-configuration": "{}",
+		}
+
+		filtered := enricher.filterAnnotations(annotations)
+
+		assert.Len(t, filtered, 2)
+		assert.Contains(t, filtered, "summary")
+		assert.Contains(t, filtered, "description")
+		assert.NotContains(t, filtered, "kubectl.kubernetes.io/last-applied-configuration")
+	})
+
+	t.Run("handles empty annotations map", func(t *testing.T) {
+		config := &LabelEnrichmentConfig{}
+		enricher := NewLabelEnrichment(log, config)
+
+		filtered := enricher.filterAnnotations(map[string]string{})
+
+		assert.Len(t, filtered, 0)
+	})
+}
+
 func TestLabelEnrichment_createTableBlocks(t *testing.T) {
 	log := logger.NewLogger("info", "test")
 	enricher := NewLabelEnrichment(log, nil)
