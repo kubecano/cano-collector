@@ -63,15 +63,9 @@ func NewDestinationSlack(cfg *DestinationSlackConfig, logger logger_interfaces.L
 		destination.enableThreading()
 	}
 
-	// Log enrichments configuration if present
+	// Configure enrichments formatting if present
 	if cfg.Enrichments != nil {
-		destination.logger.Info("Enrichments configuration loaded",
-			zap.Bool("formatAsBlocks", cfg.Enrichments.FormatAsBlocks),
-			zap.Bool("colorCoding", cfg.Enrichments.ColorCoding),
-			zap.String("tableFormatting", cfg.Enrichments.TableFormatting),
-			zap.Int("maxTableRows", cfg.Enrichments.MaxTableRows),
-			zap.Int("attachmentThreshold", cfg.Enrichments.AttachmentThreshold),
-		)
+		destination.configureEnrichments()
 	}
 
 	return destination
@@ -100,6 +94,29 @@ func (d *DestinationSlack) enableThreading() {
 
 	// Enable threading on the sender - much cleaner!
 	d.sender.EnableThreading(cacheTTL, threadingConfig.SearchLimit, searchWindow)
+}
+
+// configureEnrichments sets up enrichments formatting by passing parameters to sender
+func (d *DestinationSlack) configureEnrichments() {
+	enrichmentsConfig := d.cfg.Enrichments
+
+	// Set table formatting parameters on sender (not the whole config!)
+	if enrichmentsConfig.TableFormatting != "" {
+		d.sender.SetTableFormat(enrichmentsConfig.TableFormatting)
+	}
+
+	if enrichmentsConfig.MaxTableRows > 0 {
+		d.sender.SetMaxTableRows(enrichmentsConfig.MaxTableRows)
+	}
+
+	// Log enrichments configuration
+	d.logger.Info("Enrichments configuration applied to sender",
+		zap.Bool("formatAsBlocks", enrichmentsConfig.FormatAsBlocks),
+		zap.Bool("colorCoding", enrichmentsConfig.ColorCoding),
+		zap.String("tableFormatting", enrichmentsConfig.TableFormatting),
+		zap.Int("maxTableRows", enrichmentsConfig.MaxTableRows),
+		zap.Int("attachmentThreshold", enrichmentsConfig.AttachmentThreshold),
+	)
 }
 
 // Send implements the destination interface

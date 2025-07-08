@@ -26,6 +26,9 @@ type SenderSlack struct {
 	slackClient sender_interfaces.SlackClientInterface
 	// Threading configuration - will be added in next step
 	threadManager sender_interfaces.SlackThreadManagerInterface
+	// Table formatting parameters (instead of full config dependency)
+	tableFormat  string
+	maxTableRows int
 }
 
 func NewSenderSlack(apiKey, channel string, unfurlLinks bool, logger logger_interfaces.LoggerInterface, client util.HTTPClient) *SenderSlack {
@@ -285,6 +288,16 @@ func (s *SenderSlack) convertBlockToSlack(block issuepkg.BaseBlock) slack.Block 
 		return s.convertJsonBlockToSlack(b)
 	case *issuepkg.MarkdownBlock:
 		return s.convertMarkdownBlockToSlack(b)
+	case *issuepkg.HeaderBlock:
+		return s.convertHeaderBlockToSlack(b)
+	case *issuepkg.ListBlock:
+		return s.convertListBlockToSlack(b)
+	case *issuepkg.LinksBlock:
+		return s.convertLinksBlockToSlack(b)
+	case *issuepkg.FileBlock:
+		return s.convertFileBlockToSlack(b)
+	case *issuepkg.DividerBlock:
+		return slack.NewDividerBlock()
 	default:
 		// Fallback - convert unknown block to text
 		return slack.NewSectionBlock(
@@ -294,10 +307,30 @@ func (s *SenderSlack) convertBlockToSlack(block issuepkg.BaseBlock) slack.Block 
 	}
 }
 
-// convertTableBlockToSlack converts a table block to Slack section block
+// convertTableBlockToSlack converts a table block to Slack section block with adaptive formatting
 func (s *SenderSlack) convertTableBlockToSlack(table *issuepkg.TableBlock) slack.Block {
-	// Slack has limitations on table formatting, so we'll use a formatted text block
-	// For better display, we'll format it as a list
+	// Check if table exceeds row limit and should be converted to file
+	if s.maxTableRows > 0 && len(table.Rows) > s.maxTableRows {
+		return s.convertLargeTableToFileBlock(table)
+	}
+
+	// Check table formatting preference
+	switch s.tableFormat {
+	case "attachment":
+		// For attachment format, still render as block but note it could be an attachment
+		return s.convertTableToAttachmentStyleBlock(table)
+	case "enhanced":
+		return s.convertTableToEnhancedBlock(table)
+	case "simple":
+		return s.convertTableToSimpleBlock(table)
+	default:
+		// Default behavior - simple format
+		return s.convertTableToSimpleBlock(table)
+	}
+}
+
+// convertTableToSimpleBlock converts table to simple key-value format
+func (s *SenderSlack) convertTableToSimpleBlock(table *issuepkg.TableBlock) slack.Block {
 	var text string
 	if table.TableName != "" {
 		text = fmt.Sprintf("*%s*\n", table.TableName)
@@ -309,6 +342,102 @@ func (s *SenderSlack) convertTableBlockToSlack(table *issuepkg.TableBlock) slack
 			text += fmt.Sprintf("• %s: `%s`\n", row[0], row[1])
 		}
 	}
+
+	return slack.NewSectionBlock(
+		slack.NewTextBlockObject("mrkdwn", text, false, false),
+		nil, nil,
+	)
+}
+
+// convertTableToEnhancedBlock converts table to enhanced format with better styling
+func (s *SenderSlack) convertTableToEnhancedBlock(table *issuepkg.TableBlock) slack.Block {
+	var text string
+	if table.TableName != "" {
+		text = fmt.Sprintf("*%s*\n", table.TableName)
+	}
+
+	// For two-column tables, use enhanced key-value format
+	if len(table.Headers) == 2 {
+		for _, row := range table.Rows {
+			if len(row) >= 2 {
+				text += fmt.Sprintf("▸ *%s*: `%s`\n", row[0], row[1])
+			}
+		}
+	} else {
+		// For multi-column tables, create a more structured format
+		if len(table.Headers) > 0 {
+			text += "\n```\n"
+			// Add headers
+			headerLine := ""
+			for i, header := range table.Headers {
+				if i > 0 {
+					headerLine += " | "
+				}
+				headerLine += fmt.Sprintf("%-15s", header)
+			}
+			text += headerLine + "\n"
+			text += strings.Repeat("-", len(headerLine)) + "\n"
+
+			// Add rows
+			for _, row := range table.Rows {
+				rowLine := ""
+				for i := 0; i < len(table.Headers); i++ {
+					if i > 0 {
+						rowLine += " | "
+					}
+					cellValue := ""
+					if i < len(row) {
+						cellValue = row[i]
+					}
+					rowLine += fmt.Sprintf("%-15s", cellValue)
+				}
+				text += rowLine + "\n"
+			}
+			text += "```"
+		}
+	}
+
+	return slack.NewSectionBlock(
+		slack.NewTextBlockObject("mrkdwn", text, false, false),
+		nil, nil,
+	)
+}
+
+// convertTableToAttachmentStyleBlock formats table for attachment-style display
+func (s *SenderSlack) convertTableToAttachmentStyleBlock(table *issuepkg.TableBlock) slack.Block {
+	var text string
+	if table.TableName != "" {
+		text = fmt.Sprintf("📊 *%s*\n", table.TableName)
+	}
+
+	// More compact format suitable for attachments
+	for _, row := range table.Rows {
+		if len(row) >= 2 {
+			text += fmt.Sprintf("└ %s: `%s`\n", row[0], row[1])
+		}
+	}
+
+	return slack.NewSectionBlock(
+		slack.NewTextBlockObject("mrkdwn", text, false, false),
+		nil, nil,
+	)
+}
+
+// convertLargeTableToFileBlock converts large tables to file placeholder
+// TODO: Implement actual file upload with Slack files_upload_v2 API
+func (s *SenderSlack) convertLargeTableToFileBlock(table *issuepkg.TableBlock) slack.Block {
+	rowCount := len(table.Rows)
+	tableName := table.TableName
+	if tableName == "" {
+		tableName = "Large Table"
+	}
+
+	text := fmt.Sprintf("📊 *%s* (%d rows)\n", tableName, rowCount)
+	text += fmt.Sprintf("Table too large for inline display (limit: %d rows)\n", s.maxTableRows)
+	text += "_Would be converted to file attachment in full implementation_"
+
+	// TODO: Convert table to CSV/text format and upload using Slack files_upload_v2 API
+	// For now, show placeholder
 
 	return slack.NewSectionBlock(
 		slack.NewTextBlockObject("mrkdwn", text, false, false),
@@ -338,24 +467,105 @@ func (s *SenderSlack) convertMarkdownBlockToSlack(markdown *issuepkg.MarkdownBlo
 	)
 }
 
-// getEnrichmentColor returns color for enrichment attachments based on type
-func (s *SenderSlack) getEnrichmentColor(enrichmentType *issuepkg.EnrichmentType) string {
-	if enrichmentType == nil {
-		return "#E8E8E8" // Light gray for unknown
+// convertHeaderBlockToSlack converts a header block to Slack header block
+func (s *SenderSlack) convertHeaderBlockToSlack(header *issuepkg.HeaderBlock) slack.Block {
+	return slack.NewHeaderBlock(
+		slack.NewTextBlockObject("plain_text", header.Text, false, false),
+	)
+}
+
+// convertListBlockToSlack converts a list block to Slack section block
+func (s *SenderSlack) convertListBlockToSlack(list *issuepkg.ListBlock) slack.Block {
+	var text string
+
+	// Add list name if available
+	if list.ListName != "" {
+		text = fmt.Sprintf("*%s*\n", list.ListName)
 	}
 
-	switch *enrichmentType {
-	case issuepkg.EnrichmentTypeAlertLabels:
-		return "#17A2B8" // Blue for labels
-	case issuepkg.EnrichmentTypeAlertAnnotations:
-		return "#6610F2" // Purple for annotations
-	case issuepkg.EnrichmentTypeGraph:
-		return "#28A745" // Green for graphs
-	case issuepkg.EnrichmentTypeAIAnalysis:
-		return "#FD7E14" // Orange for AI
-	default:
-		return "#E8E8E8" // Light gray for others
+	// Add list items
+	for i, item := range list.Items {
+		if list.Ordered {
+			text += fmt.Sprintf("%d. %s\n", i+1, item)
+		} else {
+			text += fmt.Sprintf("• %s\n", item)
+		}
 	}
+
+	return slack.NewSectionBlock(
+		slack.NewTextBlockObject("mrkdwn", text, false, false),
+		nil, nil,
+	)
+}
+
+// convertLinksBlockToSlack converts a links block to Slack actions block
+func (s *SenderSlack) convertLinksBlockToSlack(links *issuepkg.LinksBlock) slack.Block {
+	var buttons []slack.BlockElement
+
+	// Convert links to buttons (limit to 5 for Slack constraints)
+	for i, link := range links.Links {
+		if i >= 5 {
+			break
+		}
+
+		button := slack.NewButtonBlockElement(
+			fmt.Sprintf("link_%d", i),
+			link.URL,
+			slack.NewTextBlockObject("plain_text", link.Text, false, false),
+		)
+		button.URL = link.URL
+		buttons = append(buttons, button)
+	}
+
+	// If no buttons, create a section block with link text
+	if len(buttons) == 0 {
+		text := ""
+		if links.BlockName != "" {
+			text = fmt.Sprintf("*%s*\n", links.BlockName)
+		}
+		for _, link := range links.Links {
+			text += fmt.Sprintf("• <%s|%s>\n", link.URL, link.Text)
+		}
+
+		return slack.NewSectionBlock(
+			slack.NewTextBlockObject("mrkdwn", text, false, false),
+			nil, nil,
+		)
+	}
+
+	// Create action block with buttons
+	blockID := "links"
+	if links.BlockName != "" {
+		blockID = "links_" + strings.ReplaceAll(strings.ToLower(links.BlockName), " ", "_")
+	}
+
+	return slack.NewActionBlock(blockID, buttons...)
+}
+
+// convertFileBlockToSlack converts a file block to Slack section block
+// For now, we'll display file info as text. File upload implementation would require files_upload_v2 API
+func (s *SenderSlack) convertFileBlockToSlack(file *issuepkg.FileBlock) slack.Block {
+	sizeKB := file.GetSizeKB()
+	sizeText := fmt.Sprintf("%.1f KB", sizeKB)
+	if sizeKB > 1024 {
+		sizeMB := sizeKB / 1024
+		sizeText = fmt.Sprintf("%.1f MB", sizeMB)
+	}
+
+	text := fmt.Sprintf("📎 *File: %s*\n", file.Filename)
+	text += fmt.Sprintf("Size: %s", sizeText)
+	if file.MimeType != "" {
+		text += fmt.Sprintf("\nType: %s", file.MimeType)
+	}
+
+	// TODO: Implement actual file upload using Slack files_upload_v2 API
+	// For now, display as attachment info
+	text += "\n_File content not uploaded - upload functionality to be implemented_"
+
+	return slack.NewSectionBlock(
+		slack.NewTextBlockObject("mrkdwn", text, false, false),
+		nil, nil,
+	)
 }
 
 // formatHeader creates the header text with status and severity
@@ -469,7 +679,17 @@ func (s *SenderSlack) SetThreadManager(threadManager sender_interfaces.SlackThre
 	s.threadManager = threadManager
 }
 
-// EnableThreading configures and enables thread management for this sender
+// SetTableFormat sets the table formatting parameters
+func (s *SenderSlack) SetTableFormat(tableFormat string) {
+	s.tableFormat = tableFormat
+}
+
+// SetMaxTableRows sets the maximum number of rows for table formatting
+func (s *SenderSlack) SetMaxTableRows(maxTableRows int) {
+	s.maxTableRows = maxTableRows
+}
+
+// EnableThreading enables threading support by creating and configuring a ThreadManager
 func (s *SenderSlack) EnableThreading(cacheTTL time.Duration, searchLimit int, searchWindow time.Duration) {
 	s.threadManager = slackpkg.NewThreadManager(
 		s.slackClient,

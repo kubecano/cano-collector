@@ -231,3 +231,114 @@ func TestTableBlock_GetColumnCount_NoHeaders(t *testing.T) {
 	block := NewTableBlock([]string{}, rows, "", TableBlockFormatHorizontal)
 	assert.Equal(t, 3, block.GetColumnCount()) // Should return max columns from rows
 }
+
+func TestHeaderBlock_NewHeaderBlock(t *testing.T) {
+	headerBlock := NewHeaderBlock("Test Header")
+
+	assert.Equal(t, "Test Header", headerBlock.Text)
+	assert.Equal(t, "header", headerBlock.BlockType())
+}
+
+func TestListBlock_NewListBlock(t *testing.T) {
+	items := []string{"Item 1", "Item 2", "Item 3"}
+	listBlock := NewListBlock(items, false, "Test List")
+
+	assert.Equal(t, items, listBlock.Items)
+	assert.False(t, listBlock.Ordered)
+	assert.Equal(t, "Test List", listBlock.ListName)
+	assert.Equal(t, "list", listBlock.BlockType())
+}
+
+func TestListBlock_AddItem(t *testing.T) {
+	listBlock := NewListBlock([]string{}, false, "")
+
+	listBlock.AddItem("Item 1")
+	listBlock.AddItem("Item 2")
+
+	assert.Len(t, listBlock.Items, 2)
+	assert.Equal(t, "Item 1", listBlock.Items[0])
+	assert.Equal(t, "Item 2", listBlock.Items[1])
+}
+
+func TestListBlock_ToMarkdown_Unordered(t *testing.T) {
+	items := []string{"First item", "Second item", "Third item"}
+	listBlock := NewListBlock(items, false, "My List")
+
+	markdown := listBlock.ToMarkdown()
+
+	assert.Contains(t, markdown, "**My List**")
+	assert.Contains(t, markdown, "- First item")
+	assert.Contains(t, markdown, "- Second item")
+	assert.Contains(t, markdown, "- Third item")
+}
+
+func TestListBlock_ToMarkdown_Ordered(t *testing.T) {
+	items := []string{"First step", "Second step", "Third step"}
+	listBlock := NewListBlock(items, true, "Steps")
+
+	markdown := listBlock.ToMarkdown()
+
+	assert.Contains(t, markdown, "**Steps**")
+	assert.Contains(t, markdown, "1. First step")
+	assert.Contains(t, markdown, "2. Second step")
+	assert.Contains(t, markdown, "3. Third step")
+}
+
+func TestListBlock_ToMarkdown_Empty(t *testing.T) {
+	listBlock := NewListBlock([]string{}, false, "Empty List")
+
+	markdown := listBlock.ToMarkdown()
+
+	assert.Empty(t, markdown)
+}
+
+func TestLinksBlock_NewLinksBlock(t *testing.T) {
+	links := []Link{
+		{Text: "Dashboard", URL: "https://example.com/dashboard", Type: LinkTypeGeneral},
+		{Text: "Logs", URL: "https://example.com/logs", Type: LinkTypeGeneral},
+	}
+	linksBlock := NewLinksBlock(links, "Related Links")
+
+	assert.Equal(t, links, linksBlock.Links)
+	assert.Equal(t, "Related Links", linksBlock.BlockName)
+	assert.Equal(t, "links", linksBlock.BlockType())
+}
+
+func TestLinksBlock_AddLink(t *testing.T) {
+	linksBlock := NewLinksBlock([]Link{}, "")
+
+	link1 := Link{Text: "Dashboard", URL: "https://example.com/dashboard", Type: LinkTypeGeneral}
+	link2 := Link{Text: "Logs", URL: "https://example.com/logs", Type: LinkTypeGeneral}
+
+	linksBlock.AddLink(link1)
+	linksBlock.AddLink(link2)
+
+	assert.Len(t, linksBlock.Links, 2)
+	assert.Equal(t, link1, linksBlock.Links[0])
+	assert.Equal(t, link2, linksBlock.Links[1])
+}
+
+func TestFileBlock_NewFileBlock(t *testing.T) {
+	content := []byte("test file content")
+	fileBlock := NewFileBlock("test.txt", content, "text/plain")
+
+	assert.Equal(t, "test.txt", fileBlock.Filename)
+	assert.Equal(t, content, fileBlock.Contents)
+	assert.Equal(t, "text/plain", fileBlock.MimeType)
+	assert.Equal(t, int64(len(content)), fileBlock.Size)
+	assert.Equal(t, "file", fileBlock.BlockType())
+}
+
+func TestFileBlock_GetSizeKB(t *testing.T) {
+	content := make([]byte, 2048) // 2KB
+	fileBlock := NewFileBlock("test.bin", content, "application/octet-stream")
+
+	sizeKB := fileBlock.GetSizeKB()
+	assert.Equal(t, 2.0, sizeKB)
+}
+
+func TestDividerBlock_NewDividerBlock(t *testing.T) {
+	dividerBlock := NewDividerBlock()
+
+	assert.Equal(t, "divider", dividerBlock.BlockType())
+}
