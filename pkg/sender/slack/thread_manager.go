@@ -53,7 +53,7 @@ func (tm *ThreadManager) GetThreadTS(ctx context.Context, fingerprint string) (s
 	}
 
 	// Search Slack for existing message with this fingerprint
-	threadTS, err := tm.searchSlackForThread(ctx, fingerprint)
+	threadTS, err := tm.searchSlackForThread(fingerprint)
 	if err != nil {
 		tm.logger.Error("Failed to search Slack for thread", zap.String("fingerprint", fingerprint), zap.Error(err))
 		return "", err
@@ -99,7 +99,7 @@ func (tm *ThreadManager) Cleanup() {
 }
 
 // searchSlackForThread searches Slack for a message containing the fingerprint
-func (tm *ThreadManager) searchSlackForThread(ctx context.Context, fingerprint string) (string, error) {
+func (tm *ThreadManager) searchSlackForThread(fingerprint string) (string, error) {
 	// Calculate search timeframe
 	earliest := time.Now().Add(-tm.searchWindow)
 

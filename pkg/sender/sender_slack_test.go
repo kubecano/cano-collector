@@ -16,7 +16,7 @@ import (
 	issuepkg "github.com/kubecano/cano-collector/pkg/core/issue"
 )
 
-func setupSenderSlackTest(t *testing.T) (*SenderSlack, *mocks.MockSlackClientInterface) {
+func setupSenderSlackTest(t *testing.T) (*SenderSlack, *mocks.MockSlackClientInterface, *mocks.MockLoggerInterface) {
 	t.Helper()
 	ctrl := gomock.NewController(t)
 
@@ -38,11 +38,11 @@ func setupSenderSlackTest(t *testing.T) (*SenderSlack, *mocks.MockSlackClientInt
 		unfurlLinks: true,
 		slackClient: mockSlackClient,
 	}
-	return sender, mockSlackClient
+	return sender, mockSlackClient, mockLogger
 }
 
 func TestSenderSlack_Send_Success(t *testing.T) {
-	slackSender, mockSlackClient := setupSenderSlackTest(t)
+	slackSender, mockSlackClient, _ := setupSenderSlackTest(t)
 
 	ctx := context.Background()
 	testIssue := &issuepkg.Issue{
@@ -77,7 +77,7 @@ func TestSenderSlack_Config(t *testing.T) {
 }
 
 func TestSlackSender_SetUnfurlLinks(t *testing.T) {
-	slackSender, _ := setupSenderSlackTest(t)
+	slackSender, _, _ := setupSenderSlackTest(t)
 
 	slackSender.SetUnfurlLinks(false)
 	assert.False(t, slackSender.unfurlLinks)
@@ -89,7 +89,7 @@ func TestSlackSender_SetUnfurlLinks(t *testing.T) {
 // Formatting tests
 
 func TestSenderSlack_GetSeverityColor(t *testing.T) {
-	slackSender, _ := setupSenderSlackTest(t)
+	slackSender, _, _ := setupSenderSlackTest(t)
 
 	tests := []struct {
 		severity issuepkg.Severity
@@ -108,7 +108,7 @@ func TestSenderSlack_GetSeverityColor(t *testing.T) {
 }
 
 func TestSenderSlack_FormatHeader(t *testing.T) {
-	slackSender, _ := setupSenderSlackTest(t)
+	slackSender, _, _ := setupSenderSlackTest(t)
 
 	// Test firing alert
 	firingIssue := &issuepkg.Issue{
@@ -138,7 +138,7 @@ func TestSenderSlack_FormatHeader(t *testing.T) {
 }
 
 func TestSenderSlack_FormatLabels(t *testing.T) {
-	slackSender, _ := setupSenderSlackTest(t)
+	slackSender, _, _ := setupSenderSlackTest(t)
 
 	// Test with labels
 	labels := map[string]string{
@@ -159,7 +159,7 @@ func TestSenderSlack_FormatLabels(t *testing.T) {
 }
 
 func TestSenderSlack_BuildSlackBlocks(t *testing.T) {
-	slackSender, _ := setupSenderSlackTest(t)
+	slackSender, _, _ := setupSenderSlackTest(t)
 
 	// Test issue with links
 	issue := &issuepkg.Issue{
@@ -189,7 +189,7 @@ func TestSenderSlack_BuildSlackBlocks(t *testing.T) {
 }
 
 func TestSenderSlack_BuildSlackAttachments(t *testing.T) {
-	slackSender, _ := setupSenderSlackTest(t)
+	slackSender, _, _ := setupSenderSlackTest(t)
 
 	// Test issue with subject and labels
 	subject := issuepkg.NewSubject("test-pod", issuepkg.SubjectTypePod)
@@ -223,7 +223,7 @@ func TestSenderSlack_BuildSlackAttachments(t *testing.T) {
 }
 
 func TestSenderSlack_FormatIssueToString(t *testing.T) {
-	slackSender, _ := setupSenderSlackTest(t)
+	slackSender, _, _ := setupSenderSlackTest(t)
 
 	// Test firing issue
 	firingIssue := &issuepkg.Issue{
@@ -264,7 +264,7 @@ func TestSenderSlack_FormatIssueToString(t *testing.T) {
 }
 
 func TestSenderSlack_BuildLinkButtons(t *testing.T) {
-	slackSender, _ := setupSenderSlackTest(t)
+	slackSender, _, _ := setupSenderSlackTest(t)
 
 	links := []issuepkg.Link{
 		{Text: "Dashboard", URL: "https://example.com/dashboard"},
@@ -286,7 +286,7 @@ func TestSenderSlack_BuildLinkButtons(t *testing.T) {
 }
 
 func TestSenderSlack_BuildLinkButtons_LimitToFive(t *testing.T) {
-	slackSender, _ := setupSenderSlackTest(t)
+	slackSender, _, _ := setupSenderSlackTest(t)
 
 	// Create more than 5 links
 	links := make([]issuepkg.Link, 7)
@@ -304,7 +304,7 @@ func TestSenderSlack_BuildLinkButtons_LimitToFive(t *testing.T) {
 }
 
 func TestSenderSlack_EnrichmentSupport(t *testing.T) {
-	slackSender, mockClient := setupSenderSlackTest(t)
+	slackSender, mockClient, _ := setupSenderSlackTest(t)
 
 	t.Run("builds enrichment attachments for table blocks", func(t *testing.T) {
 		// Create issue with table enrichments
@@ -486,7 +486,7 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 // Test threading functionality
 
 func TestSenderSlack_GenerateFingerprint(t *testing.T) {
-	slackSender, _ := setupSenderSlackTest(t)
+	slackSender, _, _ := setupSenderSlackTest(t)
 
 	// Test with issue that has existing fingerprint
 	issueWithFingerprint := &issuepkg.Issue{
@@ -524,12 +524,27 @@ func TestSenderSlack_GenerateFingerprint(t *testing.T) {
 }
 
 func TestSenderSlack_SetThreadManager(t *testing.T) {
-	slackSender, _ := setupSenderSlackTest(t)
+	slackSender, _, _ := setupSenderSlackTest(t)
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	mockThreadManager := mocks.NewMockSlackThreadManagerInterface(ctrl)
 
+	mockThreadManager := mocks.NewMockSlackThreadManagerInterface(ctrl)
 	slackSender.SetThreadManager(mockThreadManager)
+
 	assert.Equal(t, mockThreadManager, slackSender.threadManager)
+}
+
+func TestSenderSlack_EnableThreading(t *testing.T) {
+	slackSender, _, _ := setupSenderSlackTest(t)
+
+	// Enable threading with valid configuration
+	cacheTTL := 10 * time.Minute
+	searchLimit := 50
+	searchWindow := 24 * time.Hour
+
+	slackSender.EnableThreading(cacheTTL, searchLimit, searchWindow)
+
+	// Verify that threadManager was set (we can't check internal details)
+	assert.NotNil(t, slackSender.threadManager)
 }

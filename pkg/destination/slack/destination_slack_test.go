@@ -95,3 +95,104 @@ func TestDestinationSlack_Send_WithError(t *testing.T) {
 	err := d.Send(context.Background(), testIssue)
 	require.Error(t, err)
 }
+
+func TestDestinationSlack_WithThreadingConfig(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+	mockClient := mocks.NewMockHTTPClient(ctrl)
+
+	// Expect threading initialization logs from SenderSlack
+	mockLogger.EXPECT().Info("Thread management enabled", gomock.Any()).Times(1)
+	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Warn(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Warn(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Warn(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Warn(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+
+	cfg := &DestinationSlackConfig{
+		Name:         "test-slack",
+		APIKey:       "xoxb-test-token",
+		SlackChannel: "#test-channel",
+		UnfurlLinks:  false,
+		Threading: &SlackThreadingConfig{
+			Enabled:               true,
+			CacheTTL:              "10m",
+			SearchLimit:           50,
+			SearchWindow:          "24h",
+			FingerprintInMetadata: true,
+		},
+	}
+
+	d := NewDestinationSlack(cfg, mockLogger, mockClient)
+	assert.NotNil(t, d)
+}
+
+func TestDestinationSlack_WithEnrichmentsConfig(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+	mockClient := mocks.NewMockHTTPClient(ctrl)
+
+	// Expect enrichments configuration logs
+	mockLogger.EXPECT().Info("Enrichments configuration loaded", gomock.Any()).Times(1)
+	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+
+	cfg := &DestinationSlackConfig{
+		Name:         "test-slack",
+		APIKey:       "xoxb-test-token",
+		SlackChannel: "#test-channel",
+		UnfurlLinks:  false,
+		Enrichments: &SlackEnrichmentsConfig{
+			FormatAsBlocks:      true,
+			ColorCoding:         true,
+			TableFormatting:     "enhanced",
+			MaxTableRows:        20,
+			AttachmentThreshold: 5,
+		},
+	}
+
+	d := NewDestinationSlack(cfg, mockLogger, mockClient)
+	assert.Equal(t, cfg.Enrichments, d.cfg.Enrichments)
+}
+
+func TestDestinationSlack_WithInvalidThreadingConfig(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+	mockClient := mocks.NewMockHTTPClient(ctrl)
+
+	// Expect warnings for invalid durations and then successful threading initialization
+	mockLogger.EXPECT().Warn("Invalid cache TTL, using default", gomock.Any()).Times(1)
+	mockLogger.EXPECT().Warn("Invalid search window, using default", gomock.Any()).Times(1)
+	mockLogger.EXPECT().Info("Thread management enabled", gomock.Any()).Times(1)
+	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+
+	cfg := &DestinationSlackConfig{
+		Name:         "test-slack",
+		APIKey:       "xoxb-test-token",
+		SlackChannel: "#test-channel",
+		UnfurlLinks:  false,
+		Threading: &SlackThreadingConfig{
+			Enabled:      true,
+			CacheTTL:     "invalid-duration",
+			SearchLimit:  50,
+			SearchWindow: "invalid-window",
+		},
+	}
+
+	d := NewDestinationSlack(cfg, mockLogger, mockClient)
+	assert.NotNil(t, d)
+}

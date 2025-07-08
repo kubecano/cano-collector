@@ -3,6 +3,7 @@ package sender
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/slack-go/slack"
 	"go.uber.org/zap"
@@ -10,6 +11,7 @@ import (
 	issuepkg "github.com/kubecano/cano-collector/pkg/core/issue"
 	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
 	sender_interfaces "github.com/kubecano/cano-collector/pkg/sender/interfaces"
+	slackpkg "github.com/kubecano/cano-collector/pkg/sender/slack"
 	"github.com/kubecano/cano-collector/pkg/util"
 )
 
@@ -68,19 +70,19 @@ func (s *SenderSlack) Send(ctx context.Context, issue *issuepkg.Issue) error {
 	msgOptions = append(msgOptions, slack.MsgOptionPostMessageParameters(params))
 
 	// Threading logic: check if we should post as thread reply
+	var threadTS string
 	if s.threadManager != nil {
 		fingerprint := s.generateFingerprint(issue)
 
 		if issue.Status == issuepkg.StatusResolved {
 			// For resolved alerts, try to find existing thread
-			threadTS, err := s.threadManager.GetThreadTS(ctx, fingerprint)
+			ts, err := s.threadManager.GetThreadTS(ctx, fingerprint)
 			if err != nil {
 				s.logger.Warn("Failed to get thread timestamp",
 					zap.Error(err),
 					zap.String("fingerprint", fingerprint))
-			} else if threadTS != "" {
-				// Reply to existing thread
-				msgOptions = append(msgOptions, slack.MsgOptionTS(threadTS))
+			} else if ts != "" {
+				threadTS = ts
 				s.logger.Debug("Posting resolved alert as thread reply",
 					zap.String("threadTS", threadTS),
 					zap.String("fingerprint", fingerprint))
@@ -105,12 +107,9 @@ func (s *SenderSlack) Send(ctx context.Context, issue *issuepkg.Issue) error {
 			slack.MsgOptionPostMessageParameters(params),
 		}
 
-		// Re-add thread timestamp if this was a thread reply
-		if issue.Status == issuepkg.StatusResolved {
-			threadTS, _ := s.threadManager.GetThreadTS(ctx, fingerprint)
-			if threadTS != "" {
-				msgOptions = append(msgOptions, slack.MsgOptionTS(threadTS))
-			}
+		// Add thread timestamp if this is a thread reply
+		if threadTS != "" {
+			msgOptions = append(msgOptions, slack.MsgOptionTS(threadTS))
 		}
 	}
 
@@ -467,8 +466,28 @@ func (s *SenderSlack) SetUnfurlLinks(unfurl bool) {
 	s.unfurlLinks = unfurl
 }
 
+// SetThreadManager sets the thread manager for handling threading
 func (s *SenderSlack) SetThreadManager(threadManager sender_interfaces.SlackThreadManagerInterface) {
 	s.threadManager = threadManager
+}
+
+// EnableThreading configures and enables thread management for this sender
+func (s *SenderSlack) EnableThreading(cacheTTL time.Duration, searchLimit int, searchWindow time.Duration) {
+	s.threadManager = slackpkg.NewThreadManager(
+		s.slackClient,
+		s.channel,
+		s.logger,
+		cacheTTL,
+		searchLimit,
+		searchWindow,
+	)
+
+	s.logger.Info("Thread management enabled",
+		zap.String("channel", s.channel),
+		zap.String("cacheTTL", cacheTTL.String()),
+		zap.String("searchWindow", searchWindow.String()),
+		zap.Int("searchLimit", searchLimit),
+	)
 }
 
 // generateFingerprint creates a unique fingerprint for the issue to identify related alerts
@@ -512,7 +531,7 @@ func (s *SenderSlack) generateFingerprint(issue *issuepkg.Issue) string {
 	}
 
 	// Create a simple but stable fingerprint
-	fingerprint := fmt.Sprintf("alert:%s", fmt.Sprintf("%x", parts))
+	fingerprint := "alert:" + fmt.Sprintf("%x", parts)
 
 	s.logger.Debug("Generated fingerprint for issue",
 		zap.String("fingerprint", fingerprint),
