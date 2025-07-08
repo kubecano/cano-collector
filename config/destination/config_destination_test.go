@@ -402,7 +402,7 @@ func TestValidateThreadingConfig(t *testing.T) {
 				SearchWindow: "xyz",
 			},
 			wantErr: true,
-			errMsg:  "search_window must be a valid duration",
+			errMsg:  "search_window validation failed",
 		},
 		{
 			name: "invalid search_window with prefix text",
@@ -410,7 +410,7 @@ func TestValidateThreadingConfig(t *testing.T) {
 				SearchWindow: "test24h",
 			},
 			wantErr: true,
-			errMsg:  "search_window must be a valid duration",
+			errMsg:  "search_window validation failed",
 		},
 		{
 			name: "invalid day suffix without number",
@@ -418,7 +418,7 @@ func TestValidateThreadingConfig(t *testing.T) {
 				SearchWindow: "d",
 			},
 			wantErr: true,
-			errMsg:  "search_window with 'd' suffix must have a numeric value",
+			errMsg:  "search_window validation failed",
 		},
 		{
 			name: "invalid day suffix with non-numeric prefix",
@@ -426,7 +426,55 @@ func TestValidateThreadingConfig(t *testing.T) {
 				SearchWindow: "abcd",
 			},
 			wantErr: true,
-			errMsg:  "search_window with 'd' suffix must have a valid numeric value",
+			errMsg:  "search_window validation failed",
+		},
+		{
+			name: "negative search_window hours",
+			config: SlackThreadingConfig{
+				SearchWindow: "-24h",
+			},
+			wantErr: true,
+			errMsg:  "search_window must be positive",
+		},
+		{
+			name: "negative search_window days",
+			config: SlackThreadingConfig{
+				SearchWindow: "-7d",
+			},
+			wantErr: true,
+			errMsg:  "search_window must be positive",
+		},
+		{
+			name: "negative search_window complex",
+			config: SlackThreadingConfig{
+				SearchWindow: "-1h30m",
+			},
+			wantErr: true,
+			errMsg:  "search_window must be positive",
+		},
+		{
+			name: "zero search_window hours",
+			config: SlackThreadingConfig{
+				SearchWindow: "0h",
+			},
+			wantErr: true,
+			errMsg:  "search_window must be positive",
+		},
+		{
+			name: "zero search_window days",
+			config: SlackThreadingConfig{
+				SearchWindow: "0d",
+			},
+			wantErr: true,
+			errMsg:  "search_window must be positive",
+		},
+		{
+			name: "zero search_window seconds",
+			config: SlackThreadingConfig{
+				SearchWindow: "0s",
+			},
+			wantErr: true,
+			errMsg:  "search_window must be positive",
 		},
 	}
 
@@ -438,6 +486,105 @@ func TestValidateThreadingConfig(t *testing.T) {
 				assert.Contains(t, err.Error(), tt.errMsg)
 			} else {
 				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestParseAndValidateSearchWindow(t *testing.T) {
+	tests := []struct {
+		name             string
+		searchWindow     string
+		expectedDuration string // Expected duration as string (for easier comparison)
+		wantErr          bool
+		errMsg           string
+	}{
+		{
+			name:             "valid hours",
+			searchWindow:     "24h",
+			expectedDuration: "24h0m0s",
+			wantErr:          false,
+		},
+		{
+			name:             "valid complex duration",
+			searchWindow:     "1h30m45s",
+			expectedDuration: "1h30m45s",
+			wantErr:          false,
+		},
+		{
+			name:             "valid single day converts to 24 hours",
+			searchWindow:     "1d",
+			expectedDuration: "24h0m0s",
+			wantErr:          false,
+		},
+		{
+			name:             "valid multiple days converts correctly",
+			searchWindow:     "7d",
+			expectedDuration: "168h0m0s", // 7 * 24 = 168 hours
+			wantErr:          false,
+		},
+		{
+			name:             "valid fractional day converts correctly",
+			searchWindow:     "0.5d",
+			expectedDuration: "12h0m0s", // 0.5 * 24 = 12 hours
+			wantErr:          false,
+		},
+		{
+			name:             "negative hours - parsed but not validated",
+			searchWindow:     "-24h",
+			expectedDuration: "-24h0m0s",
+			wantErr:          false, // parseAndValidateSearchWindow doesn't check positivity
+		},
+		{
+			name:             "negative days - parsed but not validated",
+			searchWindow:     "-7d",
+			expectedDuration: "-168h0m0s", // -7 * 24 = -168 hours
+			wantErr:          false,       // parseAndValidateSearchWindow doesn't check positivity
+		},
+		{
+			name:             "zero hours - parsed but not validated",
+			searchWindow:     "0h",
+			expectedDuration: "0s",
+			wantErr:          false, // parseAndValidateSearchWindow doesn't check positivity
+		},
+		{
+			name:             "zero days - parsed but not validated",
+			searchWindow:     "0d",
+			expectedDuration: "0s",  // 0 * 24 = 0 hours
+			wantErr:          false, // parseAndValidateSearchWindow doesn't check positivity
+		},
+		{
+			name:         "empty day suffix",
+			searchWindow: "d",
+			wantErr:      true,
+			errMsg:       "must be a valid duration", // Falls back to standard parsing
+		},
+		{
+			name:         "invalid format",
+			searchWindow: "invalid",
+			wantErr:      true,
+			errMsg:       "must be a valid duration",
+		},
+		{
+			name:         "invalid day suffix with non-numeric",
+			searchWindow: "abcd",
+			wantErr:      true,
+			errMsg:       "must be a valid duration", // Falls back to standard parsing
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			duration, err := parseAndValidateSearchWindow(tt.searchWindow)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.errMsg != "" {
+					assert.Contains(t, err.Error(), tt.errMsg)
+				}
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.expectedDuration, duration.String())
 			}
 		})
 	}

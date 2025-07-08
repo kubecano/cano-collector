@@ -209,26 +209,54 @@ func validateThreadingConfig(c SlackThreadingConfig) error {
 
 	// Validate search_window duration string format if provided
 	if c.SearchWindow != "" {
-		// Handle "d" suffix which is not supported by time.ParseDuration
-		if strings.HasSuffix(c.SearchWindow, "d") {
-			// Extract numeric part and validate it's a valid number followed by 'd'
-			durationStr := strings.TrimSuffix(c.SearchWindow, "d")
-			if durationStr == "" {
-				return fmt.Errorf("search_window with 'd' suffix must have a numeric value (e.g., '1d', '7d')")
-			}
-			// Try to parse as hours to validate the numeric part
-			if _, err := time.ParseDuration(durationStr + "h"); err != nil {
-				return fmt.Errorf("search_window with 'd' suffix must have a valid numeric value (e.g., '1d', '7d'): %w", err)
-			}
-		} else {
-			// Use standard time.ParseDuration for other formats
-			if _, err := time.ParseDuration(c.SearchWindow); err != nil {
-				return fmt.Errorf("search_window must be a valid duration (e.g., '24h', '1d', '1h30m'): %w", err)
-			}
+		duration, err := parseAndValidateSearchWindow(c.SearchWindow)
+		if err != nil {
+			return fmt.Errorf("search_window validation failed: %w", err)
+		}
+		if duration <= 0 {
+			return fmt.Errorf("search_window must be positive (e.g., '24h', '7d', '1h30m')")
 		}
 	}
 
 	return nil
+}
+
+// parseAndValidateSearchWindow parses and validates a search window duration string
+// Handles "d" suffix by converting to hours (e.g., "7d" -> "168h")
+// Returns the parsed duration and any parsing error
+func parseAndValidateSearchWindow(searchWindow string) (time.Duration, error) {
+	// Check if it's a valid day format (numeric + "d")
+	if strings.HasSuffix(searchWindow, "d") && len(searchWindow) > 1 {
+		// Extract numeric part and validate it's a valid number followed by 'd'
+		durationStr := strings.TrimSuffix(searchWindow, "d")
+		if durationStr == "" {
+			return 0, fmt.Errorf("duration with 'd' suffix must have a numeric value (e.g., '1d', '7d')")
+		}
+
+		// Parse as hours to validate the numeric part and convert to standard duration
+		hoursStr := durationStr + "h"
+		duration, err := time.ParseDuration(hoursStr)
+		if err != nil {
+			// If parsing as hours fails, fall back to standard parsing
+			// This handles cases like "invalid" where 'd' is just part of the word
+			standardDuration, standardErr := time.ParseDuration(searchWindow)
+			if standardErr != nil {
+				return 0, fmt.Errorf("must be a valid duration (e.g., '24h', '1d', '1h30m'): %w", standardErr)
+			}
+			return standardDuration, nil
+		}
+
+		// Convert days to hours (multiply by 24)
+		return duration * 24, nil
+	}
+
+	// Use standard time.ParseDuration for other formats
+	duration, err := time.ParseDuration(searchWindow)
+	if err != nil {
+		return 0, fmt.Errorf("must be a valid duration (e.g., '24h', '1d', '1h30m'): %w", err)
+	}
+
+	return duration, nil
 }
 
 func validateEnrichmentsConfig(c SlackEnrichmentsConfig) error {
