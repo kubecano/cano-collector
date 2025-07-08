@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -480,4 +481,55 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 		color := slackSender.getEnrichmentColor(nil)
 		assert.Equal(t, "#E8E8E8", color)
 	})
+}
+
+// Test threading functionality
+
+func TestSenderSlack_GenerateFingerprint(t *testing.T) {
+	slackSender, _ := setupSenderSlackTest(t)
+
+	// Test with issue that has existing fingerprint
+	issueWithFingerprint := &issuepkg.Issue{
+		Title:       "Test Issue",
+		Fingerprint: "existing-fingerprint-123",
+	}
+
+	fingerprint := slackSender.generateFingerprint(issueWithFingerprint)
+	assert.Equal(t, "existing-fingerprint-123", fingerprint)
+
+	// Test with issue without fingerprint - create new sender with additional Debug expectation
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+	mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+
+	testSender := &SenderSlack{
+		logger: mockLogger,
+	}
+
+	subject := issuepkg.NewSubject("test-pod", issuepkg.SubjectTypePod)
+	subject.Namespace = "default"
+
+	issueWithoutFingerprint := &issuepkg.Issue{
+		Title:    "Test Issue Without Fingerprint",
+		Source:   issuepkg.SourcePrometheus,
+		Subject:  subject,
+		StartsAt: time.Unix(1640995200, 0), // Fixed timestamp for test
+	}
+
+	fingerprint = testSender.generateFingerprint(issueWithoutFingerprint)
+	assert.NotEmpty(t, fingerprint)
+	assert.Contains(t, fingerprint, "alert:")
+}
+
+func TestSenderSlack_SetThreadManager(t *testing.T) {
+	slackSender, _ := setupSenderSlackTest(t)
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockThreadManager := mocks.NewMockSlackThreadManagerInterface(ctrl)
+
+	slackSender.SetThreadManager(mockThreadManager)
+	assert.Equal(t, mockThreadManager, slackSender.threadManager)
 }

@@ -46,6 +46,7 @@ func NewSenderSlack(apiKey, channel string, unfurlLinks bool, logger logger_inte
 func (s *SenderSlack) Send(ctx context.Context, issue *issuepkg.Issue) error {
 	s.logger.Info("Sending Slack notification",
 		zap.String("channel", s.channel),
+		zap.String("status", issue.Status.String()),
 	)
 
 	// Create formatted blocks
@@ -60,13 +61,61 @@ func (s *SenderSlack) Send(ctx context.Context, issue *issuepkg.Issue) error {
 		UnfurlMedia: s.unfurlLinks,
 	}
 
-	_, _, err := s.slackClient.PostMessage(
-		s.channel,
-		slack.MsgOptionText(fallbackText, false),
-		slack.MsgOptionBlocks(blocks...),
-		slack.MsgOptionAttachments(attachments...),
-		slack.MsgOptionPostMessageParameters(params),
-	)
+	var msgOptions []slack.MsgOption
+	msgOptions = append(msgOptions, slack.MsgOptionText(fallbackText, false))
+	msgOptions = append(msgOptions, slack.MsgOptionBlocks(blocks...))
+	msgOptions = append(msgOptions, slack.MsgOptionAttachments(attachments...))
+	msgOptions = append(msgOptions, slack.MsgOptionPostMessageParameters(params))
+
+	// Threading logic: check if we should post as thread reply
+	if s.threadManager != nil {
+		fingerprint := s.generateFingerprint(issue)
+
+		if issue.Status == issuepkg.StatusResolved {
+			// For resolved alerts, try to find existing thread
+			threadTS, err := s.threadManager.GetThreadTS(ctx, fingerprint)
+			if err != nil {
+				s.logger.Warn("Failed to get thread timestamp",
+					zap.Error(err),
+					zap.String("fingerprint", fingerprint))
+			} else if threadTS != "" {
+				// Reply to existing thread
+				msgOptions = append(msgOptions, slack.MsgOptionTS(threadTS))
+				s.logger.Debug("Posting resolved alert as thread reply",
+					zap.String("threadTS", threadTS),
+					zap.String("fingerprint", fingerprint))
+			}
+		}
+
+		// Optionally add fingerprint to message metadata for searching
+		// This adds the fingerprint as invisible metadata that can be searched later
+		// We add it as a code block in the message for simple searching
+		fingerprintBlock := slack.NewSectionBlock(
+			slack.NewTextBlockObject("mrkdwn", fmt.Sprintf("```%s```", fingerprint), false, false),
+			nil, nil,
+		)
+		// Add fingerprint block to the end (it will be small and relatively unobtrusive)
+		blocks = append(blocks, fingerprintBlock)
+
+		// Update msgOptions with new blocks that include fingerprint
+		msgOptions = []slack.MsgOption{
+			slack.MsgOptionText(fallbackText, false),
+			slack.MsgOptionBlocks(blocks...),
+			slack.MsgOptionAttachments(attachments...),
+			slack.MsgOptionPostMessageParameters(params),
+		}
+
+		// Re-add thread timestamp if this was a thread reply
+		if issue.Status == issuepkg.StatusResolved {
+			threadTS, _ := s.threadManager.GetThreadTS(ctx, fingerprint)
+			if threadTS != "" {
+				msgOptions = append(msgOptions, slack.MsgOptionTS(threadTS))
+			}
+		}
+	}
+
+	// Send the message
+	_, timestamp, err := s.slackClient.PostMessage(s.channel, msgOptions...)
 	if err != nil {
 		s.logger.Error("Failed to send Slack message",
 			zap.Error(err),
@@ -75,8 +124,18 @@ func (s *SenderSlack) Send(ctx context.Context, issue *issuepkg.Issue) error {
 		return err
 	}
 
+	// For firing alerts, cache the thread timestamp for future resolved alerts
+	if s.threadManager != nil && issue.Status == issuepkg.StatusFiring {
+		fingerprint := s.generateFingerprint(issue)
+		s.threadManager.SetThreadTS(fingerprint, timestamp)
+		s.logger.Debug("Cached thread timestamp for firing alert",
+			zap.String("fingerprint", fingerprint),
+			zap.String("timestamp", timestamp))
+	}
+
 	s.logger.Info("Slack message sent successfully",
 		zap.String("channel", s.channel),
+		zap.String("timestamp", timestamp),
 	)
 	return nil
 }
@@ -406,4 +465,60 @@ func (s *SenderSlack) SetLogger(logger logger_interfaces.LoggerInterface) {
 
 func (s *SenderSlack) SetUnfurlLinks(unfurl bool) {
 	s.unfurlLinks = unfurl
+}
+
+func (s *SenderSlack) SetThreadManager(threadManager sender_interfaces.SlackThreadManagerInterface) {
+	s.threadManager = threadManager
+}
+
+// generateFingerprint creates a unique fingerprint for the issue to identify related alerts
+func (s *SenderSlack) generateFingerprint(issue *issuepkg.Issue) string {
+	// Use existing fingerprint if available
+	if issue.Fingerprint != "" {
+		return issue.Fingerprint
+	}
+
+	// Create a stable identifier based on issue characteristics
+	// This allows firing and resolved alerts to be grouped together
+
+	var parts []string
+
+	// Add issue title (normalized)
+	if issue.Title != "" {
+		parts = append(parts, issue.Title)
+	}
+
+	// Add source
+	if issue.Source != issuepkg.SourceUnknown {
+		parts = append(parts, issue.Source.String())
+	}
+
+	// Add subject information if available
+	if issue.Subject != nil {
+		if issue.Subject.Name != "" {
+			parts = append(parts, issue.Subject.Name)
+		}
+		if issue.Subject.Namespace != "" {
+			parts = append(parts, issue.Subject.Namespace)
+		}
+		if issue.Subject.SubjectType != issuepkg.SubjectTypeNone {
+			parts = append(parts, issue.Subject.SubjectType.String())
+		}
+	}
+
+	// Join all parts with a separator
+	if len(parts) == 0 {
+		return fmt.Sprintf("issue-%d", issue.StartsAt.Unix())
+	}
+
+	// Create a simple but stable fingerprint
+	fingerprint := fmt.Sprintf("alert:%s", fmt.Sprintf("%x", parts))
+
+	s.logger.Debug("Generated fingerprint for issue",
+		zap.String("fingerprint", fingerprint),
+		zap.String("title", issue.Title),
+		zap.String("status", issue.Status.String()),
+	)
+
+	return fingerprint
 }
