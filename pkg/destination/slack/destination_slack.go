@@ -8,7 +8,7 @@ import (
 
 	issuepkg "github.com/kubecano/cano-collector/pkg/core/issue"
 	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
-	"github.com/kubecano/cano-collector/pkg/sender"
+	slacksender "github.com/kubecano/cano-collector/pkg/sender/slack"
 	"github.com/kubecano/cano-collector/pkg/util"
 )
 
@@ -43,14 +43,14 @@ type SlackEnrichmentsConfig struct {
 }
 
 type DestinationSlack struct {
-	sender *sender.SenderSlack
+	sender *slacksender.SenderSlack
 	cfg    *DestinationSlackConfig
 	logger logger_interfaces.LoggerInterface
 }
 
 func NewDestinationSlack(cfg *DestinationSlackConfig, logger logger_interfaces.LoggerInterface, client util.HTTPClient) *DestinationSlack {
 	// Create basic sender
-	s := sender.NewSenderSlack(cfg.APIKey, cfg.SlackChannel, cfg.UnfurlLinks, logger, client)
+	s := slacksender.NewSenderSlack(cfg.APIKey, cfg.SlackChannel, cfg.UnfurlLinks, logger, client)
 
 	destination := &DestinationSlack{
 		sender: s,

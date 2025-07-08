@@ -1,4 +1,4 @@
-package sender
+package slack
 
 import (
 	"context"
@@ -8,13 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/slack-go/slack"
+	slackapi "github.com/slack-go/slack"
 	"go.uber.org/zap"
 
 	issuepkg "github.com/kubecano/cano-collector/pkg/core/issue"
 	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
 	sender_interfaces "github.com/kubecano/cano-collector/pkg/sender/interfaces"
-	slackpkg "github.com/kubecano/cano-collector/pkg/sender/slack"
 	"github.com/kubecano/cano-collector/pkg/util"
 )
 
@@ -36,10 +35,10 @@ func NewSenderSlack(apiKey, channel string, unfurlLinks bool, logger logger_inte
 
 	if client != nil {
 		// Use custom HTTP client with slack-go
-		slackClient = slack.New(apiKey, slack.OptionHTTPClient(client))
+		slackClient = slackapi.New(apiKey, slackapi.OptionHTTPClient(client))
 	} else {
 		// Use default HTTP client from slack-go
-		slackClient = slack.New(apiKey)
+		slackClient = slackapi.New(apiKey)
 	}
 
 	return &SenderSlack{
@@ -64,16 +63,16 @@ func (s *SenderSlack) Send(ctx context.Context, issue *issuepkg.Issue) error {
 	// Fallback text for notifications
 	fallbackText := s.formatIssueToString(issue)
 
-	params := slack.PostMessageParameters{
+	params := slackapi.PostMessageParameters{
 		UnfurlLinks: s.unfurlLinks,
 		UnfurlMedia: s.unfurlLinks,
 	}
 
-	var msgOptions []slack.MsgOption
-	msgOptions = append(msgOptions, slack.MsgOptionText(fallbackText, false))
-	msgOptions = append(msgOptions, slack.MsgOptionBlocks(blocks...))
-	msgOptions = append(msgOptions, slack.MsgOptionAttachments(attachments...))
-	msgOptions = append(msgOptions, slack.MsgOptionPostMessageParameters(params))
+	var msgOptions []slackapi.MsgOption
+	msgOptions = append(msgOptions, slackapi.MsgOptionText(fallbackText, false))
+	msgOptions = append(msgOptions, slackapi.MsgOptionBlocks(blocks...))
+	msgOptions = append(msgOptions, slackapi.MsgOptionAttachments(attachments...))
+	msgOptions = append(msgOptions, slackapi.MsgOptionPostMessageParameters(params))
 
 	// Threading logic: check if we should post as thread reply
 	var threadTS string
@@ -98,8 +97,8 @@ func (s *SenderSlack) Send(ctx context.Context, issue *issuepkg.Issue) error {
 		// Optionally add fingerprint to message metadata for searching
 		// This adds the fingerprint as invisible metadata that can be searched later
 		// We add it as a code block in the message for simple searching
-		fingerprintBlock := slack.NewSectionBlock(
-			slack.NewTextBlockObject("mrkdwn", fmt.Sprintf("```%s```", fingerprint), false, false),
+		fingerprintBlock := slackapi.NewSectionBlock(
+			slackapi.NewTextBlockObject("mrkdwn", fmt.Sprintf("```%s```", fingerprint), false, false),
 			nil, nil,
 		)
 		// Add fingerprint block to the end (it will be small and relatively unobtrusive)
@@ -110,14 +109,14 @@ func (s *SenderSlack) Send(ctx context.Context, issue *issuepkg.Issue) error {
 		for i := range msgOptions {
 			// Check if this is the blocks option by trying to replace it
 			if i == 1 { // blocks option is typically the second one
-				msgOptions[i] = slack.MsgOptionBlocks(blocks...)
+				msgOptions[i] = slackapi.MsgOptionBlocks(blocks...)
 				break
 			}
 		}
 
 		// Add thread timestamp if this is a thread reply
 		if threadTS != "" {
-			msgOptions = append(msgOptions, slack.MsgOptionTS(threadTS))
+			msgOptions = append(msgOptions, slackapi.MsgOptionTS(threadTS))
 		}
 	}
 
@@ -148,13 +147,13 @@ func (s *SenderSlack) Send(ctx context.Context, issue *issuepkg.Issue) error {
 }
 
 // buildSlackBlocks creates the main message blocks
-func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slack.Block {
-	var blocks []slack.Block
+func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slackapi.Block {
+	var blocks []slackapi.Block
 
 	// Header block with status and severity
 	headerText := s.formatHeader(issue)
-	headerBlock := slack.NewSectionBlock(
-		slack.NewTextBlockObject("mrkdwn", headerText, false, false),
+	headerBlock := slackapi.NewSectionBlock(
+		slackapi.NewTextBlockObject("mrkdwn", headerText, false, false),
 		nil, nil,
 	)
 	blocks = append(blocks, headerBlock)
@@ -167,7 +166,7 @@ func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slack.Block {
 	if len(issue.Links) > 0 {
 		linkButtons := s.buildLinkButtons(issue.Links)
 		if len(linkButtons) > 0 {
-			actionBlock := slack.NewActionBlock("links", linkButtons...)
+			actionBlock := slackapi.NewActionBlock("links", linkButtons...)
 			blocks = append(blocks, actionBlock)
 		}
 	}
@@ -176,19 +175,19 @@ func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slack.Block {
 }
 
 // buildSlackAttachments creates colored attachment with issue details
-func (s *SenderSlack) buildSlackAttachments(issue *issuepkg.Issue) []slack.Attachment {
-	var attachments []slack.Attachment
+func (s *SenderSlack) buildSlackAttachments(issue *issuepkg.Issue) []slackapi.Attachment {
+	var attachments []slackapi.Attachment
 
 	// Main attachment with issue details
 	color := s.getSeverityColor(issue.Severity)
 
-	var attachmentBlocks []slack.Block
+	var attachmentBlocks []slackapi.Block
 
 	// Source information
 	if issue.Source != issuepkg.SourceUnknown {
 		sourceText := fmt.Sprintf("Source: `%s`", issue.Source.String())
-		sourceBlock := slack.NewSectionBlock(
-			slack.NewTextBlockObject("mrkdwn", sourceText, false, false),
+		sourceBlock := slackapi.NewSectionBlock(
+			slackapi.NewTextBlockObject("mrkdwn", sourceText, false, false),
 			nil, nil,
 		)
 		attachmentBlocks = append(attachmentBlocks, sourceBlock)
@@ -197,8 +196,8 @@ func (s *SenderSlack) buildSlackAttachments(issue *issuepkg.Issue) []slack.Attac
 	// Alert description with icon
 	if issue.Description != "" {
 		alertText := "🚨 Alert: " + issue.Description
-		alertBlock := slack.NewSectionBlock(
-			slack.NewTextBlockObject("mrkdwn", alertText, false, false),
+		alertBlock := slackapi.NewSectionBlock(
+			slackapi.NewTextBlockObject("mrkdwn", alertText, false, false),
 			nil, nil,
 		)
 		attachmentBlocks = append(attachmentBlocks, alertBlock)
@@ -207,8 +206,8 @@ func (s *SenderSlack) buildSlackAttachments(issue *issuepkg.Issue) []slack.Attac
 	// Subject information if available
 	if issue.Subject != nil && issue.Subject.Name != "" {
 		subjectText := issue.Subject.FormatWithEmoji()
-		subjectBlock := slack.NewSectionBlock(
-			slack.NewTextBlockObject("mrkdwn", subjectText, false, false),
+		subjectBlock := slackapi.NewSectionBlock(
+			slackapi.NewTextBlockObject("mrkdwn", subjectText, false, false),
 			nil, nil,
 		)
 		attachmentBlocks = append(attachmentBlocks, subjectBlock)
@@ -216,17 +215,17 @@ func (s *SenderSlack) buildSlackAttachments(issue *issuepkg.Issue) []slack.Attac
 		// Add subject labels if available
 		if len(issue.Subject.Labels) > 0 {
 			labelsText := s.formatLabels(issue.Subject.Labels)
-			labelsBlock := slack.NewSectionBlock(
-				slack.NewTextBlockObject("mrkdwn", labelsText, false, false),
+			labelsBlock := slackapi.NewSectionBlock(
+				slackapi.NewTextBlockObject("mrkdwn", labelsText, false, false),
 				nil, nil,
 			)
 			attachmentBlocks = append(attachmentBlocks, labelsBlock)
 		}
 	}
 
-	attachment := slack.Attachment{
+	attachment := slackapi.Attachment{
 		Color:  color,
-		Blocks: slack.Blocks{BlockSet: attachmentBlocks},
+		Blocks: slackapi.Blocks{BlockSet: attachmentBlocks},
 	}
 
 	attachments = append(attachments, attachment)
@@ -235,8 +234,8 @@ func (s *SenderSlack) buildSlackAttachments(issue *issuepkg.Issue) []slack.Attac
 }
 
 // buildEnrichmentBlocks creates blocks for enrichments in the main message
-func (s *SenderSlack) buildEnrichmentBlocks(enrichments []issuepkg.Enrichment) []slack.Block {
-	var blocks []slack.Block
+func (s *SenderSlack) buildEnrichmentBlocks(enrichments []issuepkg.Enrichment) []slackapi.Block {
+	var blocks []slackapi.Block
 
 	for _, enrichment := range enrichments {
 		enrichmentBlocks := s.convertEnrichmentToBlocks(enrichment)
@@ -247,8 +246,8 @@ func (s *SenderSlack) buildEnrichmentBlocks(enrichments []issuepkg.Enrichment) [
 }
 
 // convertEnrichmentToBlocks converts a single enrichment to Slack blocks
-func (s *SenderSlack) convertEnrichmentToBlocks(enrichment issuepkg.Enrichment) []slack.Block {
-	var blocks []slack.Block
+func (s *SenderSlack) convertEnrichmentToBlocks(enrichment issuepkg.Enrichment) []slackapi.Block {
+	var blocks []slackapi.Block
 
 	if len(enrichment.Blocks) == 0 {
 		return blocks
@@ -256,8 +255,8 @@ func (s *SenderSlack) convertEnrichmentToBlocks(enrichment issuepkg.Enrichment) 
 
 	// Add enrichment title as header if available
 	if enrichment.Title != nil && *enrichment.Title != "" {
-		titleBlock := slack.NewHeaderBlock(
-			slack.NewTextBlockObject("plain_text", *enrichment.Title, false, false),
+		titleBlock := slackapi.NewHeaderBlock(
+			slackapi.NewTextBlockObject("plain_text", *enrichment.Title, false, false),
 		)
 		blocks = append(blocks, titleBlock)
 	}
@@ -272,7 +271,7 @@ func (s *SenderSlack) convertEnrichmentToBlocks(enrichment issuepkg.Enrichment) 
 
 	// Add divider for visual separation between enrichments
 	if len(blocks) > 0 {
-		dividerBlock := slack.NewDividerBlock()
+		dividerBlock := slackapi.NewDividerBlock()
 		blocks = append(blocks, dividerBlock)
 	}
 
@@ -280,7 +279,7 @@ func (s *SenderSlack) convertEnrichmentToBlocks(enrichment issuepkg.Enrichment) 
 }
 
 // convertBlockToSlack converts an issue block to a Slack block
-func (s *SenderSlack) convertBlockToSlack(block issuepkg.BaseBlock) slack.Block {
+func (s *SenderSlack) convertBlockToSlack(block issuepkg.BaseBlock) slackapi.Block {
 	switch b := block.(type) {
 	case *issuepkg.TableBlock:
 		return s.convertTableBlockToSlack(b)
@@ -297,18 +296,18 @@ func (s *SenderSlack) convertBlockToSlack(block issuepkg.BaseBlock) slack.Block 
 	case *issuepkg.FileBlock:
 		return s.convertFileBlockToSlack(b)
 	case *issuepkg.DividerBlock:
-		return slack.NewDividerBlock()
+		return slackapi.NewDividerBlock()
 	default:
 		// Fallback - convert unknown block to text
-		return slack.NewSectionBlock(
-			slack.NewTextBlockObject("mrkdwn", "Unknown block type: "+block.BlockType(), false, false),
+		return slackapi.NewSectionBlock(
+			slackapi.NewTextBlockObject("mrkdwn", "Unknown block type: "+block.BlockType(), false, false),
 			nil, nil,
 		)
 	}
 }
 
 // convertTableBlockToSlack converts a table block to Slack section block with adaptive formatting
-func (s *SenderSlack) convertTableBlockToSlack(table *issuepkg.TableBlock) slack.Block {
+func (s *SenderSlack) convertTableBlockToSlack(table *issuepkg.TableBlock) slackapi.Block {
 	// Check if table exceeds row limit and should be converted to file
 	if s.maxTableRows > 0 && len(table.Rows) > s.maxTableRows {
 		return s.convertLargeTableToFileBlock(table)
@@ -330,7 +329,7 @@ func (s *SenderSlack) convertTableBlockToSlack(table *issuepkg.TableBlock) slack
 }
 
 // convertTableToSimpleBlock converts table to simple key-value format
-func (s *SenderSlack) convertTableToSimpleBlock(table *issuepkg.TableBlock) slack.Block {
+func (s *SenderSlack) convertTableToSimpleBlock(table *issuepkg.TableBlock) slackapi.Block {
 	var text string
 	if table.TableName != "" {
 		text = fmt.Sprintf("*%s*\n", table.TableName)
@@ -343,14 +342,14 @@ func (s *SenderSlack) convertTableToSimpleBlock(table *issuepkg.TableBlock) slac
 		}
 	}
 
-	return slack.NewSectionBlock(
-		slack.NewTextBlockObject("mrkdwn", text, false, false),
+	return slackapi.NewSectionBlock(
+		slackapi.NewTextBlockObject("mrkdwn", text, false, false),
 		nil, nil,
 	)
 }
 
 // convertTableToEnhancedBlock converts table to enhanced format with better styling
-func (s *SenderSlack) convertTableToEnhancedBlock(table *issuepkg.TableBlock) slack.Block {
+func (s *SenderSlack) convertTableToEnhancedBlock(table *issuepkg.TableBlock) slackapi.Block {
 	var text string
 	if table.TableName != "" {
 		text = fmt.Sprintf("*%s*\n", table.TableName)
@@ -363,48 +362,46 @@ func (s *SenderSlack) convertTableToEnhancedBlock(table *issuepkg.TableBlock) sl
 				text += fmt.Sprintf("▸ *%s*: `%s`\n", row[0], row[1])
 			}
 		}
-	} else {
+	} else if len(table.Headers) > 0 {
 		// For multi-column tables, create a more structured format
-		if len(table.Headers) > 0 {
-			text += "\n```\n"
-			// Add headers
-			headerLine := ""
-			for i, header := range table.Headers {
-				if i > 0 {
-					headerLine += " | "
-				}
-				headerLine += fmt.Sprintf("%-15s", header)
+		text += "\n```\n"
+		// Add headers
+		headerLine := ""
+		for i, header := range table.Headers {
+			if i > 0 {
+				headerLine += " | "
 			}
-			text += headerLine + "\n"
-			text += strings.Repeat("-", len(headerLine)) + "\n"
-
-			// Add rows
-			for _, row := range table.Rows {
-				rowLine := ""
-				for i := 0; i < len(table.Headers); i++ {
-					if i > 0 {
-						rowLine += " | "
-					}
-					cellValue := ""
-					if i < len(row) {
-						cellValue = row[i]
-					}
-					rowLine += fmt.Sprintf("%-15s", cellValue)
-				}
-				text += rowLine + "\n"
-			}
-			text += "```"
+			headerLine += fmt.Sprintf("%-15s", header)
 		}
+		text += headerLine + "\n"
+		text += strings.Repeat("-", len(headerLine)) + "\n"
+
+		// Add rows
+		for _, row := range table.Rows {
+			rowLine := ""
+			for i := 0; i < len(table.Headers); i++ {
+				if i > 0 {
+					rowLine += " | "
+				}
+				cellValue := ""
+				if i < len(row) {
+					cellValue = row[i]
+				}
+				rowLine += fmt.Sprintf("%-15s", cellValue)
+			}
+			text += rowLine + "\n"
+		}
+		text += "```"
 	}
 
-	return slack.NewSectionBlock(
-		slack.NewTextBlockObject("mrkdwn", text, false, false),
+	return slackapi.NewSectionBlock(
+		slackapi.NewTextBlockObject("mrkdwn", text, false, false),
 		nil, nil,
 	)
 }
 
 // convertTableToAttachmentStyleBlock formats table for attachment-style display
-func (s *SenderSlack) convertTableToAttachmentStyleBlock(table *issuepkg.TableBlock) slack.Block {
+func (s *SenderSlack) convertTableToAttachmentStyleBlock(table *issuepkg.TableBlock) slackapi.Block {
 	var text string
 	if table.TableName != "" {
 		text = fmt.Sprintf("📊 *%s*\n", table.TableName)
@@ -417,15 +414,15 @@ func (s *SenderSlack) convertTableToAttachmentStyleBlock(table *issuepkg.TableBl
 		}
 	}
 
-	return slack.NewSectionBlock(
-		slack.NewTextBlockObject("mrkdwn", text, false, false),
+	return slackapi.NewSectionBlock(
+		slackapi.NewTextBlockObject("mrkdwn", text, false, false),
 		nil, nil,
 	)
 }
 
 // convertLargeTableToFileBlock converts large tables to file placeholder
 // TODO: Implement actual file upload with Slack files_upload_v2 API
-func (s *SenderSlack) convertLargeTableToFileBlock(table *issuepkg.TableBlock) slack.Block {
+func (s *SenderSlack) convertLargeTableToFileBlock(table *issuepkg.TableBlock) slackapi.Block {
 	rowCount := len(table.Rows)
 	tableName := table.TableName
 	if tableName == "" {
@@ -439,43 +436,43 @@ func (s *SenderSlack) convertLargeTableToFileBlock(table *issuepkg.TableBlock) s
 	// TODO: Convert table to CSV/text format and upload using Slack files_upload_v2 API
 	// For now, show placeholder
 
-	return slack.NewSectionBlock(
-		slack.NewTextBlockObject("mrkdwn", text, false, false),
+	return slackapi.NewSectionBlock(
+		slackapi.NewTextBlockObject("mrkdwn", text, false, false),
 		nil, nil,
 	)
 }
 
 // convertJsonBlockToSlack converts a JSON block to Slack section block
-func (s *SenderSlack) convertJsonBlockToSlack(jsonBlock *issuepkg.JsonBlock) slack.Block {
+func (s *SenderSlack) convertJsonBlockToSlack(jsonBlock *issuepkg.JsonBlock) slackapi.Block {
 	// Convert JSON to formatted string
 	jsonStr := jsonBlock.ToJson()
 
 	// Wrap in code block for better formatting
 	text := fmt.Sprintf("```\n%s\n```", jsonStr)
 
-	return slack.NewSectionBlock(
-		slack.NewTextBlockObject("mrkdwn", text, false, false),
+	return slackapi.NewSectionBlock(
+		slackapi.NewTextBlockObject("mrkdwn", text, false, false),
 		nil, nil,
 	)
 }
 
 // convertMarkdownBlockToSlack converts a markdown block to Slack section block
-func (s *SenderSlack) convertMarkdownBlockToSlack(markdown *issuepkg.MarkdownBlock) slack.Block {
-	return slack.NewSectionBlock(
-		slack.NewTextBlockObject("mrkdwn", markdown.Text, false, false),
+func (s *SenderSlack) convertMarkdownBlockToSlack(markdown *issuepkg.MarkdownBlock) slackapi.Block {
+	return slackapi.NewSectionBlock(
+		slackapi.NewTextBlockObject("mrkdwn", markdown.Text, false, false),
 		nil, nil,
 	)
 }
 
 // convertHeaderBlockToSlack converts a header block to Slack header block
-func (s *SenderSlack) convertHeaderBlockToSlack(header *issuepkg.HeaderBlock) slack.Block {
-	return slack.NewHeaderBlock(
-		slack.NewTextBlockObject("plain_text", header.Text, false, false),
+func (s *SenderSlack) convertHeaderBlockToSlack(header *issuepkg.HeaderBlock) slackapi.Block {
+	return slackapi.NewHeaderBlock(
+		slackapi.NewTextBlockObject("plain_text", header.Text, false, false),
 	)
 }
 
 // convertListBlockToSlack converts a list block to Slack section block
-func (s *SenderSlack) convertListBlockToSlack(list *issuepkg.ListBlock) slack.Block {
+func (s *SenderSlack) convertListBlockToSlack(list *issuepkg.ListBlock) slackapi.Block {
 	var text string
 
 	// Add list name if available
@@ -492,15 +489,15 @@ func (s *SenderSlack) convertListBlockToSlack(list *issuepkg.ListBlock) slack.Bl
 		}
 	}
 
-	return slack.NewSectionBlock(
-		slack.NewTextBlockObject("mrkdwn", text, false, false),
+	return slackapi.NewSectionBlock(
+		slackapi.NewTextBlockObject("mrkdwn", text, false, false),
 		nil, nil,
 	)
 }
 
 // convertLinksBlockToSlack converts a links block to Slack actions block
-func (s *SenderSlack) convertLinksBlockToSlack(links *issuepkg.LinksBlock) slack.Block {
-	var buttons []slack.BlockElement
+func (s *SenderSlack) convertLinksBlockToSlack(links *issuepkg.LinksBlock) slackapi.Block {
+	var buttons []slackapi.BlockElement
 
 	// Convert links to buttons (limit to 5 for Slack constraints)
 	for i, link := range links.Links {
@@ -508,10 +505,10 @@ func (s *SenderSlack) convertLinksBlockToSlack(links *issuepkg.LinksBlock) slack
 			break
 		}
 
-		button := slack.NewButtonBlockElement(
+		button := slackapi.NewButtonBlockElement(
 			fmt.Sprintf("link_%d", i),
 			link.URL,
-			slack.NewTextBlockObject("plain_text", link.Text, false, false),
+			slackapi.NewTextBlockObject("plain_text", link.Text, false, false),
 		)
 		button.URL = link.URL
 		buttons = append(buttons, button)
@@ -527,8 +524,8 @@ func (s *SenderSlack) convertLinksBlockToSlack(links *issuepkg.LinksBlock) slack
 			text += fmt.Sprintf("• <%s|%s>\n", link.URL, link.Text)
 		}
 
-		return slack.NewSectionBlock(
-			slack.NewTextBlockObject("mrkdwn", text, false, false),
+		return slackapi.NewSectionBlock(
+			slackapi.NewTextBlockObject("mrkdwn", text, false, false),
 			nil, nil,
 		)
 	}
@@ -539,12 +536,12 @@ func (s *SenderSlack) convertLinksBlockToSlack(links *issuepkg.LinksBlock) slack
 		blockID = "links_" + strings.ReplaceAll(strings.ToLower(links.BlockName), " ", "_")
 	}
 
-	return slack.NewActionBlock(blockID, buttons...)
+	return slackapi.NewActionBlock(blockID, buttons...)
 }
 
 // convertFileBlockToSlack converts a file block to Slack section block
 // For now, we'll display file info as text. File upload implementation would require files_upload_v2 API
-func (s *SenderSlack) convertFileBlockToSlack(file *issuepkg.FileBlock) slack.Block {
+func (s *SenderSlack) convertFileBlockToSlack(file *issuepkg.FileBlock) slackapi.Block {
 	sizeKB := file.GetSizeKB()
 	sizeText := fmt.Sprintf("%.1f KB", sizeKB)
 	if sizeKB > 1024 {
@@ -553,17 +550,17 @@ func (s *SenderSlack) convertFileBlockToSlack(file *issuepkg.FileBlock) slack.Bl
 	}
 
 	text := fmt.Sprintf("📎 *File: %s*\n", file.Filename)
-	text += fmt.Sprintf("Size: %s", sizeText)
+	text += "Size: " + sizeText
 	if file.MimeType != "" {
-		text += fmt.Sprintf("\nType: %s", file.MimeType)
+		text += "\nType: " + file.MimeType
 	}
 
 	// TODO: Implement actual file upload using Slack files_upload_v2 API
 	// For now, display as attachment info
 	text += "\n_File content not uploaded - upload functionality to be implemented_"
 
-	return slack.NewSectionBlock(
-		slack.NewTextBlockObject("mrkdwn", text, false, false),
+	return slackapi.NewSectionBlock(
+		slackapi.NewTextBlockObject("mrkdwn", text, false, false),
 		nil, nil,
 	)
 }
@@ -599,8 +596,8 @@ func (s *SenderSlack) formatLabels(labels map[string]string) string {
 }
 
 // buildLinkButtons creates action buttons for links
-func (s *SenderSlack) buildLinkButtons(links []issuepkg.Link) []slack.BlockElement {
-	var buttons []slack.BlockElement
+func (s *SenderSlack) buildLinkButtons(links []issuepkg.Link) []slackapi.BlockElement {
+	var buttons []slackapi.BlockElement
 
 	for i, link := range links {
 		// Limit to first 5 links to avoid Slack limits
@@ -608,10 +605,10 @@ func (s *SenderSlack) buildLinkButtons(links []issuepkg.Link) []slack.BlockEleme
 			break
 		}
 
-		button := slack.NewButtonBlockElement(
+		button := slackapi.NewButtonBlockElement(
 			fmt.Sprintf("link_%d", i),
 			link.URL,
-			slack.NewTextBlockObject("plain_text", link.Text, false, false),
+			slackapi.NewTextBlockObject("plain_text", link.Text, false, false),
 		)
 		button.URL = link.URL
 		buttons = append(buttons, button)
@@ -691,7 +688,7 @@ func (s *SenderSlack) SetMaxTableRows(maxTableRows int) {
 
 // EnableThreading enables threading support by creating and configuring a ThreadManager
 func (s *SenderSlack) EnableThreading(cacheTTL time.Duration, searchLimit int, searchWindow time.Duration) {
-	s.threadManager = slackpkg.NewThreadManager(
+	s.threadManager = NewThreadManager(
 		s.slackClient,
 		s.channel,
 		s.logger,

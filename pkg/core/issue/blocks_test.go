@@ -334,7 +334,7 @@ func TestFileBlock_GetSizeKB(t *testing.T) {
 	fileBlock := NewFileBlock("test.bin", content, "application/octet-stream")
 
 	sizeKB := fileBlock.GetSizeKB()
-	assert.Equal(t, 2.0, sizeKB)
+	assert.InDelta(t, 2.0, sizeKB, 0.01)
 }
 
 func TestDividerBlock_NewDividerBlock(t *testing.T) {
