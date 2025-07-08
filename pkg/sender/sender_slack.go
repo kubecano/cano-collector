@@ -2,7 +2,9 @@ package sender
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/slack-go/slack"
@@ -100,11 +102,13 @@ func (s *SenderSlack) Send(ctx context.Context, issue *issuepkg.Issue) error {
 		blocks = append(blocks, fingerprintBlock)
 
 		// Update msgOptions with new blocks that include fingerprint
-		msgOptions = []slack.MsgOption{
-			slack.MsgOptionText(fallbackText, false),
-			slack.MsgOptionBlocks(blocks...),
-			slack.MsgOptionAttachments(attachments...),
-			slack.MsgOptionPostMessageParameters(params),
+		// Find and replace the blocks option instead of recreating the entire slice
+		for i := range msgOptions {
+			// Check if this is the blocks option by trying to replace it
+			if i == 1 { // blocks option is typically the second one
+				msgOptions[i] = slack.MsgOptionBlocks(blocks...)
+				break
+			}
 		}
 
 		// Add thread timestamp if this is a thread reply
@@ -530,8 +534,10 @@ func (s *SenderSlack) generateFingerprint(issue *issuepkg.Issue) string {
 		return fmt.Sprintf("issue-%d", issue.StartsAt.Unix())
 	}
 
-	// Create a simple but stable fingerprint
-	fingerprint := "alert:" + fmt.Sprintf("%x", parts)
+	// Create a simple but stable fingerprint by hashing the joined parts
+	joinedParts := strings.Join(parts, "|")
+	hash := sha256.Sum256([]byte(joinedParts))
+	fingerprint := "alert:" + fmt.Sprintf("%x", hash[:8]) // Use first 8 bytes for shorter fingerprint
 
 	s.logger.Debug("Generated fingerprint for issue",
 		zap.String("fingerprint", fingerprint),
