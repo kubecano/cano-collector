@@ -19,6 +19,8 @@ type SenderSlack struct {
 	logger      logger_interfaces.LoggerInterface
 	unfurlLinks bool
 	slackClient sender_interfaces.SlackClientInterface
+	// Threading configuration - will be added in next step
+	threadManager sender_interfaces.SlackThreadManagerInterface
 }
 
 func NewSenderSlack(apiKey, channel string, unfurlLinks bool, logger logger_interfaces.LoggerInterface, client util.HTTPClient) *SenderSlack {
