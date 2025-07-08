@@ -557,3 +557,155 @@ func TestSenderSlack_EnableThreading(t *testing.T) {
 	// Verify that threadManager was set (we can't check internal details)
 	assert.NotNil(t, slackSender.threadManager)
 }
+
+func TestSenderSlack_SetLogger(t *testing.T) {
+	slackSender, _, _ := setupSenderSlackTest(t)
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	newMockLogger := mocks.NewMockLoggerInterface(ctrl)
+	slackSender.SetLogger(newMockLogger)
+
+	assert.Equal(t, newMockLogger, slackSender.logger)
+}
+
+func TestSenderSlack_ConvertMarkdownBlockToSlack(t *testing.T) {
+	slackSender, _, _ := setupSenderSlackTest(t)
+
+	markdownBlock := &issuepkg.MarkdownBlock{
+		Text: "**This is bold text** and *this is italic*",
+	}
+
+	slackBlock := slackSender.convertMarkdownBlockToSlack(markdownBlock)
+
+	sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+	assert.True(t, ok, "Expected section block")
+	assert.Equal(t, "**This is bold text** and *this is italic*", sectionBlock.Text.Text)
+	assert.Equal(t, "mrkdwn", sectionBlock.Text.Type)
+}
+
+func TestSenderSlack_ConvertBlockToSlack_WithMarkdown(t *testing.T) {
+	slackSender, _, _ := setupSenderSlackTest(t)
+
+	// Test with markdown block (this should improve coverage of convertBlockToSlack)
+	markdownBlock := &issuepkg.MarkdownBlock{
+		Text: "# Header\n\nSome **bold** text",
+	}
+
+	slackBlock := slackSender.convertBlockToSlack(markdownBlock)
+
+	sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+	assert.True(t, ok, "Expected section block")
+	assert.Equal(t, "# Header\n\nSome **bold** text", sectionBlock.Text.Text)
+	assert.Equal(t, "mrkdwn", sectionBlock.Text.Type)
+}
+
+// mockUnsupportedBlock is a test mock for unsupported block type
+type mockUnsupportedBlock struct {
+	blockType string
+}
+
+func (m *mockUnsupportedBlock) BlockType() string {
+	return m.blockType
+}
+
+func TestSenderSlack_ConvertBlockToSlack_WithUnsupportedBlock(t *testing.T) {
+	slackSender, _, _ := setupSenderSlackTest(t)
+
+	// Test with unsupported block type (should return fallback section block)
+	mockBlock := &mockUnsupportedBlock{blockType: "unsupported"}
+	slackBlock := slackSender.convertBlockToSlack(mockBlock)
+
+	// Should return a section block with fallback text
+	assert.NotNil(t, slackBlock, "Expected non-nil block for unsupported type")
+	sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+	assert.True(t, ok, "Expected section block for unsupported type")
+	assert.Contains(t, sectionBlock.Text.Text, "Unknown block type: unsupported")
+}
+
+func TestSenderSlack_ConvertBlockToSlack_AllTypes(t *testing.T) {
+	slackSender, _, _ := setupSenderSlackTest(t)
+
+	// Test all supported block types
+	tests := []struct {
+		name  string
+		block issuepkg.BaseBlock
+	}{
+		{
+			name: "TableBlock",
+			block: &issuepkg.TableBlock{
+				Headers:   []string{"Key", "Value"},
+				TableName: "Test Table",
+				Rows: [][]string{
+					{"key1", "value1"},
+				},
+			},
+		},
+		{
+			name: "JsonBlock",
+			block: &issuepkg.JsonBlock{
+				Data: map[string]string{"test": "value"},
+			},
+		},
+		{
+			name: "MarkdownBlock",
+			block: &issuepkg.MarkdownBlock{
+				Text: "**Bold text**",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			slackBlock := slackSender.convertBlockToSlack(tt.block)
+			assert.NotNil(t, slackBlock, "Expected non-nil block for %s", tt.name)
+
+			sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+			assert.True(t, ok, "Expected section block for %s", tt.name)
+			assert.NotEmpty(t, sectionBlock.Text.Text, "Expected non-empty text for %s", tt.name)
+		})
+	}
+}
+
+func TestSenderSlack_EnrichmentBlocks_WithMarkdown(t *testing.T) {
+	slackSender, _, _ := setupSenderSlackTest(t)
+
+	issue := &issuepkg.Issue{
+		Title:    "Test Alert with Markdown Enrichment",
+		Severity: issuepkg.SeverityInfo,
+		Status:   issuepkg.StatusFiring,
+		Source:   issuepkg.SourcePrometheus,
+	}
+
+	// Add markdown enrichment
+	markdownEnrichment := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAIAnalysis, "AI Analysis")
+	markdownBlock := &issuepkg.MarkdownBlock{
+		Text: "## Analysis Result\n\nThis alert indicates a **high CPU usage** on the pod.",
+	}
+	markdownEnrichment.AddBlock(markdownBlock)
+	issue.AddEnrichment(*markdownEnrichment)
+
+	// Test enrichment blocks building
+	enrichmentBlocks := slackSender.buildEnrichmentBlocks(issue.Enrichments)
+
+	// Should have 3 blocks: header + section + divider
+	assert.Len(t, enrichmentBlocks, 3)
+
+	// Verify header block
+	headerBlock, ok := enrichmentBlocks[0].(*slack.HeaderBlock)
+	assert.True(t, ok, "First block should be header")
+	assert.Equal(t, "AI Analysis", headerBlock.Text.Text)
+
+	// Verify the markdown block was converted to a section block
+	contentBlock := enrichmentBlocks[1]
+	sectionBlock, ok := contentBlock.(*slack.SectionBlock)
+	assert.True(t, ok, "Second block should be section block for markdown content")
+	assert.Contains(t, sectionBlock.Text.Text, "## Analysis Result")
+	assert.Contains(t, sectionBlock.Text.Text, "**high CPU usage**")
+	assert.Equal(t, "mrkdwn", sectionBlock.Text.Type)
+
+	// Verify divider block
+	_, ok = enrichmentBlocks[2].(*slack.DividerBlock)
+	assert.True(t, ok, "Third block should be divider")
+}
