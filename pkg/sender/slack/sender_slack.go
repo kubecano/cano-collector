@@ -150,7 +150,7 @@ func (s *SenderSlack) Send(ctx context.Context, issue *issuepkg.Issue) error {
 func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slackapi.Block {
 	var blocks []slackapi.Block
 
-	// Header block with status and severity
+	// Header block with emoji, status and title
 	headerText := s.formatHeader(issue)
 	headerBlock := slackapi.NewSectionBlock(
 		slackapi.NewTextBlockObject("mrkdwn", headerText, false, false),
@@ -158,12 +158,70 @@ func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slackapi.Block {
 	)
 	blocks = append(blocks, headerBlock)
 
-	// Add enrichments as blocks directly in main message for better visibility
+	// Alert description directly in main message
+	if issue.Description != "" {
+		alertText := "🚨 *Alert:* " + issue.Description
+		alertBlock := slackapi.NewSectionBlock(
+			slackapi.NewTextBlockObject("mrkdwn", alertText, false, false),
+			nil, nil,
+		)
+		blocks = append(blocks, alertBlock)
+	}
+
+	// Subject information in main message
+	if issue.Subject != nil && issue.Subject.Name != "" {
+		subjectText := issue.Subject.FormatWithEmoji()
+		subjectBlock := slackapi.NewSectionBlock(
+			slackapi.NewTextBlockObject("mrkdwn", subjectText, false, false),
+			nil, nil,
+		)
+		blocks = append(blocks, subjectBlock)
+	}
+
+	// Alert labels in main message
+	if issue.Subject != nil && len(issue.Subject.Labels) > 0 {
+		labelsBlock := slackapi.NewHeaderBlock(
+			slackapi.NewTextBlockObject("plain_text", "Alert Labels", false, false),
+		)
+		blocks = append(blocks, labelsBlock)
+
+		labelsText := s.formatLabelsForMainMessage(issue.Subject.Labels)
+		labelsContentBlock := slackapi.NewSectionBlock(
+			slackapi.NewTextBlockObject("mrkdwn", labelsText, false, false),
+			nil, nil,
+		)
+		blocks = append(blocks, labelsContentBlock)
+	}
+
+	// Alert annotations in main message
+	if issue.Subject != nil && len(issue.Subject.Annotations) > 0 {
+		annotationsBlock := slackapi.NewHeaderBlock(
+			slackapi.NewTextBlockObject("plain_text", "Alert Annotations", false, false),
+		)
+		blocks = append(blocks, annotationsBlock)
+
+		annotationsText := s.formatAnnotationsForMainMessage(issue.Subject.Annotations)
+		annotationsContentBlock := slackapi.NewSectionBlock(
+			slackapi.NewTextBlockObject("mrkdwn", annotationsText, false, false),
+			nil, nil,
+		)
+		blocks = append(blocks, annotationsContentBlock)
+	}
+
+	// Add visual separator before enrichments
+	if len(issue.Enrichments) > 0 {
+		blocks = append(blocks, slackapi.NewDividerBlock())
+	}
+
+	// Add enrichments as blocks directly in main message
 	enrichmentBlocks := s.buildEnrichmentBlocks(issue.Enrichments)
 	blocks = append(blocks, enrichmentBlocks...)
 
-	// Links as action buttons (without AI/Dashboard buttons for now)
+	// Links as action buttons at the end
 	if len(issue.Links) > 0 {
+		// Add separator before links
+		blocks = append(blocks, slackapi.NewDividerBlock())
+
 		linkButtons := s.buildLinkButtons(issue.Links)
 		if len(linkButtons) > 0 {
 			actionBlock := slackapi.NewActionBlock("links", linkButtons...)
@@ -174,18 +232,16 @@ func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slackapi.Block {
 	return blocks
 }
 
-// buildSlackAttachments creates colored attachment with issue details
+// buildSlackAttachments creates colored attachment with secondary issue details
 func (s *SenderSlack) buildSlackAttachments(issue *issuepkg.Issue) []slackapi.Attachment {
 	var attachments []slackapi.Attachment
 
-	// Main attachment with issue details
-	color := s.getSeverityColor(issue.Severity)
-
+	// Only create attachment if we have secondary information to show
 	var attachmentBlocks []slackapi.Block
 
-	// Source information
+	// Source information (less critical, keep in attachment)
 	if issue.Source != issuepkg.SourceUnknown {
-		sourceText := fmt.Sprintf("Source: `%s`", issue.Source.String())
+		sourceText := fmt.Sprintf("📍 *Source:* `%s`", issue.Source.String())
 		sourceBlock := slackapi.NewSectionBlock(
 			slackapi.NewTextBlockObject("mrkdwn", sourceText, false, false),
 			nil, nil,
@@ -193,42 +249,35 @@ func (s *SenderSlack) buildSlackAttachments(issue *issuepkg.Issue) []slackapi.At
 		attachmentBlocks = append(attachmentBlocks, sourceBlock)
 	}
 
-	// Alert description with icon
-	if issue.Description != "" {
-		alertText := "🚨 Alert: " + issue.Description
-		alertBlock := slackapi.NewSectionBlock(
-			slackapi.NewTextBlockObject("mrkdwn", alertText, false, false),
+	// Add any additional metadata that might be useful but not critical
+	if issue.Subject != nil && issue.Subject.Namespace != "" {
+		namespaceText := fmt.Sprintf("🏷️ *Namespace:* `%s`", issue.Subject.Namespace)
+		namespaceBlock := slackapi.NewSectionBlock(
+			slackapi.NewTextBlockObject("mrkdwn", namespaceText, false, false),
 			nil, nil,
 		)
-		attachmentBlocks = append(attachmentBlocks, alertBlock)
+		attachmentBlocks = append(attachmentBlocks, namespaceBlock)
 	}
 
-	// Subject information if available
-	if issue.Subject != nil && issue.Subject.Name != "" {
-		subjectText := issue.Subject.FormatWithEmoji()
-		subjectBlock := slackapi.NewSectionBlock(
-			slackapi.NewTextBlockObject("mrkdwn", subjectText, false, false),
+	// Add timing information if available
+	if !issue.StartsAt.IsZero() {
+		timeText := "⏰ *Started:* " + issue.StartsAt.UTC().Format("2006-01-02 15:04:05 UTC")
+		timeBlock := slackapi.NewSectionBlock(
+			slackapi.NewTextBlockObject("mrkdwn", timeText, false, false),
 			nil, nil,
 		)
-		attachmentBlocks = append(attachmentBlocks, subjectBlock)
+		attachmentBlocks = append(attachmentBlocks, timeBlock)
+	}
 
-		// Add subject labels if available
-		if len(issue.Subject.Labels) > 0 {
-			labelsText := s.formatLabels(issue.Subject.Labels)
-			labelsBlock := slackapi.NewSectionBlock(
-				slackapi.NewTextBlockObject("mrkdwn", labelsText, false, false),
-				nil, nil,
-			)
-			attachmentBlocks = append(attachmentBlocks, labelsBlock)
+	// Only create attachment if we have content
+	if len(attachmentBlocks) > 0 {
+		color := s.getSeverityColor(issue.Severity)
+		attachment := slackapi.Attachment{
+			Color:  color,
+			Blocks: slackapi.Blocks{BlockSet: attachmentBlocks},
 		}
+		attachments = append(attachments, attachment)
 	}
-
-	attachment := slackapi.Attachment{
-		Color:  color,
-		Blocks: slackapi.Blocks{BlockSet: attachmentBlocks},
-	}
-
-	attachments = append(attachments, attachment)
 
 	return attachments
 }
@@ -255,8 +304,12 @@ func (s *SenderSlack) convertEnrichmentToBlocks(enrichment issuepkg.Enrichment) 
 
 	// Add enrichment title as header if available
 	if enrichment.Title != nil && *enrichment.Title != "" {
+		// Add emoji to enrichment title
+		emoji := s.getEnrichmentEmoji(enrichment.EnrichmentType)
+		titleText := fmt.Sprintf("%s %s", emoji, *enrichment.Title)
+
 		titleBlock := slackapi.NewHeaderBlock(
-			slackapi.NewTextBlockObject("plain_text", *enrichment.Title, false, false),
+			slackapi.NewTextBlockObject("plain_text", titleText, false, false),
 		)
 		blocks = append(blocks, titleBlock)
 	}
@@ -335,7 +388,7 @@ func (s *SenderSlack) convertTableToSimpleBlock(table *issuepkg.TableBlock) slac
 		text = fmt.Sprintf("*%s*\n", table.TableName)
 	}
 
-	// Add rows as key-value pairs for better readability
+	// Add rows as key-value pairs
 	for _, row := range table.Rows {
 		if len(row) >= 2 {
 			text += fmt.Sprintf("• %s: `%s`\n", row[0], row[1])
@@ -348,7 +401,7 @@ func (s *SenderSlack) convertTableToSimpleBlock(table *issuepkg.TableBlock) slac
 	)
 }
 
-// convertTableToEnhancedBlock converts table to enhanced format with better styling
+// convertTableToEnhancedBlock converts table to enhanced format
 func (s *SenderSlack) convertTableToEnhancedBlock(table *issuepkg.TableBlock) slackapi.Block {
 	var text string
 	if table.TableName != "" {
@@ -456,7 +509,7 @@ func (s *SenderSlack) convertJsonBlockToSlack(jsonBlock *issuepkg.JsonBlock) sla
 	// Convert JSON to formatted string
 	jsonStr := jsonBlock.ToJson()
 
-	// Wrap in code block for better formatting
+	// Wrap in code block
 	text := fmt.Sprintf("```\n%s\n```", jsonStr)
 
 	return slackapi.NewSectionBlock(
@@ -576,19 +629,21 @@ func (s *SenderSlack) convertFileBlockToSlack(file *issuepkg.FileBlock) slackapi
 
 // formatHeader creates the header text with status and severity
 func (s *SenderSlack) formatHeader(issue *issuepkg.Issue) string {
-	statusEmoji := issue.Status.ToEmoji()
-	severityEmoji := issue.Severity.ToEmoji()
-
 	var statusText string
+	var statusColor string
 	if issue.IsResolved() {
-		statusText = "*Prometheus resolved*"
+		statusText = "Prometheus Alert Resolved"
+		statusColor = "✅"
 	} else {
-		statusText = "`Prometheus Alert Firing`"
+		statusText = "Prometheus Alert Firing"
+		statusColor = "🔥"
 	}
 
-	return fmt.Sprintf("%s %s %s *%s*\n*%s*",
-		statusEmoji, statusText, severityEmoji,
-		issue.Severity.String(), issue.Title)
+	severityText := s.getSeverityText(issue.Severity)
+
+	// Clean, readable format
+	return fmt.Sprintf("%s *%s* %s\n*%s*",
+		statusColor, statusText, severityText, issue.Title)
 }
 
 // formatLabels formats subject labels
@@ -604,7 +659,38 @@ func (s *SenderSlack) formatLabels(labels map[string]string) string {
 	return text
 }
 
-// buildLinkButtons creates action buttons for links
+// formatLabelsForMainMessage formats labels for main message (without header text)
+func (s *SenderSlack) formatLabelsForMainMessage(labels map[string]string) string {
+	if len(labels) == 0 {
+		return ""
+	}
+
+	var text string
+	for key, value := range labels {
+		text += fmt.Sprintf("• *%s:* `%s`\n", key, value)
+	}
+	return text
+}
+
+// formatAnnotationsForMainMessage formats annotations for main message
+func (s *SenderSlack) formatAnnotationsForMainMessage(annotations map[string]string) string {
+	if len(annotations) == 0 {
+		return ""
+	}
+
+	var text string
+	for key, value := range annotations {
+		// Truncate very long annotation values for readability
+		displayValue := value
+		if len(value) > 100 {
+			displayValue = value[:97] + "..."
+		}
+		text += fmt.Sprintf("• *%s:* `%s`\n", key, displayValue)
+	}
+	return text
+}
+
+// buildLinkButtons creates action buttons for links with emojis based on link type
 func (s *SenderSlack) buildLinkButtons(links []issuepkg.Link) []slackapi.BlockElement {
 	var buttons []slackapi.BlockElement
 
@@ -614,27 +700,115 @@ func (s *SenderSlack) buildLinkButtons(links []issuepkg.Link) []slackapi.BlockEl
 			break
 		}
 
+		// Add emoji based on link type
+		emoji := s.getLinkEmoji(link.Type)
+		buttonText := fmt.Sprintf("%s %s", emoji, link.Text)
+
 		button := slackapi.NewButtonBlockElement(
 			fmt.Sprintf("link_%d", i),
 			link.URL,
-			slackapi.NewTextBlockObject("plain_text", link.Text, false, false),
+			slackapi.NewTextBlockObject("plain_text", buttonText, false, false),
 		)
 		button.URL = link.URL
+
+		// Add styling based on link type
+		button.Style = s.getLinkButtonStyle(link.Type)
+
 		buttons = append(buttons, button)
 	}
 
 	return buttons
 }
 
+// getLinkEmoji returns appropriate emoji for link type
+func (s *SenderSlack) getLinkEmoji(linkType issuepkg.LinkType) string {
+	switch linkType {
+	case issuepkg.LinkTypeInvestigate:
+		return "🔍" // Investigate
+	case issuepkg.LinkTypeSilence:
+		return "🔕" // Silence
+	case issuepkg.LinkTypePrometheusGenerator:
+		return "📊" // Prometheus/Graphs
+	case issuepkg.LinkTypeGeneral:
+		return "🔗" // General link
+	default:
+		return "🔗" // Default
+	}
+}
+
+// getLinkButtonStyle returns appropriate Slack button style for link type
+func (s *SenderSlack) getLinkButtonStyle(linkType issuepkg.LinkType) slackapi.Style {
+	switch linkType {
+	case issuepkg.LinkTypeInvestigate:
+		return slackapi.StylePrimary // Blue button for investigate
+	case issuepkg.LinkTypeSilence:
+		return slackapi.StyleDanger // Red button for silence
+	default:
+		return slackapi.StyleDefault // No special styling
+	}
+}
+
+// getEnrichmentEmoji returns appropriate emoji for enrichment type
+func (s *SenderSlack) getEnrichmentEmoji(enrichmentType *issuepkg.EnrichmentType) string {
+	if enrichmentType == nil {
+		return "📋" // Default
+	}
+
+	switch *enrichmentType {
+	case issuepkg.EnrichmentTypeAlertLabels:
+		return "🏷️" // Labels
+	case issuepkg.EnrichmentTypeAlertAnnotations:
+		return "📝" // Annotations
+	case issuepkg.EnrichmentTypeGraph:
+		return "📈" // Graph/Charts
+	case issuepkg.EnrichmentTypeAIAnalysis:
+		return "🤖" // AI Analysis
+	case issuepkg.EnrichmentTypeNodeInfo:
+		return "🖥️" // Node/Server
+	case issuepkg.EnrichmentTypeContainerInfo:
+		return "📦" // Container
+	case issuepkg.EnrichmentTypeK8sEvents:
+		return "🎯" // Kubernetes Events
+	case issuepkg.EnrichmentTypeDiff:
+		return "🔄" // Diff/Changes
+	case issuepkg.EnrichmentTypeTextFile:
+		return "📄" // Text File
+	case issuepkg.EnrichmentTypeCrashInfo:
+		return "💥" // Crash
+	case issuepkg.EnrichmentTypeImagePullBackoffInfo:
+		return "⚠️" // Warning/Error
+	case issuepkg.EnrichmentTypePendingPodInfo:
+		return "⏳" // Pending/Waiting
+	default:
+		return "📋" // Default
+	}
+}
+
+// getSeverityText returns formatted severity text with emoji
+func (s *SenderSlack) getSeverityText(severity issuepkg.Severity) string {
+	switch severity {
+	case issuepkg.SeverityHigh:
+		return "🔴 HIGH"
+	case issuepkg.SeverityLow:
+		return "🟡 LOW"
+	case issuepkg.SeverityInfo:
+		return "🟢 INFO"
+	case issuepkg.SeverityDebug:
+		return "🔵 DEBUG"
+	default:
+		return "🟢 " + severity.String()
+	}
+}
+
 // getSeverityColor returns Slack color for severity
 func (s *SenderSlack) getSeverityColor(severity issuepkg.Severity) string {
 	switch severity {
 	case issuepkg.SeverityHigh:
-		return "#EF311F" // Red - podobnie jak FIRING w Robusta
+		return "#EF311F" // Red
 	case issuepkg.SeverityLow:
 		return "#FFCC00" // Yellow
 	case issuepkg.SeverityInfo:
-		return "#00B302" // Green - podobnie jak RESOLVED w Robusta
+		return "#00B302" // Green
 	case issuepkg.SeverityDebug:
 		return "#36a64f" // Gray/Green
 	default:
