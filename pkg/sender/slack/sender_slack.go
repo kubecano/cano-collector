@@ -178,37 +178,7 @@ func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slackapi.Block {
 		blocks = append(blocks, subjectBlock)
 	}
 
-	// Alert labels in main message
-	if issue.Subject != nil && len(issue.Subject.Labels) > 0 {
-		labelsBlock := slackapi.NewHeaderBlock(
-			slackapi.NewTextBlockObject("plain_text", "Alert Labels", false, false),
-		)
-		blocks = append(blocks, labelsBlock)
-
-		labelsText := s.formatLabelsForMainMessage(issue.Subject.Labels)
-		labelsContentBlock := slackapi.NewSectionBlock(
-			slackapi.NewTextBlockObject("mrkdwn", labelsText, false, false),
-			nil, nil,
-		)
-		blocks = append(blocks, labelsContentBlock)
-	}
-
-	// Alert annotations in main message
-	if issue.Subject != nil && len(issue.Subject.Annotations) > 0 {
-		annotationsBlock := slackapi.NewHeaderBlock(
-			slackapi.NewTextBlockObject("plain_text", "Alert Annotations", false, false),
-		)
-		blocks = append(blocks, annotationsBlock)
-
-		annotationsText := s.formatAnnotationsForMainMessage(issue.Subject.Annotations)
-		annotationsContentBlock := slackapi.NewSectionBlock(
-			slackapi.NewTextBlockObject("mrkdwn", annotationsText, false, false),
-			nil, nil,
-		)
-		blocks = append(blocks, annotationsContentBlock)
-	}
-
-	// Add visual separator before enrichments
+	// Add visual separator before enrichments if we have them
 	if len(issue.Enrichments) > 0 {
 		blocks = append(blocks, slackapi.NewDividerBlock())
 	}
@@ -655,37 +625,6 @@ func (s *SenderSlack) formatLabels(labels map[string]string) string {
 	text := "*Alert labels*\n"
 	for key, value := range labels {
 		text += fmt.Sprintf("• %s `%s`\n", key, value)
-	}
-	return text
-}
-
-// formatLabelsForMainMessage formats labels for main message (without header text)
-func (s *SenderSlack) formatLabelsForMainMessage(labels map[string]string) string {
-	if len(labels) == 0 {
-		return ""
-	}
-
-	var text string
-	for key, value := range labels {
-		text += fmt.Sprintf("• *%s:* `%s`\n", key, value)
-	}
-	return text
-}
-
-// formatAnnotationsForMainMessage formats annotations for main message
-func (s *SenderSlack) formatAnnotationsForMainMessage(annotations map[string]string) string {
-	if len(annotations) == 0 {
-		return ""
-	}
-
-	var text string
-	for key, value := range annotations {
-		// Truncate very long annotation values for readability
-		displayValue := value
-		if len(value) > 100 {
-			displayValue = value[:97] + "..."
-		}
-		text += fmt.Sprintf("• *%s:* `%s`\n", key, displayValue)
 	}
 	return text
 }
