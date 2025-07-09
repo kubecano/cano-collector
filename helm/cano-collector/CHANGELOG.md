@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.14](https://github.com/kubecano/cano-collector/compare/cano-collector-helm-v0.0.13...cano-collector-helm-v0.0.14) (2025-07-09)
+
+
+### Features
+
+* **helm:** bump chart for app release cano-collector-v0.0.15 ([654e3fe](https://github.com/kubecano/cano-collector/commit/654e3fe1a7339f4d963015e56a12ac58b9f65398))
+
 ## [0.0.13](https://github.com/kubecano/cano-collector/compare/cano-collector-helm-v0.0.12...cano-collector-helm-v0.0.13) (2025-07-09)
 
 
