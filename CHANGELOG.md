@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.14](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.13...cano-collector-v0.0.14) (2025-07-09)
+
+
+### Features
+
+* CU-8699hqpay - Enhanced Slack Message with Enrichments ([#153](https://github.com/kubecano/cano-collector/issues/153)) ([5a37f4f](https://github.com/kubecano/cano-collector/commit/5a37f4f007e3eeccb458d0b5b8f35f5a891ea074))
+
 ## [0.0.13](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.12...cano-collector-v0.0.13) (2025-07-09)
 
 
