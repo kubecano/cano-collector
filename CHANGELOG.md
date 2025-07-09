@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.0.13](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.12...cano-collector-v0.0.13) (2025-07-09)
+
+
+### Features
+
+* CU-8699hqm33 - Basic Slack Message Formatting ([#146](https://github.com/kubecano/cano-collector/issues/146)) ([d9f4ace](https://github.com/kubecano/cano-collector/commit/d9f4ace525a1689921557e13b361d0bf5eef0841))
+* CU-8699hqn2f - Basic Enrichment Framework ([#147](https://github.com/kubecano/cano-collector/issues/147)) ([efe51ca](https://github.com/kubecano/cano-collector/commit/efe51ca2cded5c53c4014e92f4de3385485259c9))
+* CU-8699hqnyn - Label and Annotation Enrichment ([#149](https://github.com/kubecano/cano-collector/issues/149)) ([1985590](https://github.com/kubecano/cano-collector/commit/19855905189debed3815e637b85e1d6de6bf3679))
+* CU-8699hqpay - Enhanced Slack Message with Enrichments ([#150](https://github.com/kubecano/cano-collector/issues/150)) ([0f5442f](https://github.com/kubecano/cano-collector/commit/0f5442f7e55f3a90c08e7e38755c74948cc76d52))
+* CU-8699hqpay - Enhanced Slack Message with Enrichments ([#151](https://github.com/kubecano/cano-collector/issues/151)) ([1e547af](https://github.com/kubecano/cano-collector/commit/1e547af74d9d0aa6498a6e73db79ef5da7c6efa5))
+* CU-8699hqpay - Enhanced Slack Message with Enrichments ([#152](https://github.com/kubecano/cano-collector/issues/152)) ([e3b5d04](https://github.com/kubecano/cano-collector/commit/e3b5d042f8a9cb49b2dc251eec11f213d686520d))
+
 ## [0.0.12](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.11...cano-collector-v0.0.12) (2025-07-07)
 
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.12](https://github.com/kubecano/cano-collector/compare/cano-collector-helm-v0.0.11...cano-collector-helm-v0.0.12) (2025-07-09)
+
+
+### Features
+
+* CU-8699hqnyn - Label and Annotation Enrichment ([#149](https://github.com/kubecano/cano-collector/issues/149)) ([1985590](https://github.com/kubecano/cano-collector/commit/19855905189debed3815e637b85e1d6de6bf3679))
+* CU-8699hqpay - Enhanced Slack Message with Enrichments ([#150](https://github.com/kubecano/cano-collector/issues/150)) ([0f5442f](https://github.com/kubecano/cano-collector/commit/0f5442f7e55f3a90c08e7e38755c74948cc76d52))
+
 ## [0.0.11](https://github.com/kubecano/cano-collector/compare/cano-collector-helm-v0.0.10...cano-collector-helm-v0.0.11) (2025-07-07)
 
 
