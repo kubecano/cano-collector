@@ -116,6 +116,7 @@ func TestLinkType_String(t *testing.T) {
 		{LinkTypePrometheusGenerator, "PROMETHEUS_GENERATOR"},
 		{LinkTypeInvestigate, "INVESTIGATE"},
 		{LinkTypeSilence, "SILENCE"},
+		{LinkTypeRunbook, "RUNBOOK"},
 		{LinkType(999), "UNKNOWN"}, // default case
 	}
 

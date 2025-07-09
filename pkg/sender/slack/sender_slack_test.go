@@ -130,7 +130,7 @@ func TestSenderSlack_FormatHeader(t *testing.T) {
 	header := slackSender.formatHeader(firingIssue)
 	assert.Contains(t, header, "🔥") // Should contain fire emoji
 	assert.Contains(t, header, "🔴") // Should contain red circle
-	assert.Contains(t, header, "Prometheus Alert Firing")
+	assert.Contains(t, header, "Alert firing")
 	assert.Contains(t, header, "Test Alert")
 
 	// Test resolved alert
@@ -141,9 +141,9 @@ func TestSenderSlack_FormatHeader(t *testing.T) {
 	}
 
 	header = slackSender.formatHeader(resolvedIssue)
-	assert.Contains(t, header, "✅") // Should contain checkmark
-	assert.Contains(t, header, "🟢") // Should contain green circle (INFO severity)
-	assert.Contains(t, header, "Prometheus Alert Resolved")
+	assert.Contains(t, header, "✅")              // Should contain checkmark
+	assert.Contains(t, header, "🟢")              // Should contain green circle
+	assert.Contains(t, header, "Alert resolved") // Simplified text
 	assert.Contains(t, header, "Resolved Alert")
 }
 
@@ -171,36 +171,93 @@ func TestSenderSlack_FormatLabels(t *testing.T) {
 func TestSenderSlack_BuildSlackBlocks(t *testing.T) {
 	slackSender, _, _ := setupSenderSlackTest(t)
 
-	// Test issue with links
-	issue := &issuepkg.Issue{
+	// Create an issue with all components including runbook link
+	firingIssue := &issuepkg.Issue{
 		Title:       "Test Issue",
 		Description: "Test description",
 		Severity:    issuepkg.SeverityHigh,
 		Status:      issuepkg.StatusFiring,
 		Source:      issuepkg.SourcePrometheus,
+		Subject: &issuepkg.Subject{
+			Annotations: map[string]string{
+				"description": "Pod is crash looping",
+			},
+		},
 		Links: []issuepkg.Link{
-			{Text: "Dashboard", URL: "https://example.com/dashboard"},
-			{Text: "Runbook", URL: "https://example.com/runbook"},
+			{Text: "Generator URL", URL: "https://example.com/graph", Type: issuepkg.LinkTypePrometheusGenerator},
+			{Text: "Runbook", URL: "https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubepodcrashlooping", Type: issuepkg.LinkTypeRunbook},
+		},
+		Enrichments: []issuepkg.Enrichment{
+			{
+				Title: stringPtr("Alert Labels"),
+				Blocks: []issuepkg.BaseBlock{
+					&issuepkg.TableBlock{
+						TableName: "Labels",
+						Headers:   []string{"Label", "Value"},
+						Rows:      [][]string{{"severity", "high"}},
+					},
+				},
+			},
 		},
 	}
 
-	blocks := slackSender.buildSlackBlocks(issue)
+	blocks := slackSender.buildSlackBlocks(firingIssue)
 
-	// Should have at least header block, description section, time section, and actions block (for links)
-	assert.GreaterOrEqual(t, len(blocks), 3)
+	// Should have: header, links, alert description, runbook, enrichments, divider
+	assert.GreaterOrEqual(t, len(blocks), 5)
 
-	// First block should be section block (header)
-	assert.Equal(t, "section", string(blocks[0].BlockType()))
+	// First block should be header
+	_, ok := blocks[0].(*slack.SectionBlock)
+	assert.True(t, ok, "First block should be section block (header)")
 
-	// Check that we have an actions block somewhere for the links
-	hasActionsBlock := false
+	// Should find runbook URL block
+	found := false
 	for _, block := range blocks {
-		if string(block.BlockType()) == "actions" {
-			hasActionsBlock = true
-			break
+		if sectionBlock, ok := block.(*slack.SectionBlock); ok {
+			if strings.Contains(sectionBlock.Text.Text, "Runbook URL:") &&
+				strings.Contains(sectionBlock.Text.Text, "runbooks.prometheus-operator.dev") {
+				found = true
+				break
+			}
 		}
 	}
-	assert.True(t, hasActionsBlock, "Should have an actions block for links")
+	assert.True(t, found, "Should contain runbook URL as text block")
+}
+
+// Helper function for string pointer
+func stringPtr(s string) *string {
+	return &s
+}
+
+func TestSenderSlack_BuildSlackBlocks_WithoutRunbook(t *testing.T) {
+	slackSender, _, _ := setupSenderSlackTest(t)
+
+	// Create an issue without runbook link
+	firingIssue := &issuepkg.Issue{
+		Title:       "Test Issue",
+		Description: "Test description",
+		Severity:    issuepkg.SeverityHigh,
+		Status:      issuepkg.StatusFiring,
+		Source:      issuepkg.SourcePrometheus,
+		Subject:     &issuepkg.Subject{Annotations: map[string]string{"description": "Some other annotation"}},
+		Links: []issuepkg.Link{
+			{Text: "Generator URL", URL: "https://example.com/graph", Type: issuepkg.LinkTypePrometheusGenerator},
+		},
+	}
+
+	blocks := slackSender.buildSlackBlocks(firingIssue)
+
+	// Should NOT find runbook URL block
+	found := false
+	for _, block := range blocks {
+		if sectionBlock, ok := block.(*slack.SectionBlock); ok {
+			if strings.Contains(sectionBlock.Text.Text, "Runbook URL:") {
+				found = true
+				break
+			}
+		}
+	}
+	assert.False(t, found, "Should NOT contain runbook URL when not present in links")
 }
 
 func TestSenderSlack_BuildSlackAttachments(t *testing.T) {
@@ -458,14 +515,14 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 		assert.Len(t, enrichmentBlocks, 6)
 
 		// Verify first enrichment blocks (labels)
-		headerBlock1, ok := enrichmentBlocks[0].(*slack.HeaderBlock)
-		assert.True(t, ok, "First block should be header")
-		assert.Equal(t, "🏷️ Alert Labels", headerBlock1.Text.Text)
+		sectionBlock1, ok := enrichmentBlocks[0].(*slack.SectionBlock)
+		assert.True(t, ok, "First block should be section block with title")
+		assert.Equal(t, "*Alert Labels*", sectionBlock1.Text.Text)
 
 		// Verify second enrichment blocks (annotations)
-		headerBlock2, ok := enrichmentBlocks[3].(*slack.HeaderBlock)
-		assert.True(t, ok, "Fourth block should be header")
-		assert.Equal(t, "📝 Alert Annotations", headerBlock2.Text.Text)
+		sectionBlock2, ok := enrichmentBlocks[3].(*slack.SectionBlock)
+		assert.True(t, ok, "Fourth block should be section block with title")
+		assert.Equal(t, "*Alert Annotations*", sectionBlock2.Text.Text)
 	})
 
 	t.Run("builds enrichment blocks for json blocks", func(t *testing.T) {
@@ -493,10 +550,10 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 		// Should have 3 blocks: header + section + divider
 		assert.Len(t, enrichmentBlocks, 3)
 
-		// Verify header block
-		headerBlock, ok := enrichmentBlocks[0].(*slack.HeaderBlock)
-		assert.True(t, ok, "First block should be header")
-		assert.Equal(t, "🏷️ Alert Labels (JSON)", headerBlock.Text.Text)
+		// Verify title block
+		titleBlock, ok := enrichmentBlocks[0].(*slack.SectionBlock)
+		assert.True(t, ok, "First block should be section block with title")
+		assert.Equal(t, "*Alert Labels (JSON)*", titleBlock.Text.Text)
 
 		// Verify the JSON block was converted to a section block
 		contentBlock := enrichmentBlocks[1]
@@ -551,8 +608,8 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 
 		text := sectionBlock.Text.Text
 		assert.Contains(t, text, "*Test Table*")
-		assert.Contains(t, text, "• key1: `value1`")
-		assert.Contains(t, text, "• key2: `value2`")
+		assert.Contains(t, text, "• key1 `value1`")
+		assert.Contains(t, text, "• key2 `value2`")
 	})
 
 	t.Run("formats json blocks correctly", func(t *testing.T) {
@@ -700,8 +757,8 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 
 		text := sectionBlock.Text.Text
 		assert.Contains(t, text, "*Test Table*")
-		assert.Contains(t, text, "• key1: `value1`")
-		assert.Contains(t, text, "• key2: `value2`")
+		assert.Contains(t, text, "• key1 `value1`")
+		assert.Contains(t, text, "• key2 `value2`")
 	})
 
 	t.Run("adaptive formatting - enhanced table format", func(t *testing.T) {
@@ -832,8 +889,8 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 
 		text := sectionBlock.Text.Text
 		assert.Contains(t, text, "*Default Table*")
-		assert.Contains(t, text, "• key1: `value1`") // Simple format
-		assert.Contains(t, text, "• key2: `value2`")
+		assert.Contains(t, text, "• key1 `value1`") // Simple format
+		assert.Contains(t, text, "• key2 `value2`")
 	})
 }
 
@@ -1028,10 +1085,10 @@ func TestSenderSlack_EnrichmentBlocks_WithMarkdown(t *testing.T) {
 	// Should have 3 blocks: header + section + divider
 	assert.Len(t, enrichmentBlocks, 3)
 
-	// Verify header block
-	headerBlock, ok := enrichmentBlocks[0].(*slack.HeaderBlock)
-	assert.True(t, ok, "First block should be header")
-	assert.Equal(t, "🤖 AI Analysis", headerBlock.Text.Text)
+	// Verify title block
+	titleBlock, ok := enrichmentBlocks[0].(*slack.SectionBlock)
+	assert.True(t, ok, "First block should be section block with title")
+	assert.Equal(t, "*AI Analysis*", titleBlock.Text.Text)
 
 	// Verify the markdown block was converted to a section block
 	contentBlock := enrichmentBlocks[1]
