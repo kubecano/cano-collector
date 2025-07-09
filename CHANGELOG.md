@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.0.15](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.14...cano-collector-v0.0.15) (2025-07-09)
+
+
+### Features
+
+* CU-8699hqpay - Enhanced Slack Message with Enrichments ([#156](https://github.com/kubecano/cano-collector/issues/156)) ([7f8f4d4](https://github.com/kubecano/cano-collector/commit/7f8f4d474673df276d80a480d3e3b0ead5a20685))
+
+
+### Bug Fixes
+
+* Fixed issue with bump-helm-chart job in CI ([46d49fa](https://github.com/kubecano/cano-collector/commit/46d49fabfe25bb02f27b70f38de8f6ec69bc62d9))
+
 ## [0.0.14](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.13...cano-collector-v0.0.14) (2025-07-09)
 
 
