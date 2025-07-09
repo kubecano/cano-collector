@@ -47,6 +47,6 @@ jobs:
           
       - name: Commit helm chart change
         run: |
-          git add helm/cano-collector/Chart.yaml
+          git add -f helm/cano-collector/Chart.yaml
           git commit -m "feat(helm): bump chart for app release ${{ needs.release-please.outputs.app-tag }}"
           git push origin main
