@@ -261,7 +261,7 @@ func (s *SenderSlack) buildSlackAttachments(issue *issuepkg.Issue) []slackapi.At
 
 	// Add timing information if available
 	if !issue.StartsAt.IsZero() {
-		timeText := "⏰ *Started:* " + issue.StartsAt.Format("2006-01-02 15:04:05 UTC")
+		timeText := "⏰ *Started:* " + issue.StartsAt.UTC().Format("2006-01-02 15:04:05 UTC")
 		timeBlock := slackapi.NewSectionBlock(
 			slackapi.NewTextBlockObject("mrkdwn", timeText, false, false),
 			nil, nil,
