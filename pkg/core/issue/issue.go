@@ -48,7 +48,7 @@ func NewIssue(title, aggregationKey string) *Issue {
 }
 
 // generateFingerprint generates a unique fingerprint for the issue
-// Logic similar to Robusta's implementation for deduplication
+// Generate fingerprint for deduplication
 func (i *Issue) generateFingerprint() string {
 	subjectName := ""
 	subjectNamespace := ""
