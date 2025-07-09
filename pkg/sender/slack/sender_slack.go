@@ -150,7 +150,7 @@ func (s *SenderSlack) Send(ctx context.Context, issue *issuepkg.Issue) error {
 func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slackapi.Block {
 	var blocks []slackapi.Block
 
-	// Header block with emoji, status and title - cleaner format
+	// Header block with emoji, status and title
 	headerText := s.formatHeader(issue)
 	headerBlock := slackapi.NewSectionBlock(
 		slackapi.NewTextBlockObject("mrkdwn", headerText, false, false),
@@ -304,7 +304,7 @@ func (s *SenderSlack) convertEnrichmentToBlocks(enrichment issuepkg.Enrichment) 
 
 	// Add enrichment title as header if available
 	if enrichment.Title != nil && *enrichment.Title != "" {
-		// Add emoji to enrichment title for better visual appeal
+		// Add emoji to enrichment title
 		emoji := s.getEnrichmentEmoji(enrichment.EnrichmentType)
 		titleText := fmt.Sprintf("%s %s", emoji, *enrichment.Title)
 
