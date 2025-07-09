@@ -160,7 +160,7 @@ func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slackapi.Block {
 
 	// Alert description directly in main message
 	if issue.Description != "" {
-		alertText := fmt.Sprintf("🚨 *Alert:* %s", issue.Description)
+		alertText := "🚨 *Alert:* " + issue.Description
 		alertBlock := slackapi.NewSectionBlock(
 			slackapi.NewTextBlockObject("mrkdwn", alertText, false, false),
 			nil, nil,
@@ -261,7 +261,7 @@ func (s *SenderSlack) buildSlackAttachments(issue *issuepkg.Issue) []slackapi.At
 
 	// Add timing information if available
 	if !issue.StartsAt.IsZero() {
-		timeText := fmt.Sprintf("⏰ *Started:* %s", issue.StartsAt.Format("2006-01-02 15:04:05 UTC"))
+		timeText := "⏰ *Started:* " + issue.StartsAt.Format("2006-01-02 15:04:05 UTC")
 		timeBlock := slackapi.NewSectionBlock(
 			slackapi.NewTextBlockObject("mrkdwn", timeText, false, false),
 			nil, nil,
