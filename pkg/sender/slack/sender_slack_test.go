@@ -1,4 +1,4 @@
-package sender
+package slack
 
 import (
 	"context"
@@ -15,6 +15,15 @@ import (
 	"github.com/kubecano/cano-collector/mocks"
 	issuepkg "github.com/kubecano/cano-collector/pkg/core/issue"
 )
+
+// mockUnsupportedBlock is a test mock for unsupported block type
+type mockUnsupportedBlock struct {
+	blockType string
+}
+
+func (m *mockUnsupportedBlock) BlockType() string {
+	return m.blockType
+}
 
 func setupSenderSlackTest(t *testing.T) (*SenderSlack, *mocks.MockSlackClientInterface, *mocks.MockLoggerInterface) {
 	t.Helper()
@@ -468,27 +477,268 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 		assert.Contains(t, text, "\"test\": \"value\"")
 	})
 
-	// Note: getEnrichmentColor method is no longer used with blocks implementation
-	// but keeping test for potential future use or backwards compatibility
-	t.Run("returns correct colors for enrichment types", func(t *testing.T) {
-		tests := []struct {
-			enrichmentType issuepkg.EnrichmentType
-			expectedColor  string
-		}{
-			{issuepkg.EnrichmentTypeAlertLabels, "#17A2B8"},
-			{issuepkg.EnrichmentTypeAlertAnnotations, "#6610F2"},
-			{issuepkg.EnrichmentTypeGraph, "#28A745"},
-			{issuepkg.EnrichmentTypeAIAnalysis, "#FD7E14"},
+	t.Run("formats header blocks correctly", func(t *testing.T) {
+		headerBlock := &issuepkg.HeaderBlock{
+			Text: "Test Header",
 		}
 
-		for _, test := range tests {
-			color := slackSender.getEnrichmentColor(&test.enrichmentType)
-			assert.Equal(t, test.expectedColor, color)
+		slackBlock := slackSender.convertHeaderBlockToSlack(headerBlock)
+
+		headerSlackBlock, ok := slackBlock.(*slack.HeaderBlock)
+		assert.True(t, ok, "Expected header block")
+		assert.Equal(t, "Test Header", headerSlackBlock.Text.Text)
+	})
+
+	t.Run("formats list blocks correctly", func(t *testing.T) {
+		listBlock := &issuepkg.ListBlock{
+			Items:    []string{"Item 1", "Item 2", "Item 3"},
+			Ordered:  false,
+			ListName: "Test List",
 		}
 
-		// Test nil enrichment type
-		color := slackSender.getEnrichmentColor(nil)
-		assert.Equal(t, "#E8E8E8", color)
+		slackBlock := slackSender.convertListBlockToSlack(listBlock)
+
+		sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+		assert.True(t, ok, "Expected section block")
+
+		text := sectionBlock.Text.Text
+		assert.Contains(t, text, "*Test List*")
+		assert.Contains(t, text, "• Item 1")
+		assert.Contains(t, text, "• Item 2")
+		assert.Contains(t, text, "• Item 3")
+	})
+
+	t.Run("formats ordered list blocks correctly", func(t *testing.T) {
+		listBlock := &issuepkg.ListBlock{
+			Items:   []string{"First", "Second", "Third"},
+			Ordered: true,
+		}
+
+		slackBlock := slackSender.convertListBlockToSlack(listBlock)
+
+		sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+		assert.True(t, ok, "Expected section block")
+
+		text := sectionBlock.Text.Text
+		assert.Contains(t, text, "1. First")
+		assert.Contains(t, text, "2. Second")
+		assert.Contains(t, text, "3. Third")
+	})
+
+	t.Run("formats links blocks as buttons correctly", func(t *testing.T) {
+		links := []issuepkg.Link{
+			{Text: "Dashboard", URL: "https://example.com/dashboard", Type: issuepkg.LinkTypeGeneral},
+			{Text: "Logs", URL: "https://example.com/logs", Type: issuepkg.LinkTypeGeneral},
+		}
+		linksBlock := &issuepkg.LinksBlock{
+			Links:     links,
+			BlockName: "Related Links",
+		}
+
+		slackBlock := slackSender.convertLinksBlockToSlack(linksBlock)
+
+		actionBlock, ok := slackBlock.(*slack.ActionBlock)
+		assert.True(t, ok, "Expected action block")
+		assert.Equal(t, "links_related_links", actionBlock.BlockID)
+		assert.Len(t, actionBlock.Elements.ElementSet, 2)
+	})
+
+	t.Run("formats file blocks correctly", func(t *testing.T) {
+		fileContent := []byte("test file content")
+		fileBlock := &issuepkg.FileBlock{
+			Filename: "test.txt",
+			Contents: fileContent,
+			MimeType: "text/plain",
+			Size:     int64(len(fileContent)),
+		}
+
+		slackBlock := slackSender.convertFileBlockToSlack(fileBlock)
+
+		sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+		assert.True(t, ok, "Expected section block")
+
+		text := sectionBlock.Text.Text
+		assert.Contains(t, text, "📎 *File: test.txt*")
+		assert.Contains(t, text, "Size:")
+		assert.Contains(t, text, "Type: text/plain")
+		assert.Contains(t, text, "upload functionality to be implemented")
+	})
+
+	t.Run("formats divider blocks correctly", func(t *testing.T) {
+		dividerBlock := &issuepkg.DividerBlock{}
+
+		slackBlock := slackSender.convertBlockToSlack(dividerBlock)
+
+		_, ok := slackBlock.(*slack.DividerBlock)
+		assert.True(t, ok, "Expected divider block")
+	})
+
+	t.Run("handles unknown block types gracefully", func(t *testing.T) {
+		// Create a mock unknown block type
+		unknownBlock := &mockUnsupportedBlock{blockType: "unsupported-test-type"}
+
+		slackBlock := slackSender.convertBlockToSlack(unknownBlock)
+
+		sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+		assert.True(t, ok, "Expected section block for unknown type")
+		assert.Contains(t, sectionBlock.Text.Text, "Unknown block type: unsupported-test-type")
+	})
+
+	t.Run("adaptive formatting - simple table format", func(t *testing.T) {
+		// Set table formatting parameters for simple formatting
+		slackSender.SetTableFormat("simple")
+		slackSender.SetMaxTableRows(20)
+
+		tableBlock := &issuepkg.TableBlock{
+			Headers:   []string{"Label", "Value"},
+			TableName: "Test Table",
+			Rows: [][]string{
+				{"key1", "value1"},
+				{"key2", "value2"},
+			},
+		}
+
+		slackBlock := slackSender.convertTableBlockToSlack(tableBlock)
+
+		sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+		assert.True(t, ok, "Expected section block")
+
+		text := sectionBlock.Text.Text
+		assert.Contains(t, text, "*Test Table*")
+		assert.Contains(t, text, "• key1: `value1`")
+		assert.Contains(t, text, "• key2: `value2`")
+	})
+
+	t.Run("adaptive formatting - enhanced table format", func(t *testing.T) {
+		// Set table formatting parameters for enhanced formatting
+		slackSender.SetTableFormat("enhanced")
+		slackSender.SetMaxTableRows(20)
+
+		tableBlock := &issuepkg.TableBlock{
+			Headers:   []string{"Label", "Value"},
+			TableName: "Enhanced Table",
+			Rows: [][]string{
+				{"key1", "value1"},
+				{"key2", "value2"},
+			},
+		}
+
+		slackBlock := slackSender.convertTableBlockToSlack(tableBlock)
+
+		sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+		assert.True(t, ok, "Expected section block")
+
+		text := sectionBlock.Text.Text
+		assert.Contains(t, text, "*Enhanced Table*")
+		assert.Contains(t, text, "▸ *key1*: `value1`")
+		assert.Contains(t, text, "▸ *key2*: `value2`")
+	})
+
+	t.Run("adaptive formatting - attachment table format", func(t *testing.T) {
+		// Set table formatting parameters for attachment formatting
+		slackSender.SetTableFormat("attachment")
+		slackSender.SetMaxTableRows(20)
+
+		tableBlock := &issuepkg.TableBlock{
+			Headers:   []string{"Label", "Value"},
+			TableName: "Attachment Table",
+			Rows: [][]string{
+				{"key1", "value1"},
+				{"key2", "value2"},
+			},
+		}
+
+		slackBlock := slackSender.convertTableBlockToSlack(tableBlock)
+
+		sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+		assert.True(t, ok, "Expected section block")
+
+		text := sectionBlock.Text.Text
+		assert.Contains(t, text, "📊 *Attachment Table*")
+		assert.Contains(t, text, "└ key1: `value1`")
+		assert.Contains(t, text, "└ key2: `value2`")
+	})
+
+	t.Run("adaptive formatting - large table exceeding row limit", func(t *testing.T) {
+		// Set table formatting parameters with low row limit
+		slackSender.SetTableFormat("enhanced")
+		slackSender.SetMaxTableRows(2) // Set low limit to trigger file conversion
+
+		// Create table with more rows than the limit
+		tableBlock := &issuepkg.TableBlock{
+			Headers:   []string{"Label", "Value"},
+			TableName: "Large Table",
+			Rows: [][]string{
+				{"row1", "value1"},
+				{"row2", "value2"},
+				{"row3", "value3"}, // This exceeds the limit
+			},
+		}
+
+		slackBlock := slackSender.convertTableBlockToSlack(tableBlock)
+
+		sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+		assert.True(t, ok, "Expected section block")
+
+		text := sectionBlock.Text.Text
+		assert.Contains(t, text, "📊 *Large Table* (3 rows)")
+		assert.Contains(t, text, "Table too large for inline display (limit: 2 rows)")
+		assert.Contains(t, text, "Would be converted to file attachment")
+	})
+
+	t.Run("adaptive formatting - enhanced multi-column table", func(t *testing.T) {
+		// Set table formatting parameters for enhanced formatting
+		slackSender.SetTableFormat("enhanced")
+		slackSender.SetMaxTableRows(20)
+
+		tableBlock := &issuepkg.TableBlock{
+			Headers:   []string{"Name", "Status", "CPU", "Memory"},
+			TableName: "Pod Status",
+			Rows: [][]string{
+				{"pod-1", "Running", "50m", "128Mi"},
+				{"pod-2", "Pending", "0", "0"},
+			},
+		}
+
+		slackBlock := slackSender.convertTableBlockToSlack(tableBlock)
+
+		sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+		assert.True(t, ok, "Expected section block")
+
+		text := sectionBlock.Text.Text
+		assert.Contains(t, text, "*Pod Status*")
+		assert.Contains(t, text, "```")
+		assert.Contains(t, text, "Name")
+		assert.Contains(t, text, "Status")
+		assert.Contains(t, text, "CPU")
+		assert.Contains(t, text, "Memory")
+		assert.Contains(t, text, "pod-1")
+		assert.Contains(t, text, "Running")
+	})
+
+	t.Run("no table formatting config uses default simple format", func(t *testing.T) {
+		// Clear table formatting parameters (use defaults)
+		slackSender.SetTableFormat("")
+		slackSender.SetMaxTableRows(0)
+
+		tableBlock := &issuepkg.TableBlock{
+			Headers:   []string{"Label", "Value"},
+			TableName: "Default Table",
+			Rows: [][]string{
+				{"key1", "value1"},
+				{"key2", "value2"},
+			},
+		}
+
+		slackBlock := slackSender.convertTableBlockToSlack(tableBlock)
+
+		sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+		assert.True(t, ok, "Expected section block")
+
+		text := sectionBlock.Text.Text
+		assert.Contains(t, text, "*Default Table*")
+		assert.Contains(t, text, "• key1: `value1`") // Simple format
+		assert.Contains(t, text, "• key2: `value2`")
 	})
 }
 
@@ -601,27 +851,18 @@ func TestSenderSlack_ConvertBlockToSlack_WithMarkdown(t *testing.T) {
 	assert.Equal(t, "mrkdwn", sectionBlock.Text.Type)
 }
 
-// mockUnsupportedBlock is a test mock for unsupported block type
-type mockUnsupportedBlock struct {
-	blockType string
-}
-
-func (m *mockUnsupportedBlock) BlockType() string {
-	return m.blockType
-}
-
 func TestSenderSlack_ConvertBlockToSlack_WithUnsupportedBlock(t *testing.T) {
 	slackSender, _, _ := setupSenderSlackTest(t)
 
 	// Test with unsupported block type (should return fallback section block)
-	mockBlock := &mockUnsupportedBlock{blockType: "unsupported"}
+	mockBlock := &mockUnsupportedBlock{blockType: "unsupported-test-type"}
 	slackBlock := slackSender.convertBlockToSlack(mockBlock)
 
 	// Should return a section block with fallback text
 	assert.NotNil(t, slackBlock, "Expected non-nil block for unsupported type")
 	sectionBlock, ok := slackBlock.(*slack.SectionBlock)
 	assert.True(t, ok, "Expected section block for unsupported type")
-	assert.Contains(t, sectionBlock.Text.Text, "Unknown block type: unsupported")
+	assert.Contains(t, sectionBlock.Text.Text, "Unknown block type: unsupported-test-type")
 }
 
 func TestSenderSlack_ConvertBlockToSlack_AllTypes(t *testing.T) {

@@ -195,3 +195,136 @@ func (jb *JsonBlock) ToJson() string {
 	}
 	return string(jsonBytes)
 }
+
+// HeaderBlock represents a header text block
+type HeaderBlock struct {
+	Text string `json:"text"`
+}
+
+// BlockType returns the type of this block
+func (hb *HeaderBlock) BlockType() string {
+	return "header"
+}
+
+// NewHeaderBlock creates a new HeaderBlock
+func NewHeaderBlock(text string) *HeaderBlock {
+	return &HeaderBlock{
+		Text: text,
+	}
+}
+
+// ListBlock represents a list of items
+type ListBlock struct {
+	Items    []string `json:"items"`
+	Ordered  bool     `json:"ordered"` // true for numbered lists, false for bullet points
+	ListName string   `json:"list_name,omitempty"`
+}
+
+// BlockType returns the type of this block
+func (lb *ListBlock) BlockType() string {
+	return "list"
+}
+
+// NewListBlock creates a new ListBlock
+func NewListBlock(items []string, ordered bool, listName string) *ListBlock {
+	return &ListBlock{
+		Items:    items,
+		Ordered:  ordered,
+		ListName: listName,
+	}
+}
+
+// AddItem adds an item to the list
+func (lb *ListBlock) AddItem(item string) {
+	lb.Items = append(lb.Items, item)
+}
+
+// ToMarkdown converts the list to markdown format
+func (lb *ListBlock) ToMarkdown() string {
+	if len(lb.Items) == 0 {
+		return ""
+	}
+
+	var builder strings.Builder
+
+	// Add list name if present
+	if lb.ListName != "" {
+		builder.WriteString(fmt.Sprintf("**%s**\n\n", lb.ListName))
+	}
+
+	// Generate list items
+	for i, item := range lb.Items {
+		if lb.Ordered {
+			builder.WriteString(fmt.Sprintf("%d. %s\n", i+1, item))
+		} else {
+			builder.WriteString(fmt.Sprintf("- %s\n", item))
+		}
+	}
+
+	return builder.String()
+}
+
+// LinksBlock represents a collection of links
+type LinksBlock struct {
+	Links     []Link `json:"links"`
+	BlockName string `json:"block_name,omitempty"`
+}
+
+// BlockType returns the type of this block
+func (lb *LinksBlock) BlockType() string {
+	return "links"
+}
+
+// NewLinksBlock creates a new LinksBlock
+func NewLinksBlock(links []Link, blockName string) *LinksBlock {
+	return &LinksBlock{
+		Links:     links,
+		BlockName: blockName,
+	}
+}
+
+// AddLink adds a link to the block
+func (lb *LinksBlock) AddLink(link Link) {
+	lb.Links = append(lb.Links, link)
+}
+
+// FileBlock represents a file attachment
+type FileBlock struct {
+	Filename string `json:"filename"`
+	Contents []byte `json:"contents"`
+	MimeType string `json:"mime_type,omitempty"`
+	Size     int64  `json:"size"`
+}
+
+// BlockType returns the type of this block
+func (fb *FileBlock) BlockType() string {
+	return "file"
+}
+
+// NewFileBlock creates a new FileBlock
+func NewFileBlock(filename string, contents []byte, mimeType string) *FileBlock {
+	return &FileBlock{
+		Filename: filename,
+		Contents: contents,
+		MimeType: mimeType,
+		Size:     int64(len(contents)),
+	}
+}
+
+// GetSizeKB returns file size in kilobytes
+func (fb *FileBlock) GetSizeKB() float64 {
+	return float64(fb.Size) / 1024.0
+}
+
+// DividerBlock represents a visual separator
+type DividerBlock struct{}
+
+// BlockType returns the type of this block
+func (db *DividerBlock) BlockType() string {
+	return "divider"
+}
+
+// NewDividerBlock creates a new DividerBlock
+func NewDividerBlock() *DividerBlock {
+	return &DividerBlock{}
+}

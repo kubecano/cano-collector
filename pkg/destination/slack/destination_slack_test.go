@@ -140,7 +140,7 @@ func TestDestinationSlack_WithEnrichmentsConfig(t *testing.T) {
 	mockClient := mocks.NewMockHTTPClient(ctrl)
 
 	// Expect enrichments configuration logs
-	mockLogger.EXPECT().Info("Enrichments configuration loaded", gomock.Any()).Times(1)
+	mockLogger.EXPECT().Info("Enrichments configuration applied to sender", gomock.Any()).Times(1)
 	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
