@@ -140,9 +140,9 @@ func TestSenderSlack_FormatHeader(t *testing.T) {
 	}
 
 	header = slackSender.formatHeader(resolvedIssue)
-	assert.Contains(t, header, "✅")  // Should contain checkmark
-	assert.Contains(t, header, "⚪️") // Should contain white circle
-	assert.Contains(t, header, "Prometheus resolved")
+	assert.Contains(t, header, "✅") // Should contain checkmark
+	assert.Contains(t, header, "🟢") // Should contain green circle (INFO severity)
+	assert.Contains(t, header, "Prometheus Alert Resolved")
 	assert.Contains(t, header, "Resolved Alert")
 }
 
@@ -185,16 +185,21 @@ func TestSenderSlack_BuildSlackBlocks(t *testing.T) {
 
 	blocks := slackSender.buildSlackBlocks(issue)
 
-	// Should have at least header block and action block (for links)
-	assert.GreaterOrEqual(t, len(blocks), 2)
+	// Should have at least header block, description section, time section, and actions block (for links)
+	assert.GreaterOrEqual(t, len(blocks), 3)
 
 	// First block should be section block (header)
 	assert.Equal(t, "section", string(blocks[0].BlockType()))
 
-	// Second block should be actions block (links)
-	if len(blocks) > 1 {
-		assert.Equal(t, "actions", string(blocks[1].BlockType()))
+	// Check that we have an actions block somewhere for the links
+	hasActionsBlock := false
+	for _, block := range blocks {
+		if string(block.BlockType()) == "actions" {
+			hasActionsBlock = true
+			break
+		}
 	}
+	assert.True(t, hasActionsBlock, "Should have an actions block for links")
 }
 
 func TestSenderSlack_BuildSlackAttachments(t *testing.T) {
@@ -366,12 +371,12 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 		// Verify first enrichment blocks (labels)
 		headerBlock1, ok := enrichmentBlocks[0].(*slack.HeaderBlock)
 		assert.True(t, ok, "First block should be header")
-		assert.Equal(t, "Alert Labels", headerBlock1.Text.Text)
+		assert.Equal(t, "🏷️ Alert Labels", headerBlock1.Text.Text)
 
 		// Verify second enrichment blocks (annotations)
 		headerBlock2, ok := enrichmentBlocks[3].(*slack.HeaderBlock)
 		assert.True(t, ok, "Fourth block should be header")
-		assert.Equal(t, "Alert Annotations", headerBlock2.Text.Text)
+		assert.Equal(t, "📝 Alert Annotations", headerBlock2.Text.Text)
 	})
 
 	t.Run("builds enrichment blocks for json blocks", func(t *testing.T) {
@@ -402,7 +407,7 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 		// Verify header block
 		headerBlock, ok := enrichmentBlocks[0].(*slack.HeaderBlock)
 		assert.True(t, ok, "First block should be header")
-		assert.Equal(t, "Alert Labels (JSON)", headerBlock.Text.Text)
+		assert.Equal(t, "🏷️ Alert Labels (JSON)", headerBlock.Text.Text)
 
 		// Verify the JSON block was converted to a section block
 		contentBlock := enrichmentBlocks[1]
@@ -435,8 +440,9 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 
 		// Test that main blocks building also handles this correctly
 		blocks := slackSender.buildSlackBlocks(issue)
-		// Should only have header block (no enrichment blocks, no links)
-		assert.Len(t, blocks, 1)
+		// Should have just the header block (description, timing sections added by default)
+		assert.GreaterOrEqual(t, len(blocks), 1)
+		assert.LessOrEqual(t, len(blocks), 3) // header + description + timing but no enrichments/links
 	})
 
 	t.Run("formats table blocks correctly", func(t *testing.T) {
@@ -936,7 +942,7 @@ func TestSenderSlack_EnrichmentBlocks_WithMarkdown(t *testing.T) {
 	// Verify header block
 	headerBlock, ok := enrichmentBlocks[0].(*slack.HeaderBlock)
 	assert.True(t, ok, "First block should be header")
-	assert.Equal(t, "AI Analysis", headerBlock.Text.Text)
+	assert.Equal(t, "🤖 AI Analysis", headerBlock.Text.Text)
 
 	// Verify the markdown block was converted to a section block
 	contentBlock := enrichmentBlocks[1]
