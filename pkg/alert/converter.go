@@ -130,6 +130,12 @@ func (c *Converter) convertPrometheusAlertToIssue(alert model.PrometheusAlert) (
 		iss.AddLink(*link)
 	}
 
+	// Add runbook URL as link if available in annotations
+	if runbookURL, exists := alert.Annotations["runbook_url"]; exists && runbookURL != "" {
+		link := issue.NewLink("Runbook", runbookURL, issue.LinkTypeRunbook)
+		iss.AddLink(*link)
+	}
+
 	// Apply label enrichment
 	if err := c.labelEnrichment.EnrichIssue(iss); err != nil {
 		c.logger.Warn("Failed to apply label enrichment", zap.Error(err))

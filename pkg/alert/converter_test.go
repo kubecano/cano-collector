@@ -410,6 +410,67 @@ func TestConverter_WithGeneratorURL(t *testing.T) {
 	assert.Equal(t, issue.LinkTypePrometheusGenerator, iss.Links[0].Type)
 }
 
+func TestConverter_WithRunbookURL(t *testing.T) {
+	converter := NewConverter(logger.NewLogger("info", "test"))
+
+	alert := model.PrometheusAlert{
+		Status:      "firing",
+		Fingerprint: "test-fingerprint",
+		StartsAt:    time.Now(),
+		Labels: map[string]string{
+			"alertname": "KubePodCrashLooping",
+		},
+		Annotations: map[string]string{
+			"summary":     "Pod is crash looping",
+			"runbook_url": "https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubepodcrashlooping",
+		},
+	}
+
+	iss, err := converter.convertPrometheusAlertToIssue(alert)
+	require.NoError(t, err)
+	require.NotNil(t, iss)
+
+	assert.Len(t, iss.Links, 1)
+	assert.Equal(t, "Runbook", iss.Links[0].Text)
+	assert.Equal(t, alert.Annotations["runbook_url"], iss.Links[0].URL)
+	assert.Equal(t, issue.LinkTypeRunbook, iss.Links[0].Type)
+}
+
+func TestConverter_WithBothGeneratorAndRunbookURLs(t *testing.T) {
+	converter := NewConverter(logger.NewLogger("info", "test"))
+
+	alert := model.PrometheusAlert{
+		Status:       "firing",
+		Fingerprint:  "test-fingerprint",
+		StartsAt:     time.Now(),
+		GeneratorURL: "http://prometheus.example.com/graph?g0.expr=up",
+		Labels: map[string]string{
+			"alertname": "KubePodCrashLooping",
+		},
+		Annotations: map[string]string{
+			"summary":     "Pod is crash looping",
+			"runbook_url": "https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubepodcrashlooping",
+		},
+	}
+
+	iss, err := converter.convertPrometheusAlertToIssue(alert)
+	require.NoError(t, err)
+	require.NotNil(t, iss)
+
+	// Should have both links
+	assert.Len(t, iss.Links, 2)
+
+	// Generator URL should be first
+	assert.Equal(t, "Generator URL", iss.Links[0].Text)
+	assert.Equal(t, alert.GeneratorURL, iss.Links[0].URL)
+	assert.Equal(t, issue.LinkTypePrometheusGenerator, iss.Links[0].Type)
+
+	// Runbook URL should be second
+	assert.Equal(t, "Runbook", iss.Links[1].Text)
+	assert.Equal(t, alert.Annotations["runbook_url"], iss.Links[1].URL)
+	assert.Equal(t, issue.LinkTypeRunbook, iss.Links[1].Type)
+}
+
 func TestConverter_FingerprintHandling(t *testing.T) {
 	converter := NewConverter(logger.NewLogger("info", "test"))
 

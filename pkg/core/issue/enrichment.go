@@ -8,6 +8,7 @@ const (
 	LinkTypePrometheusGenerator
 	LinkTypeInvestigate
 	LinkTypeSilence
+	LinkTypeRunbook
 )
 
 // String returns the string representation of the link type
@@ -21,6 +22,8 @@ func (lt LinkType) String() string {
 		return "INVESTIGATE"
 	case LinkTypeSilence:
 		return "SILENCE"
+	case LinkTypeRunbook:
+		return "RUNBOOK"
 	default:
 		return "UNKNOWN"
 	}
