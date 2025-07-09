@@ -3,6 +3,7 @@ package slack
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -234,6 +235,94 @@ func TestSenderSlack_BuildSlackAttachments(t *testing.T) {
 
 	// Should have blocks with content
 	assert.NotEmpty(t, attachment.Blocks.BlockSet)
+}
+
+func TestSenderSlack_BuildSlackAttachments_WithTimeFormatting(t *testing.T) {
+	slackSender, _, _ := setupSenderSlackTest(t)
+
+	// Create a specific time in a non-UTC timezone for testing
+	// This will be converted to UTC in the formatting
+	testTime := time.Date(2024, 1, 15, 14, 30, 45, 0, time.FixedZone("CET", 1*60*60)) // CET +1 hour
+
+	subject := issuepkg.NewSubject("test-pod", issuepkg.SubjectTypePod)
+	subject.Namespace = "default"
+
+	issue := &issuepkg.Issue{
+		Title:       "Test Issue with Time",
+		Description: "Test description",
+		Severity:    issuepkg.SeverityHigh,
+		Status:      issuepkg.StatusFiring,
+		Source:      issuepkg.SourcePrometheus,
+		Subject:     subject,
+		StartsAt:    testTime,
+	}
+
+	attachments := slackSender.buildSlackAttachments(issue)
+
+	// Should have one attachment with time information
+	assert.Len(t, attachments, 1)
+
+	attachment := attachments[0]
+	assert.NotEmpty(t, attachment.Blocks.BlockSet)
+
+	// Find the time block and verify UTC formatting
+	foundTimeBlock := false
+	for _, block := range attachment.Blocks.BlockSet {
+		if sectionBlock, ok := block.(*slack.SectionBlock); ok {
+			if sectionBlock.Text != nil && sectionBlock.Text.Text != "" {
+				text := sectionBlock.Text.Text
+				// Check if this is the time block
+				if strings.Contains(text, "⏰ *Started:*") {
+					foundTimeBlock = true
+					// Verify that the time is properly formatted in UTC
+					// Original time: 2024-01-15 14:30:45 CET (+1)
+					// Expected UTC: 2024-01-15 13:30:45 UTC
+					assert.Contains(t, text, "2024-01-15 13:30:45 UTC", "Time should be formatted in UTC")
+					assert.Contains(t, text, "⏰ *Started:*", "Should contain time label")
+					break
+				}
+			}
+		}
+	}
+
+	assert.True(t, foundTimeBlock, "Should find time block in attachment")
+}
+
+func TestSenderSlack_BuildSlackAttachments_WithoutTime(t *testing.T) {
+	slackSender, _, _ := setupSenderSlackTest(t)
+
+	// Test issue without StartsAt time (zero time)
+	subject := issuepkg.NewSubject("test-pod", issuepkg.SubjectTypePod)
+	subject.Namespace = "default"
+
+	issue := &issuepkg.Issue{
+		Title:       "Test Issue No Time",
+		Description: "Test description",
+		Severity:    issuepkg.SeverityLow,
+		Status:      issuepkg.StatusFiring,
+		Source:      issuepkg.SourcePrometheus,
+		Subject:     subject,
+		// StartsAt is zero value - should not be displayed
+	}
+
+	attachments := slackSender.buildSlackAttachments(issue)
+
+	// Should have one attachment but without time information
+	assert.Len(t, attachments, 1)
+
+	attachment := attachments[0]
+	assert.NotEmpty(t, attachment.Blocks.BlockSet)
+
+	// Verify that no time block exists
+	for _, block := range attachment.Blocks.BlockSet {
+		if sectionBlock, ok := block.(*slack.SectionBlock); ok {
+			if sectionBlock.Text != nil && sectionBlock.Text.Text != "" {
+				text := sectionBlock.Text.Text
+				// Should not contain time information
+				assert.NotContains(t, text, "⏰ *Started:*", "Should not contain time label for zero time")
+			}
+		}
+	}
 }
 
 func TestSenderSlack_FormatIssueToString(t *testing.T) {
