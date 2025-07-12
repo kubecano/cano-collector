@@ -305,9 +305,56 @@ Actions define what operations to perform when a workflow is triggered.
 ``create_issue``
   Creates an Issue from alert data. This is typically the first action in most workflows.
   
-  - **title_template**: Template for issue title (supports Go template syntax)
-  - **severity_override**: Override alert severity
-  - **enrich_with**: List of enrichment types to add
+  - **title**: Template for issue title (supports Go template syntax)
+  - **aggregation_key**: Key for grouping similar issues (supports Go template syntax)
+  - **description**: Template for issue description (optional, supports Go template syntax)
+  - **severity**: Override alert severity (optional, supports Go template syntax)
+
+``resolve_issue``
+  Resolves an existing Issue by changing its status from firing to resolved.
+  
+  - **title**: Template for resolved issue title (supports Go template syntax)
+  - **aggregation_key**: Key for identifying the issue to resolve (supports Go template syntax)
+  - **description**: Template for resolved issue description (optional, supports Go template syntax)
+  - **severity**: Override alert severity (optional, supports Go template syntax)
+
+``dispatch_issue``
+  Dispatches the Issue to team routing and destinations. This action handles the entire
+  routing and sending process.
+  
+  - No parameters required (uses the Issue created by previous actions)
+
+**Available Template Variables**
+
+Go templates support the following variables from alert data:
+
+**Basic Alert Variables:**
+- `{{.alert_name}}` - Name of the alert (e.g., "PodCrashLooping")
+- `{{.severity}}` - Alert severity (e.g., "critical", "warning")
+- `{{.namespace}}` - Kubernetes namespace (e.g., "production")
+- `{{.instance}}` - Prometheus instance (e.g., "prometheus:9090")
+- `{{.pod_name}}` - Pod name (e.g., "api-server-123")
+
+**Alert Labels:**
+- `{{.labels.alertname}}` - Alert name from labels
+- `{{.labels.severity}}` - Severity from labels
+- `{{.labels.namespace}}` - Namespace from labels
+- `{{.labels.pod}}` - Pod name from labels
+- `{{.labels.deployment}}` - Deployment name from labels
+- `{{.labels.node}}` - Node name from labels
+- `{{.labels.job}}` - Job name from labels
+- `{{.labels.service}}` - Service name from labels
+
+**Alert Annotations:**
+- `{{.annotations.summary}}` - Alert summary
+- `{{.annotations.description}}` - Alert description
+- `{{.annotations.runbook_url}}` - Runbook URL
+
+**Template Functions:**
+- `{{.variable | upper}}` - Convert to uppercase
+- `{{.variable | lower}}` - Convert to lowercase
+- `{{.variable | title}}` - Capitalize first letter
+- `{{.variable | trunc 10}}` - Truncate to 10 characters
 
 ``enrich_data``
   Adds contextual information to be included in the Issue.
@@ -348,46 +395,38 @@ Example Helm Configuration
 
    # values.yaml
    workflows:
-     enabled: true
-     config:
-       workflows:
-         - name: "critical-alert-processing"
-           triggers:
-             - on_alertmanager_alert:
-                 severity: "critical"
-                 status: "firing"
-           actions:
-             - name: "create-critical-issue"
-               type: "create_issue"
-               data:
-                 title_template: "🚨 CRITICAL: {{.alert_name}} in {{.namespace}}"
-                 severity_override: "critical"
-             - name: "add-context"
-               type: "enrich_data"
-               data:
-                 type: "kubernetes_context"
-                 include_logs: true
-                 include_events: true
-           stop_on_match: false
+     active_workflows:
+       # Default workflow for firing alerts
+       - name: "default-firing-alerts"
+         triggers:
+           - on_alertmanager_alert:
+               status: "firing"
+         actions:
+           - action_type: "create_issue"
+             data:
+               title: "{{.alert_name}}"
+               aggregation_key: "{{.alert_name}}"
+               description: "{{.annotations.summary}}"
+               severity: "{{.severity}}"
+           - action_type: "dispatch_issue"
+             data: {}
+         stop: false
 
-         - name: "pod-crash-analysis"
-           triggers:
-             - on_alertmanager_alert:
-                 alert_name: "PodCrashLooping"
-                 namespace: "production"
-           actions:
-             - name: "create-crash-issue"
-               type: "create_issue"
-               data:
-                 title_template: "Pod {{.pod_name}} is crash looping"
-                 severity_override: "high"
-             - name: "analyze-crash"
-               type: "enrich_data"
-               data:
-                 type: "pod_analysis"
-                 crash_history: 10
-                 resource_usage: true
-           stop_on_match: true
+       # Default workflow for resolved alerts
+       - name: "default-resolved-alerts"
+         triggers:
+           - on_alertmanager_alert:
+               status: "resolved"
+         actions:
+           - action_type: "resolve_issue"
+             data:
+               title: "[RESOLVED] {{.alert_name}}"
+               aggregation_key: "{{.alert_name}}"
+               description: "{{.annotations.summary}}"
+               severity: "{{.severity}}"
+           - action_type: "dispatch_issue"
+             data: {}
+         stop: false
 
 Configuration Validation
 ~~~~~~~~~~~~~~~~~~~~~~~
