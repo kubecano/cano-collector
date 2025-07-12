@@ -55,35 +55,48 @@ TypeScript custom workflows are ideal for:
 
 ### Creating TypeScript Workflows
 
-TypeScript workflows are defined as functions that receive events and return actions:
+TypeScript workflows are defined as functions that receive alert data (`template.Data`) and return actions:
 
 .. code-block:: typescript
 
-   interface CanoEvent {
-     type: string;
-     alert?: Alert;
-     pod?: Pod;
-     namespace: string;
-     timestamp: string;
+   interface AlertData {
+     alerts: Alert[];
+     status: string;
+     receiver: string;
+     groupLabels: { [key: string]: string };
+     commonLabels: { [key: string]: string };
+     commonAnnotations: { [key: string]: string };
+     externalURL: string;
    }
 
-   interface CanoAction {
+   interface Alert {
+     status: string;
+     labels: { [key: string]: string };
+     annotations: { [key: string]: string };
+     startsAt: string;
+     endsAt: string;
+     generatorURL: string;
+     fingerprint: string;
+   }
+
+   interface WorkflowAction {
      type: string;
      data: any;
      priority?: number;
    }
 
-   export function customWorkflow(event: CanoEvent): CanoAction[] {
-     const actions: CanoAction[] = [];
+   export function customWorkflow(alertData: AlertData): WorkflowAction[] {
+     const actions: WorkflowAction[] = [];
      
-     // Custom logic here
-     if (event.alert && event.alert.severity === 'critical') {
+     // Custom logic here - processing alert data
+     if (alertData.alerts.some(alert => alert.labels.severity === 'critical')) {
        actions.push({
-         type: 'create_finding',
+         type: 'create_issue',
          data: {
            title: 'Critical Alert Detected',
            severity: 'high',
-           description: 'Custom analysis of critical alert'
+           description: 'Custom analysis of critical alert',
+           aggregation_key: 'critical_alert_custom'
          },
          priority: 1
        });
@@ -94,16 +107,20 @@ TypeScript workflows are defined as functions that receive events and return act
 
 ### Available Action Types
 
-Custom workflows can use various action types:
+Custom workflows can use various action types for Issue creation and enrichment:
 
-- **`create_finding`** - Create a new finding/issue
-- **`add_enrichment`** - Add data to an existing finding
-- **`log`** - Add log entries
-- **`file`** - Create file attachments
-- **`table`** - Create tabular data
-- **`markdown`** - Add markdown content
-- **`graph`** - Create metric graphs
-- **`callback_block`** - Add interactive buttons
+- **`create_issue`** - Create a new Issue from alert data
+- **`add_enrichment`** - Add data to an existing Issue
+- **`log`** - Add log entries to the Issue
+- **`file`** - Create file attachments for the Issue
+- **`table`** - Create tabular data for the Issue
+- **`markdown`** - Add markdown content to the Issue
+- **`graph`** - Create metric graphs for the Issue
+- **`callback_block`** - Add interactive buttons to the Issue
+- **`modify_severity`** - Modify the Issue's severity level
+- **`add_labels`** - Add additional labels to the Issue
+
+**Note:** Custom workflows can create new Issues just like built-in workflows. Both workflow types are functionally equivalent and can use the same action types.
 
 ### Configuration
 
@@ -126,11 +143,12 @@ TypeScript workflows are configured through Helm values:
              memory: "256Mi"
              cpu: "200m"
        workflows:
-         - name: "custom-alert-enrichment"
-           file: "custom-alert-enrichment.ts"
+         - name: "custom-alert-processing"
+           file: "custom-alert-processing.ts"
            triggers:
-             - on_alert:
-                 alert_name: "CustomAlert"
+             - on_alertmanager_alert:
+                 severity: "critical"
+                 namespace: "production"
 
 ### Deployment
 
@@ -151,8 +169,16 @@ Example ConfigMap:
      name: custom-workflows-config
    data:
      custom-workflow.ts: |
-       export function customWorkflow(event) {
-         // Your workflow logic here
+       export function customWorkflow(alertData) {
+         // Your workflow logic here - processing alert data
+         return [{
+           type: 'create_issue',
+           data: {
+             title: 'Custom Alert Processing',
+             severity: 'medium',
+             aggregation_key: 'custom_alert'
+           }
+         }];
        }
 
 ### Security Considerations
@@ -178,17 +204,19 @@ When creating custom workflows:
 
 ### Examples
 
-#### Organization-Specific Alert Enrichment
+#### Organization-Specific Alert Processing
 
 .. code-block:: typescript
 
-   export function enrichCriticalAlerts(event: CanoEvent): CanoAction[] {
-     if (event.alert?.severity === 'critical') {
+   export function processCriticalAlerts(alertData: AlertData): WorkflowAction[] {
+     if (alertData.alerts.some(alert => alert.labels.severity === 'critical')) {
        return [{
-         type: 'add_enrichment',
+         type: 'create_issue',
          data: {
-           type: 'markdown',
-           content: 'This is a critical alert requiring immediate attention according to our organization\'s procedures.'
+           title: 'Critical Alert Detected',
+           severity: 'high',
+           description: 'This is a critical alert requiring immediate attention according to our organization\'s procedures.',
+           aggregation_key: 'critical_alert_org'
          }
        }];
      }
@@ -199,14 +227,15 @@ When creating custom workflows:
 
 .. code-block:: typescript
 
-   export function createInternalTicket(event: CanoEvent): CanoAction[] {
-     if (event.type === 'resource_change' && event.resource?.kind === 'CustomResource') {
+   export function createInternalTicket(alertData: AlertData): WorkflowAction[] {
+     if (alertData.alerts.some(alert => alert.labels.component === 'custom-resource')) {
        return [{
-         type: 'create_finding',
+         type: 'create_issue',
          data: {
            title: 'Internal Ticket Created',
-           description: `Ticket created in our internal system for resource ${event.resource.name}`,
-           severity: 'medium'
+           description: 'Ticket created in our internal system for custom resource',
+           severity: 'medium',
+           aggregation_key: 'internal_ticket'
          }
        }];
      }
@@ -217,17 +246,19 @@ When creating custom workflows:
 
 .. code-block:: typescript
 
-   export function businessHoursAlert(event: CanoEvent): CanoAction[] {
+   export function businessHoursAlert(alertData: AlertData): WorkflowAction[] {
      const now = new Date();
      const hour = now.getHours();
      
-     // Only escalate during business hours (9 AM - 5 PM)
-     if (hour >= 9 && hour <= 17) {
+     // Only process during business hours (9 AM - 5 PM)
+     if (hour >= 9 && hour <= 17 && alertData.alerts.some(alert => alert.labels.severity === 'critical')) {
        return [{
-         type: 'add_enrichment',
+         type: 'create_issue',
          data: {
-           type: 'markdown',
-           content: 'Alert escalated during business hours.'
+           title: 'Business Hours Critical Alert',
+           description: 'Critical alert escalated during business hours - immediate attention required.',
+           severity: 'urgent',
+           aggregation_key: 'business_hours_critical'
          }
        }];
      }
@@ -237,14 +268,26 @@ When creating custom workflows:
 Integration with Built-in Workflows
 -----------------------------------
 
-Custom workflows can integrate with built-in workflows by:
+Custom workflows and built-in workflows are functionally equivalent and run in the same execution context:
 
-- **Extending built-in functionality** with custom logic
-- **Adding custom enrichments** to existing workflows
-- **Creating custom triggers** for specific events
-- **Providing custom outputs** for different destinations
+**Shared Execution Environment:**
+- Both workflow types process the same alert data (`template.Data`)
+- Both can create Issues through `create_issue` actions
+- Both can enrich existing Issues through enrichment actions
+- Both run in parallel when their triggers match
 
-This allows you to build upon the existing workflow ecosystem while adding your organization-specific requirements.
+**Key Differences:**
+- **Implementation language** - Built-in workflows use Go, custom workflows use TypeScript
+- **Deployment method** - Built-in workflows are compiled, custom workflows are runtime-loaded
+- **Development workflow** - Built-in workflows require code changes and rebuilds, custom workflows can be updated via ConfigMaps
+
+**Integration Benefits:**
+- **Unified interface** - Both workflow types use the same action types and data structures
+- **Parallel execution** - Multiple workflows can run simultaneously
+- **Flexible deployment** - Choose the right tool for your use case
+- **Consistent behavior** - Same capabilities regardless of implementation language
+
+This design provides maximum flexibility while maintaining consistency across all workflow types.
 
 Configuration
 -------------
@@ -278,10 +321,14 @@ Custom workflows can be configured through Helm values:
          - name: "custom-workflow-1"
            file: "workflow1.ts"
            triggers:
-             - on_alert:
-                 alert_name: "CustomAlert1"
+             - on_alertmanager_alert:
+                 severity: "critical"
+                 labels:
+                   component: "api"
          - name: "custom-workflow-2"
            file: "workflow2.ts"
            triggers:
-             - on_pod_event:
-                 type: "custom_pod_analysis" 
+             - on_alertmanager_alert:
+                 namespace: "production"
+                 annotations:
+                   "cano.io/enrichment": "pod-analysis" 

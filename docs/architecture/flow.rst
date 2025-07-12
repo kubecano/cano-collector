@@ -28,18 +28,33 @@ Alert Processing Flow
    - Invalid alerts return HTTP 400 with error details
    - Valid alerts proceed to processing pipeline
 
-3. **Issue Creation**
+3. **Workflow Processing (Planned)**
    
-   - `template.Data` converted to internal `Issue` model
+   - `template.Data` evaluated against workflow trigger conditions
+   - Matching workflows execute their defined actions (both built-in and custom)
+   - All workflows run in parallel when their triggers match
+   - Workflow actions can:
+     - **Create Issue** - Convert alert data to internal Issue model
+     - **Enrich data** - Add contextual information from Kubernetes cluster
+     - **Filter alerts** - Decide whether to process the alert
+     - **Transform data** - Modify alert data before Issue creation
+     - **Generate multiple Issues** - Create several Issues from one alert
+     - **Execute custom logic** - Organization-specific processing
+   - Workflows that don't create Issues result in no further processing
+
+4. **Issue Creation**
+   
+   - Issues created by workflow actions (typically `create_issue` action)
    - `Issue` contains:
-     - Title and description from alert annotations
-     - Severity mapped from alert labels
-     - Labels and annotations preserved
+     - Title and description from alert annotations (or workflow-modified data)
+     - Severity mapped from alert labels (or workflow-adjusted)
+     - Labels and annotations preserved (or workflow-enriched)
      - Timestamps (start/end times)
      - Resource information (namespace, pod, etc.)
-   - Enrichment blocks applied to add context
+     - Any additional enrichment data added by workflows
+   - Multiple Issues can be created from a single alert
 
-4. **Team Routing (Planned)**
+5. **Team Routing (Planned)**
    
    - Routing engine evaluates `Issue` against team configurations
    - Routing rules (to be implemented) determine which team receives the alert
@@ -50,14 +65,14 @@ Alert Processing Flow
      - Custom labels
    - Team selection determines which destinations receive the notification
 
-5. **Destination Resolution**
+6. **Destination Resolution**
    
    - Selected team's `destinations` list resolved
    - Each destination name looked up in destinations configuration
    - Destination instances retrieved with their specific configuration
    - Multiple destinations can receive the same alert
 
-6. **Message Formatting and Sending**
+7. **Message Formatting and Sending**
    
    - Each destination processes the `Issue` independently
    - Destination delegates formatting to appropriate `Sender`
@@ -76,11 +91,13 @@ Configuration Flow
 1. **Startup Configuration Loading**
    
    - `config.LoadConfig()` called during application startup
-   - Two configuration files loaded:
+   - Configuration files loaded:
      - Destinations: `/etc/cano-collector/destinations/destinations.yaml`
      - Teams: `/etc/cano-collector/teams/teams.yaml`
+     - Workflows: `/etc/cano-collector/workflows/workflows.yaml` (planned)
    - `FileDestinationsLoader` parses destinations configuration
    - `FileTeamsLoader` parses teams configuration
+   - `WorkflowConfigLoader` parses workflow configuration (planned)
    - Configuration validated for required fields
 
 2. **Destination Factory Initialization**
@@ -92,7 +109,17 @@ Configuration Flow
      - `Destination` wrapper created around sender
      - Destination registered in routing system
 
-3. **Team Configuration Processing**
+3. **Workflow Configuration Processing (Planned)**
+   
+   - Workflows configuration loaded into `WorkflowConfig` structure
+   - Each workflow contains:
+     - Unique name
+     - List of trigger conditions
+     - List of actions to execute
+   - Trigger conditions and actions validated
+   - Workflows registered in workflow engine
+
+4. **Team Configuration Processing**
    
    - Teams configuration loaded into `TeamsConfig` structure
    - Each team contains:
@@ -106,10 +133,10 @@ Data Flow Architecture
 
 ::
 
-    Alertmanager → AlertHandler → Issue → Team Router → Destinations → Senders → External APIs
-         ↓              ↓          ↓         ↓              ↓           ↓
-      template.Data  Validation  Issue    Team Match   Destination   Sender    HTTP Request
-                                          Resolution   Resolution    Format
+    Alertmanager → AlertHandler → template.Data → Workflow → Issue(s) → Team Router → Destinations → Senders → External APIs
+         ↓              ↓             ↓          Engine       ↓           ↓              ↓           ↓
+      template.Data  Validation   Alert Data    Triggers   create_issue  Team Match   Destination   Sender    HTTP Request
+                                                Actions     Action      Resolution   Resolution    Format
 
 Key Components in Flow
 ----------------------
@@ -120,23 +147,30 @@ Key Components in Flow
    - Performs initial validation
    - Records metrics
 
-2. **Issue Model**
-   - Central data structure
-   - Contains all alert information
-   - Supports enrichment blocks
-   - Passed through entire pipeline
+2. **Workflow Engine (Planned)**
+   - Evaluates template.Data against workflow triggers
+   - Executes matching workflow actions
+   - Coordinates built-in and custom workflows
+   - Responsible for Issue creation through actions
+   - Can filter, transform, or enrich alert data
 
-3. **Team Router (Planned)**
+3. **Issue Model**
+   - Central data structure created by workflows
+   - Contains all alert information (potentially enriched)
+   - Supports enrichment blocks
+   - Passed through team routing pipeline
+
+4. **Team Router (Planned)**
    - Determines which team receives alert
    - Implements routing rules
    - Maps teams to destinations
 
-4. **Destination**
+5. **Destination**
    - Holds configuration for notification endpoint
    - Delegates to appropriate sender
    - Manages destination-specific logic
 
-5. **Sender**
+6. **Sender**
    - Formats Issue for target API
    - Handles HTTP communication
    - Manages API-specific requirements
@@ -159,7 +193,13 @@ Error Handling
    - API errors: Error responses logged
    - Timeout errors: Configurable timeout handling
 
-4. **Routing Errors**
+4. **Workflow Errors (Planned)**
+   - Workflow trigger evaluation failures: Logged and skipped
+   - Action execution failures: Logged with error details
+   - Custom workflow runtime errors: Timeout and exception handling
+   - Configuration validation errors: Prevent startup
+
+5. **Routing Errors**
    - No matching team: Fallback handling (planned)
    - Invalid destination references: Configuration validation error
 
@@ -176,7 +216,14 @@ Metrics and Observability
    - Success/failure rates
    - Response time tracking
 
-3. **Routing Metrics**
+3. **Workflow Metrics (Planned)**
+   - Workflow execution statistics
+   - Trigger matching rates
+   - Action execution time
+   - Built-in vs custom workflow performance
+   - Workflow enrichment effectiveness
+
+4. **Routing Metrics**
    - Team matching statistics
    - Routing decision tracking
    - Fallback usage metrics
@@ -194,12 +241,7 @@ Future Enhancements
    - Dynamic routing based on alert content
    - Fallback routing mechanisms
 
-3. **Enrichment Pipeline**
-   - Automatic context gathering
-   - Resource status enrichment
-   - Custom enrichment actions
-
-4. **Monitoring and Alerting**
+3. **Monitoring and Alerting**
    - Self-monitoring capabilities
    - Alert on processing failures
    - Performance metrics dashboard

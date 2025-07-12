@@ -8,6 +8,7 @@ import (
 
 	config_destination "github.com/kubecano/cano-collector/config/destination"
 	config_team "github.com/kubecano/cano-collector/config/team"
+	config_workflow "github.com/kubecano/cano-collector/config/workflow"
 	"github.com/kubecano/cano-collector/mocks"
 
 	"github.com/stretchr/testify/assert"
@@ -43,8 +44,32 @@ func setupTestLoader(t *testing.T) (Config, error) {
 	mockTeams := mocks.NewMockTeamsLoader(ctrl)
 	mockTeams.EXPECT().Load().AnyTimes().Return(&teamsConfig, nil)
 
+	workflowsConfig := config_workflow.WorkflowConfig{
+		ActiveWorkflows: []config_workflow.WorkflowDefinition{
+			{
+				Name: "test-workflow",
+				Triggers: []config_workflow.TriggerDefinition{
+					{
+						OnAlertmanagerAlert: &config_workflow.AlertmanagerAlertTrigger{
+							AlertName: "TestAlert",
+							Status:    "firing",
+						},
+					},
+				},
+				Actions: []config_workflow.ActionDefinition{
+					{
+						ActionType: "test_action",
+						RawData: map[string]interface{}{
+							"test_action": map[string]interface{}{},
+						},
+					},
+				},
+			},
+		},
+	}
+
 	mockLoader := mocks.NewMockFullConfigLoader(ctrl)
-	mockLoader.EXPECT().Load().AnyTimes().Return(destinationsConfig, teamsConfig, nil)
+	mockLoader.EXPECT().Load().AnyTimes().Return(destinationsConfig, teamsConfig, workflowsConfig, nil)
 
 	return LoadConfigWithLoader(mockLoader)
 }
@@ -73,6 +98,8 @@ func TestLoadConfigWithLoader(t *testing.T) {
 	assert.Equal(t, "alerts", cfg.Destinations.Destinations.Slack[0].Name)
 	assert.Len(t, cfg.Teams.Teams, 1)
 	assert.Equal(t, "devops", cfg.Teams.Teams[0].Name)
+	assert.Len(t, cfg.Workflows.ActiveWorkflows, 1)
+	assert.Equal(t, "test-workflow", cfg.Workflows.ActiveWorkflows[0].Name)
 }
 
 func TestGetEnvString(t *testing.T) {
@@ -125,7 +152,7 @@ func TestLoadConfigWithLoader_Error(t *testing.T) {
 	mockErr := assert.AnError
 
 	mockLoader := mocks.NewMockFullConfigLoader(ctrl)
-	mockLoader.EXPECT().Load().AnyTimes().Return(config_destination.DestinationsConfig{}, config_team.TeamsConfig{}, mockErr)
+	mockLoader.EXPECT().Load().AnyTimes().Return(config_destination.DestinationsConfig{}, config_team.TeamsConfig{}, config_workflow.WorkflowConfig{}, mockErr)
 
 	cfg, err := LoadConfigWithLoader(mockLoader)
 
