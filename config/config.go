@@ -7,6 +7,7 @@ import (
 
 	config_destination "github.com/kubecano/cano-collector/config/destination"
 	config_team "github.com/kubecano/cano-collector/config/team"
+	config_workflow "github.com/kubecano/cano-collector/config/workflow"
 )
 
 type EnrichmentConfig struct {
@@ -39,17 +40,18 @@ type Config struct {
 	SentryEnabled   bool
 	Destinations    config_destination.DestinationsConfig
 	Teams           config_team.TeamsConfig
+	Workflows       config_workflow.WorkflowConfig
 	Enrichment      EnrichmentConfig
 }
 
 //go:generate mockgen -destination=../mocks/fullconfig_loader_mock.go -package=mocks github.com/kubecano/cano-collector/config FullConfigLoader
 type FullConfigLoader interface {
-	Load() (config_destination.DestinationsConfig, config_team.TeamsConfig, error)
+	Load() (config_destination.DestinationsConfig, config_team.TeamsConfig, config_workflow.WorkflowConfig, error)
 }
 
 // LoadConfigWithLoader reads the Config from the provided loader
 func LoadConfigWithLoader(loader FullConfigLoader) (Config, error) {
-	destinations, teams, err := loader.Load()
+	destinations, teams, workflows, err := loader.Load()
 	if err != nil {
 		return Config{}, err
 	}
@@ -65,6 +67,7 @@ func LoadConfigWithLoader(loader FullConfigLoader) (Config, error) {
 		SentryEnabled:   getEnvBool("ENABLE_TELEMETRY", true),
 		Destinations:    destinations,
 		Teams:           teams,
+		Workflows:       workflows,
 		Enrichment:      loadEnrichmentConfig(),
 	}, nil
 }
@@ -72,33 +75,45 @@ func LoadConfigWithLoader(loader FullConfigLoader) (Config, error) {
 type fileConfigLoader struct {
 	destinationsPath string
 	teamsPath        string
+	workflowsPath    string
 }
 
-func NewFileConfigLoader(destinationsPath, teamsPath string) FullConfigLoader {
-	return &fileConfigLoader{destinationsPath: destinationsPath, teamsPath: teamsPath}
+func NewFileConfigLoader(destinationsPath, teamsPath, workflowsPath string) FullConfigLoader {
+	return &fileConfigLoader{
+		destinationsPath: destinationsPath,
+		teamsPath:        teamsPath,
+		workflowsPath:    workflowsPath,
+	}
 }
 
-func (f *fileConfigLoader) Load() (config_destination.DestinationsConfig, config_team.TeamsConfig, error) {
+func (f *fileConfigLoader) Load() (config_destination.DestinationsConfig, config_team.TeamsConfig, config_workflow.WorkflowConfig, error) {
 	destLoader := config_destination.NewFileDestinationsLoader(f.destinationsPath)
 	teamLoader := config_team.NewFileTeamsLoader(f.teamsPath)
+	workflowLoader := config_workflow.NewConfigLoader(f.workflowsPath)
 
 	d, err := destLoader.Load()
 	if err != nil {
-		return config_destination.DestinationsConfig{}, config_team.TeamsConfig{}, err
+		return config_destination.DestinationsConfig{}, config_team.TeamsConfig{}, config_workflow.WorkflowConfig{}, err
 	}
 
 	t, err := teamLoader.Load()
 	if err != nil {
-		return config_destination.DestinationsConfig{}, config_team.TeamsConfig{}, err
+		return config_destination.DestinationsConfig{}, config_team.TeamsConfig{}, config_workflow.WorkflowConfig{}, err
 	}
 
-	return *d, *t, nil
+	w, err := workflowLoader.LoadConfig()
+	if err != nil {
+		return config_destination.DestinationsConfig{}, config_team.TeamsConfig{}, config_workflow.WorkflowConfig{}, err
+	}
+
+	return *d, *t, *w, nil
 }
 
 func LoadConfig() (Config, error) {
 	loader := NewFileConfigLoader(
 		"/etc/cano-collector/destinations/destinations.yaml",
 		"/etc/cano-collector/teams/teams.yaml",
+		"/etc/cano-collector/workflows/workflows.yaml",
 	)
 	return LoadConfigWithLoader(loader)
 }

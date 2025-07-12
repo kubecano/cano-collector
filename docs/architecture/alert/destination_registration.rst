@@ -53,6 +53,7 @@ Loading Process
         loader := NewFileConfigLoader(
             "/etc/cano-collector/destinations/destinations.yaml",
             "/etc/cano-collector/teams/teams.yaml",
+            "/etc/cano-collector/workflows/workflows.yaml",
         )
         return LoadConfigWithLoader(loader)
     }
