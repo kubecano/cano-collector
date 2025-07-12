@@ -6,4 +6,5 @@ Configuration
    :caption: Contents:
 
    destinations/index
-   teams 
+   teams
+   workflows 
