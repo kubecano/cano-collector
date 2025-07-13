@@ -3,7 +3,7 @@ package alert
 import (
 	"strings"
 
-	"github.com/kubecano/cano-collector/pkg/alert/model"
+	"github.com/kubecano/cano-collector/pkg/core/event"
 )
 
 // AlertFormatter formats alert into readable messages
@@ -15,7 +15,7 @@ func NewAlertFormatter() *AlertFormatter {
 }
 
 // FormatAlert converts alertmanager alert to a readable message
-func (f *AlertFormatter) FormatAlert(alertEvent *model.AlertManagerEvent) string {
+func (f *AlertFormatter) FormatAlert(alertEvent *event.AlertManagerEvent) string {
 	var messages []string
 
 	// Add alert header

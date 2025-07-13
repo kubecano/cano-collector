@@ -1,10 +1,11 @@
-package model
+package event
 
 import (
 	"errors"
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/prometheus/alertmanager/template"
 )
 
@@ -19,6 +20,23 @@ var (
 	ErrInvalidAlert = errors.New("invalid alert")
 )
 
+// EventType represents the type of event
+type EventType string
+
+const (
+	EventTypeAlertManager EventType = "alertmanager"
+	EventTypeKubernetes   EventType = "kubernetes"
+	EventTypeScheduled    EventType = "scheduled"
+)
+
+// BaseEvent represents the base structure for all events
+type BaseEvent struct {
+	ID        uuid.UUID `json:"id"`
+	Timestamp time.Time `json:"timestamp"`
+	Source    string    `json:"source"`
+	Type      EventType `json:"type"`
+}
+
 // PrometheusAlert represents a single alert from Prometheus/Alertmanager
 type PrometheusAlert struct {
 	EndsAt       time.Time         `json:"endsAt"`
@@ -32,6 +50,7 @@ type PrometheusAlert struct {
 
 // AlertManagerEvent represents an event from Alertmanager containing one or more alerts
 type AlertManagerEvent struct {
+	BaseEvent
 	Alerts            []PrometheusAlert `json:"alerts"`
 	ExternalURL       string            `json:"externalURL"`
 	GroupKey          string            `json:"groupKey"`
@@ -43,8 +62,8 @@ type AlertManagerEvent struct {
 	Status            string            `json:"status"`
 }
 
-// NewAlertManagerEventFromTemplateData converts template.Data to AlertManagerEvent
-func NewAlertManagerEventFromTemplateData(data template.Data) *AlertManagerEvent {
+// NewAlertManagerEvent creates a new AlertManagerEvent from template.Data
+func NewAlertManagerEvent(data template.Data) *AlertManagerEvent {
 	alerts := make([]PrometheusAlert, 0, len(data.Alerts))
 	for _, alert := range data.Alerts {
 		alerts = append(alerts, PrometheusAlert{
@@ -58,7 +77,15 @@ func NewAlertManagerEventFromTemplateData(data template.Data) *AlertManagerEvent
 		})
 	}
 
+	baseEvent := BaseEvent{
+		ID:        uuid.New(),
+		Timestamp: time.Now(),
+		Source:    "alertmanager",
+		Type:      EventTypeAlertManager,
+	}
+
 	return &AlertManagerEvent{
+		BaseEvent:         baseEvent,
 		Alerts:            alerts,
 		ExternalURL:       data.ExternalURL,
 		CommonAnnotations: data.CommonAnnotations,
@@ -117,63 +144,74 @@ func validateAlert(alert PrometheusAlert) error {
 	return nil
 }
 
-// GetAlertName returns the alert name
+// GetAlertName returns the alert name from the first alert
 func (a *AlertManagerEvent) GetAlertName() string {
 	if len(a.Alerts) == 0 {
-		return "unknown"
+		return ""
 	}
-
-	if name, exists := a.Alerts[0].Labels["alertname"]; exists {
-		return name
-	}
-
-	return "unknown"
+	return a.Alerts[0].Labels["alertname"]
 }
 
-// GetSeverity returns the alert severity
+// GetSeverity returns the severity from the first alert
 func (a *AlertManagerEvent) GetSeverity() string {
 	if len(a.Alerts) == 0 {
-		return "unknown"
+		return ""
 	}
-
-	if severity, exists := a.Alerts[0].Labels["severity"]; exists {
-		return severity
-	}
-
-	return "unknown"
+	return a.Alerts[0].Labels["severity"]
 }
 
-// GetStartTime returns the alert start time
+// GetStartTime returns the start time from the first alert
 func (a *AlertManagerEvent) GetStartTime() time.Time {
 	if len(a.Alerts) == 0 {
 		return time.Time{}
 	}
-
 	return a.Alerts[0].StartsAt
 }
 
-// GetSummary returns the alert summary
+// GetSummary returns the summary annotation from the first alert
 func (a *AlertManagerEvent) GetSummary() string {
 	if len(a.Alerts) == 0 {
 		return ""
 	}
-
-	if summary, exists := a.Alerts[0].Annotations["summary"]; exists {
-		return summary
-	}
-
-	return ""
+	return a.Alerts[0].Annotations["summary"]
 }
 
-// GetDescription returns the alert description
+// GetDescription returns the description annotation from the first alert
 func (a *AlertManagerEvent) GetDescription() string {
 	if len(a.Alerts) == 0 {
 		return ""
 	}
+	return a.Alerts[0].Annotations["description"]
+}
 
-	if description, exists := a.Alerts[0].Annotations["description"]; exists {
-		return description
+// GetLabels returns labels from the first alert
+func (a *AlertManagerEvent) GetLabels() map[string]string {
+	if len(a.Alerts) == 0 {
+		return nil
 	}
+	return a.Alerts[0].Labels
+}
 
-	return ""
+// GetAnnotations returns annotations from the first alert
+func (a *AlertManagerEvent) GetAnnotations() map[string]string {
+	if len(a.Alerts) == 0 {
+		return nil
+	}
+	return a.Alerts[0].Annotations
+}
+
+// GetNamespace returns the namespace from the first alert
+func (a *AlertManagerEvent) GetNamespace() string {
+	if len(a.Alerts) == 0 {
+		return ""
+	}
+	return a.Alerts[0].Labels["namespace"]
+}
+
+// GetStatus returns the status from the first alert
+func (a *AlertManagerEvent) GetStatus() string {
+	if len(a.Alerts) == 0 {
+		return ""
+	}
+	return a.Alerts[0].Status
 }

@@ -6,7 +6,7 @@ import (
 	"go.uber.org/zap"
 
 	config_team "github.com/kubecano/cano-collector/config/team"
-	"github.com/kubecano/cano-collector/pkg/alert/model"
+	"github.com/kubecano/cano-collector/pkg/core/event"
 	destination_interfaces "github.com/kubecano/cano-collector/pkg/destination/interfaces"
 	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
 	metric_interfaces "github.com/kubecano/cano-collector/pkg/metric/interfaces"
@@ -42,7 +42,7 @@ func (r *TeamResolver) ValidateTeamDestinations(registry destination_interfaces.
 
 // ResolveTeam determines which team should handle the alert
 // For now, returns the first team (default team) as specified in requirements
-func (r *TeamResolver) ResolveTeam(alertEvent *model.AlertManagerEvent) (*config_team.Team, error) {
+func (r *TeamResolver) ResolveTeam(alertEvent *event.AlertManagerEvent) (*config_team.Team, error) {
 	if len(r.teams.Teams) == 0 {
 		r.metrics.IncRoutingDecisions("no_team", "none", "no_teams_configured")
 		return nil, nil // No teams configured

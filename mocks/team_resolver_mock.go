@@ -9,7 +9,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	config_team "github.com/kubecano/cano-collector/config/team"
-	model "github.com/kubecano/cano-collector/pkg/alert/model"
+	event "github.com/kubecano/cano-collector/pkg/core/event"
 	interfaces "github.com/kubecano/cano-collector/pkg/destination/interfaces"
 )
 
@@ -37,7 +37,7 @@ func (m *MockTeamResolverInterface) EXPECT() *MockTeamResolverInterfaceMockRecor
 }
 
 // ResolveTeam mocks base method.
-func (m *MockTeamResolverInterface) ResolveTeam(arg0 *model.AlertManagerEvent) (*config_team.Team, error) {
+func (m *MockTeamResolverInterface) ResolveTeam(arg0 *event.AlertManagerEvent) (*config_team.Team, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ResolveTeam", arg0)
 	ret0, _ := ret[0].(*config_team.Team)

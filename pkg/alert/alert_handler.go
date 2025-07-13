@@ -11,9 +11,10 @@ import (
 	"go.uber.org/zap"
 
 	alert_interfaces "github.com/kubecano/cano-collector/pkg/alert/interfaces"
-	"github.com/kubecano/cano-collector/pkg/alert/model"
+	"github.com/kubecano/cano-collector/pkg/core/event"
 	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
 	metric_interfaces "github.com/kubecano/cano-collector/pkg/metric/interfaces"
+	workflow_interfaces "github.com/kubecano/cano-collector/pkg/workflow/interface"
 )
 
 // AlertHandler handles incoming alerts from Alertmanager
@@ -23,6 +24,7 @@ type AlertHandler struct {
 	teamResolver    alert_interfaces.TeamResolverInterface
 	alertDispatcher alert_interfaces.AlertDispatcherInterface
 	converter       *Converter
+	workflowEngine  workflow_interfaces.WorkflowEngineInterface
 }
 
 // NewAlertHandler creates a new alert handler
@@ -32,6 +34,7 @@ func NewAlertHandler(
 	teamResolver alert_interfaces.TeamResolverInterface,
 	alertDispatcher alert_interfaces.AlertDispatcherInterface,
 	converter *Converter,
+	workflowEngine workflow_interfaces.WorkflowEngineInterface,
 ) *AlertHandler {
 	return &AlertHandler{
 		logger:          logger,
@@ -39,13 +42,13 @@ func NewAlertHandler(
 		teamResolver:    teamResolver,
 		alertDispatcher: alertDispatcher,
 		converter:       converter,
+		workflowEngine:  workflowEngine,
 	}
 }
 
 // HandleAlert processes alerts
 func (h *AlertHandler) HandleAlert(c *gin.Context) {
 	start := time.Now()
-	var alertEvent *model.AlertManagerEvent
 
 	// Check if the request body is empty
 	body, err := io.ReadAll(c.Request.Body)
@@ -71,8 +74,8 @@ func (h *AlertHandler) HandleAlert(c *gin.Context) {
 		return
 	}
 
-	// Convert and validate the alert
-	alertEvent = model.NewAlertManagerEventFromTemplateData(templateData)
+	// Convert template.Data to AlertManagerEvent
+	alertEvent := event.NewAlertManagerEvent(templateData)
 	if err := alertEvent.Validate(); err != nil {
 		h.logger.Error("Invalid alert structure", zap.Error(err), zap.Any("alert", templateData))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid alert format: " + err.Error()})
@@ -81,6 +84,23 @@ func (h *AlertHandler) HandleAlert(c *gin.Context) {
 
 	// Register received alert metric
 	h.metrics.ObserveAlert(alertEvent.Receiver, alertEvent.Status)
+
+	// Process workflows if workflow engine is available
+	if h.workflowEngine != nil {
+		matchingWorkflows := h.workflowEngine.SelectWorkflows(alertEvent)
+		h.logger.Info("Workflow processing",
+			zap.String("alert_name", alertEvent.GetAlertName()),
+			zap.Int("matching_workflows", len(matchingWorkflows)))
+
+		// Execute matching workflows
+		for _, workflow := range matchingWorkflows {
+			if err := h.workflowEngine.ExecuteWorkflow(workflow, alertEvent); err != nil {
+				h.logger.Error("Failed to execute workflow",
+					zap.Error(err),
+					zap.String("workflow_name", workflow.Name))
+			}
+		}
+	}
 
 	// Resolve which team should handle this alert
 	team, err := h.teamResolver.ResolveTeam(alertEvent)
