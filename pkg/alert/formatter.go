@@ -3,7 +3,7 @@ package alert
 import (
 	"strings"
 
-	"github.com/kubecano/cano-collector/pkg/alert/model"
+	"github.com/kubecano/cano-collector/pkg/core/event"
 )
 
 // AlertFormatter formats alert into readable messages
@@ -15,13 +15,25 @@ func NewAlertFormatter() *AlertFormatter {
 }
 
 // FormatAlert converts alertmanager alert to a readable message
-func (f *AlertFormatter) FormatAlert(alertEvent *model.AlertManagerEvent) string {
+func (f *AlertFormatter) FormatAlert(alertEvent *event.AlertManagerEvent) string {
 	var messages []string
 
+	// Get alert name with fallback
+	alertName := alertEvent.GetAlertName()
+	if alertName == "" {
+		alertName = "unknown"
+	}
+
+	// Get severity with fallback
+	severity := alertEvent.GetSeverity()
+	if severity == "" {
+		severity = "unknown"
+	}
+
 	// Add alert header
-	messages = append(messages, "🚨 Alert: "+alertEvent.GetAlertName())
+	messages = append(messages, "🚨 Alert: "+alertName)
 	messages = append(messages, "Status: "+alertEvent.Status)
-	messages = append(messages, "Severity: "+alertEvent.GetSeverity())
+	messages = append(messages, "Severity: "+severity)
 
 	// Add individual alerts
 	for _, alert := range alertEvent.Alerts {

@@ -9,7 +9,7 @@ import (
 
 // AlertDispatcherInterface defines the interface for dispatching issues to team destinations.
 //
-//go:generate mockgen -destination=../../../mocks/alert_dispatcher_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/alert/interfaces AlertDispatcherInterface
+//go:generate mockgen -source=dispatcher.go -destination=../../../mocks/alert_dispatcher_mock.go -package=mocks
 type AlertDispatcherInterface interface {
 	DispatchIssues(ctx context.Context, issues []*issuepkg.Issue, team *config_team.Team) error
 }

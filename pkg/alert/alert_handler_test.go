@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	config_team "github.com/kubecano/cano-collector/config/team"
+	"github.com/kubecano/cano-collector/config/workflow"
 	"github.com/kubecano/cano-collector/mocks"
 	"github.com/kubecano/cano-collector/pkg/metric"
 )
@@ -37,6 +38,7 @@ func setupTestRouter(t *testing.T) alertHandlerTestDeps {
 	mockLogger := mocks.NewMockLoggerInterface(ctrl)
 	mockTeamResolver := mocks.NewMockTeamResolverInterface(ctrl)
 	mockAlertDispatcher := mocks.NewMockAlertDispatcherInterface(ctrl)
+	mockWorkflowEngine := mocks.NewMockWorkflowEngineInterface(ctrl)
 
 	// Accept any number of arguments for logger methods
 	mockLogger.EXPECT().Error(gomock.Any()).AnyTimes()
@@ -69,9 +71,10 @@ func setupTestRouter(t *testing.T) alertHandlerTestDeps {
 	}
 	mockTeamResolver.EXPECT().ResolveTeam(gomock.Any()).Return(mockTeam, nil).AnyTimes()
 	mockAlertDispatcher.EXPECT().DispatchIssues(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	mockWorkflowEngine.EXPECT().SelectWorkflows(gomock.Any()).Return([]*workflow.WorkflowDefinition{}).AnyTimes()
 
 	converter := NewConverter(mockLogger)
-	alertHandler := NewAlertHandler(mockLogger, mockMetrics, mockTeamResolver, mockAlertDispatcher, converter)
+	alertHandler := NewAlertHandler(mockLogger, mockMetrics, mockTeamResolver, mockAlertDispatcher, converter, mockWorkflowEngine)
 
 	r := gin.Default()
 	r.POST("/alert", alertHandler.HandleAlert)
@@ -254,6 +257,7 @@ func TestAlertHandler_NoTeamResolved(t *testing.T) {
 	mockLogger := mocks.NewMockLoggerInterface(ctrl)
 	mockTeamResolver := mocks.NewMockTeamResolverInterface(ctrl)
 	mockAlertDispatcher := mocks.NewMockAlertDispatcherInterface(ctrl)
+	mockWorkflowEngine := mocks.NewMockWorkflowEngineInterface(ctrl)
 
 	// Accept any number of arguments for logger methods
 	mockLogger.EXPECT().Error(gomock.Any()).AnyTimes()
@@ -282,9 +286,10 @@ func TestAlertHandler_NoTeamResolved(t *testing.T) {
 	// Edge case - no team resolved
 	mockTeamResolver.EXPECT().ResolveTeam(gomock.Any()).Return(nil, nil).AnyTimes()
 	mockAlertDispatcher.EXPECT().DispatchIssues(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	mockWorkflowEngine.EXPECT().SelectWorkflows(gomock.Any()).Return([]*workflow.WorkflowDefinition{}).AnyTimes()
 
 	converter := NewConverter(mockLogger)
-	alertHandler := NewAlertHandler(mockLogger, mockMetrics, mockTeamResolver, mockAlertDispatcher, converter)
+	alertHandler := NewAlertHandler(mockLogger, mockMetrics, mockTeamResolver, mockAlertDispatcher, converter, mockWorkflowEngine)
 
 	r := gin.Default()
 	r.POST("/alert", alertHandler.HandleAlert)
@@ -319,6 +324,7 @@ func TestAlertHandler_TeamResolutionFailed(t *testing.T) {
 	mockLogger := mocks.NewMockLoggerInterface(ctrl)
 	mockTeamResolver := mocks.NewMockTeamResolverInterface(ctrl)
 	mockAlertDispatcher := mocks.NewMockAlertDispatcherInterface(ctrl)
+	mockWorkflowEngine := mocks.NewMockWorkflowEngineInterface(ctrl)
 
 	// Accept any number of arguments for logger methods
 	mockLogger.EXPECT().Error(gomock.Any()).AnyTimes()
@@ -347,9 +353,10 @@ func TestAlertHandler_TeamResolutionFailed(t *testing.T) {
 	// Edge case - team resolution failed
 	mockTeamResolver.EXPECT().ResolveTeam(gomock.Any()).Return(nil, errors.New("team resolution failed"))
 	mockAlertDispatcher.EXPECT().DispatchIssues(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	mockWorkflowEngine.EXPECT().SelectWorkflows(gomock.Any()).Return([]*workflow.WorkflowDefinition{}).AnyTimes()
 
 	converter := NewConverter(mockLogger)
-	alertHandler := NewAlertHandler(mockLogger, mockMetrics, mockTeamResolver, mockAlertDispatcher, converter)
+	alertHandler := NewAlertHandler(mockLogger, mockMetrics, mockTeamResolver, mockAlertDispatcher, converter, mockWorkflowEngine)
 
 	r := gin.Default()
 	r.POST("/alert", alertHandler.HandleAlert)

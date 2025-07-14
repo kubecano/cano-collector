@@ -19,6 +19,8 @@ import (
 	router_interfaces "github.com/kubecano/cano-collector/pkg/router/interfaces"
 	"github.com/kubecano/cano-collector/pkg/tracer"
 	tracer_interfaces "github.com/kubecano/cano-collector/pkg/tracer/interfaces"
+	"github.com/kubecano/cano-collector/pkg/workflow"
+	workflow_interfaces "github.com/kubecano/cano-collector/pkg/workflow/interfaces"
 
 	"github.com/getsentry/sentry-go"
 
@@ -35,8 +37,9 @@ type AppDependencies struct {
 	DestinationRegistry    func(factory destination_interfaces.DestinationFactoryInterface, log logger_interfaces.LoggerInterface) destination_interfaces.DestinationRegistryInterface
 	TeamResolverFactory    func(teams config_team.TeamsConfig, log logger_interfaces.LoggerInterface, m metric_interfaces.MetricsInterface) alert_interfaces.TeamResolverInterface
 	AlertDispatcherFactory func(registry destination_interfaces.DestinationRegistryInterface, log logger_interfaces.LoggerInterface, m metric_interfaces.MetricsInterface) alert_interfaces.AlertDispatcherInterface
-	AlertHandlerFactory    func(cfg config.Config, log logger_interfaces.LoggerInterface, m metric_interfaces.MetricsInterface, tr alert_interfaces.TeamResolverInterface, ad alert_interfaces.AlertDispatcherInterface) alert_interfaces.AlertHandlerInterface
+	AlertHandlerFactory    func(cfg config.Config, log logger_interfaces.LoggerInterface, m metric_interfaces.MetricsInterface, tr alert_interfaces.TeamResolverInterface, ad alert_interfaces.AlertDispatcherInterface, converter alert_interfaces.ConverterInterface, workflowEngine workflow_interfaces.WorkflowEngineInterface) alert_interfaces.AlertHandlerInterface
 	RouterManagerFactory   func(cfg config.Config, log logger_interfaces.LoggerInterface, t tracer_interfaces.TracerInterface, m metric_interfaces.MetricsInterface, h health_interfaces.HealthInterface, a alert_interfaces.AlertHandlerInterface) router_interfaces.RouterInterface
+	ConverterFactory       func(log logger_interfaces.LoggerInterface, cfg config.Config) alert_interfaces.ConverterInterface
 }
 
 func main() {
@@ -68,12 +71,14 @@ func main() {
 		AlertDispatcherFactory: func(registry destination_interfaces.DestinationRegistryInterface, log logger_interfaces.LoggerInterface, m metric_interfaces.MetricsInterface) alert_interfaces.AlertDispatcherInterface {
 			return alert.NewAlertDispatcher(registry, log, m)
 		},
-		AlertHandlerFactory: func(cfg config.Config, log logger_interfaces.LoggerInterface, m metric_interfaces.MetricsInterface, tr alert_interfaces.TeamResolverInterface, ad alert_interfaces.AlertDispatcherInterface) alert_interfaces.AlertHandlerInterface {
-			converter := alert.NewConverterWithConfig(log, cfg.Enrichment)
-			return alert.NewAlertHandler(log, m, tr, ad, converter)
+		AlertHandlerFactory: func(cfg config.Config, log logger_interfaces.LoggerInterface, m metric_interfaces.MetricsInterface, tr alert_interfaces.TeamResolverInterface, ad alert_interfaces.AlertDispatcherInterface, converter alert_interfaces.ConverterInterface, workflowEngine workflow_interfaces.WorkflowEngineInterface) alert_interfaces.AlertHandlerInterface {
+			return alert.NewAlertHandler(log, m, tr, ad, converter, workflowEngine)
 		},
 		RouterManagerFactory: func(cfg config.Config, log logger_interfaces.LoggerInterface, t tracer_interfaces.TracerInterface, m metric_interfaces.MetricsInterface, h health_interfaces.HealthInterface, a alert_interfaces.AlertHandlerInterface) router_interfaces.RouterInterface {
 			return router.NewRouterManager(cfg, log, t, m, h, a)
+		},
+		ConverterFactory: func(log logger_interfaces.LoggerInterface, cfg config.Config) alert_interfaces.ConverterInterface {
+			return alert.NewConverterWithConfig(log, cfg.Enrichment)
 		},
 	}
 
@@ -111,7 +116,9 @@ func run(cfg config.Config, deps AppDependencies) error {
 	// Initialize alert processing components
 	teamResolver := deps.TeamResolverFactory(cfg.Teams, log, metricsCollector)
 	alertDispatcher := deps.AlertDispatcherFactory(destinationRegistry, log, metricsCollector)
-	alertHandler := deps.AlertHandlerFactory(cfg, log, metricsCollector, teamResolver, alertDispatcher)
+	converter := deps.ConverterFactory(log, cfg)
+	workflowEngine := workflow.NewWorkflowEngine(&cfg.Workflows)
+	alertHandler := deps.AlertHandlerFactory(cfg, log, metricsCollector, teamResolver, alertDispatcher, converter, workflowEngine)
 
 	// Validate team destinations configuration
 	if err := teamResolver.ValidateTeamDestinations(destinationRegistry); err != nil {

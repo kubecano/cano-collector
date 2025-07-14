@@ -4,7 +4,7 @@ import (
 	"net/http"
 )
 
-//go:generate mockgen -destination=../../../mocks/health_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/health/interfaces HealthInterface
+//go:generate mockgen -source=health.go -destination=../../../mocks/health_mock.go -package=mocks
 type HealthInterface interface {
 	RegisterHealthChecks() error
 	Handler() http.Handler

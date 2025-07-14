@@ -7,15 +7,15 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/kubecano/cano-collector/pkg/alert/model"
+	"github.com/kubecano/cano-collector/pkg/core/event"
 )
 
-func createTestAlertManagerEventForFormatter() *model.AlertManagerEvent {
+func createTestAlertManagerEventForFormatter() *event.AlertManagerEvent {
 	now := time.Now()
-	return &model.AlertManagerEvent{
+	return &event.AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
-		Alerts: []model.PrometheusAlert{
+		Alerts: []event.PrometheusAlert{
 			{
 				Status: "firing",
 				Labels: map[string]string{
@@ -49,14 +49,14 @@ func TestAlertFormatter_FormatAlert_BasicAlert(t *testing.T) {
 func TestAlertFormatter_FormatAlert_WithGroupLabels(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	alert := &model.AlertManagerEvent{
+	alert := &event.AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
 		GroupLabels: map[string]string{
 			"namespace": "production",
 			"service":   "api",
 		},
-		Alerts: []model.PrometheusAlert{
+		Alerts: []event.PrometheusAlert{
 			{
 				Status: "firing",
 				Labels: map[string]string{
@@ -78,10 +78,10 @@ func TestAlertFormatter_FormatAlert_WithGroupLabels(t *testing.T) {
 func TestAlertFormatter_FormatAlert_MultipleAlerts(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	alert := &model.AlertManagerEvent{
+	alert := &event.AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
-		Alerts: []model.PrometheusAlert{
+		Alerts: []event.PrometheusAlert{
 			{
 				Status: "firing",
 				Labels: map[string]string{
@@ -118,10 +118,10 @@ func TestAlertFormatter_FormatAlert_MultipleAlerts(t *testing.T) {
 func TestAlertFormatter_FormatAlert_MissingLabels(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	alert := &model.AlertManagerEvent{
+	alert := &event.AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
-		Alerts: []model.PrometheusAlert{
+		Alerts: []event.PrometheusAlert{
 			{
 				Status: "firing",
 				Labels: map[string]string{
@@ -142,10 +142,10 @@ func TestAlertFormatter_FormatAlert_MissingLabels(t *testing.T) {
 func TestAlertFormatter_FormatAlert_MissingAnnotations(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	alert := &model.AlertManagerEvent{
+	alert := &event.AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
-		Alerts: []model.PrometheusAlert{
+		Alerts: []event.PrometheusAlert{
 			{
 				Status: "firing",
 				Labels: map[string]string{
@@ -170,10 +170,10 @@ func TestAlertFormatter_FormatAlert_MissingAnnotations(t *testing.T) {
 func TestAlertFormatter_FormatAlert_EmptyAlerts(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	alert := &model.AlertManagerEvent{
+	alert := &event.AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
-		Alerts:   []model.PrometheusAlert{}, // empty alerts list
+		Alerts:   []event.PrometheusAlert{}, // empty alerts list
 	}
 
 	result := formatter.FormatAlert(alert)
@@ -189,10 +189,10 @@ func TestAlertFormatter_FormatAlert_EmptyAlerts(t *testing.T) {
 func TestAlertFormatter_FormatAlert_ResolvedStatus(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	alert := &model.AlertManagerEvent{
+	alert := &event.AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "resolved",
-		Alerts: []model.PrometheusAlert{
+		Alerts: []event.PrometheusAlert{
 			{
 				Status: "resolved",
 				Labels: map[string]string{
@@ -213,10 +213,10 @@ func TestAlertFormatter_FormatAlert_ResolvedStatus(t *testing.T) {
 func TestAlertFormatter_FormatAlert_SpecialCharacters(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	alert := &model.AlertManagerEvent{
+	alert := &event.AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
-		Alerts: []model.PrometheusAlert{
+		Alerts: []event.PrometheusAlert{
 			{
 				Status: "firing",
 				Labels: map[string]string{
@@ -241,10 +241,10 @@ func TestAlertFormatter_FormatAlert_SpecialCharacters(t *testing.T) {
 func TestAlertFormatter_FormatAlert_NewlinesInContent(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	alert := &model.AlertManagerEvent{
+	alert := &event.AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
-		Alerts: []model.PrometheusAlert{
+		Alerts: []event.PrometheusAlert{
 			{
 				Status: "firing",
 				Labels: map[string]string{"alertname": "MultilineAlert"},
@@ -263,14 +263,14 @@ func TestAlertFormatter_FormatAlert_NewlinesInContent(t *testing.T) {
 func TestAlertFormatter_FormatAlert_EmptyStringValues(t *testing.T) {
 	formatter := NewAlertFormatter()
 
-	alert := &model.AlertManagerEvent{
+	alert := &event.AlertManagerEvent{
 		Receiver: "test-receiver",
 		Status:   "firing",
 		GroupLabels: map[string]string{
 			"empty": "",
 			"valid": "value",
 		},
-		Alerts: []model.PrometheusAlert{
+		Alerts: []event.PrometheusAlert{
 			{
 				Status: "firing",
 				Labels: map[string]string{
@@ -317,7 +317,7 @@ func TestAlertFormatter_FormatAlert_EmptyAlertEvent(t *testing.T) {
 	formatter := NewAlertFormatter()
 
 	// Pass empty AlertManagerEvent
-	result := formatter.FormatAlert(&model.AlertManagerEvent{})
+	result := formatter.FormatAlert(&event.AlertManagerEvent{})
 
 	expected := "🚨 Alert: unknown\nStatus: \nSeverity: unknown"
 	assert.Equal(t, expected, result)

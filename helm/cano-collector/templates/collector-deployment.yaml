@@ -147,6 +147,9 @@ spec:
             - name: destinations-secret-volume
               mountPath: /etc/cano-collector/destinations
               readOnly: true
+            - name: workflows-secret-volume
+              mountPath: /etc/cano-collector/workflows
+              readOnly: true
       volumes:
         - name: teams-volume
           configMap:
@@ -154,6 +157,9 @@ spec:
         - name: destinations-secret-volume
           secret:
             secretName: {{ include "cano-collector.fullname" . }}-destination-secrets
+        - name: workflows-secret-volume
+          secret:
+            secretName: {{ include "cano-collector.fullname" . }}-workflows-secrets
       {{- with .Values.collector.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

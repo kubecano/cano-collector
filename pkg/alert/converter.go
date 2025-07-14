@@ -6,7 +6,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/kubecano/cano-collector/config"
-	"github.com/kubecano/cano-collector/pkg/alert/model"
+	"github.com/kubecano/cano-collector/pkg/core/event"
 	"github.com/kubecano/cano-collector/pkg/core/issue"
 	"github.com/kubecano/cano-collector/pkg/enrichment"
 	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
@@ -55,7 +55,7 @@ func NewConverterWithConfig(logger logger_interfaces.LoggerInterface, enrichment
 }
 
 // ConvertAlertManagerEventToIssues converts AlertManagerEvent to a slice of Issues
-func (c *Converter) ConvertAlertManagerEventToIssues(event *model.AlertManagerEvent) ([]*issue.Issue, error) {
+func (c *Converter) ConvertAlertManagerEventToIssues(event *event.AlertManagerEvent) ([]*issue.Issue, error) {
 	if event == nil {
 		return nil, fmt.Errorf("alertmanager event is nil")
 	}
@@ -86,7 +86,7 @@ func (c *Converter) ConvertAlertManagerEventToIssues(event *model.AlertManagerEv
 }
 
 // convertPrometheusAlertToIssue converts a single PrometheusAlert to Issue
-func (c *Converter) convertPrometheusAlertToIssue(alert model.PrometheusAlert) (*issue.Issue, error) {
+func (c *Converter) convertPrometheusAlertToIssue(alert event.PrometheusAlert) (*issue.Issue, error) {
 	// Extract alert name from labels
 	alertName, exists := alert.Labels["alertname"]
 	if !exists {
@@ -146,7 +146,7 @@ func (c *Converter) convertPrometheusAlertToIssue(alert model.PrometheusAlert) (
 }
 
 // createTitle creates a title for the issue
-func (c *Converter) createTitle(alert model.PrometheusAlert) string {
+func (c *Converter) createTitle(alert event.PrometheusAlert) string {
 	// Check for summary annotation first
 	if summary, exists := alert.Annotations["summary"]; exists {
 		return summary
@@ -161,7 +161,7 @@ func (c *Converter) createTitle(alert model.PrometheusAlert) string {
 }
 
 // createDescription creates a description for the issue
-func (c *Converter) createDescription(alert model.PrometheusAlert) string {
+func (c *Converter) createDescription(alert event.PrometheusAlert) string {
 	// Check for description annotation first
 	if desc, exists := alert.Annotations["description"]; exists {
 		return desc
@@ -181,7 +181,7 @@ func (c *Converter) createDescription(alert model.PrometheusAlert) string {
 }
 
 // createSubject creates a Subject from alert labels
-func (c *Converter) createSubject(alert model.PrometheusAlert) *issue.Subject {
+func (c *Converter) createSubject(alert event.PrometheusAlert) *issue.Subject {
 	// Determine subject type and name using helper functions
 	subjectType := c.getSubjectTypeFromLabels(alert.Labels)
 	subjectName := c.getSubjectNameFromLabels(alert.Labels, subjectType)
