@@ -4,11 +4,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kubecano/cano-collector/config/workflow"
-	"github.com/kubecano/cano-collector/pkg/core/event"
 	"github.com/prometheus/alertmanager/template"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/kubecano/cano-collector/config/workflow"
+	"github.com/kubecano/cano-collector/pkg/core/event"
 )
 
 func TestWorkflowEngine_SelectWorkflows_EventBased(t *testing.T) {
@@ -181,5 +182,5 @@ func TestWorkflowEngine_TriggerMatching(t *testing.T) {
 	templateData.Alerts[0].Labels["alertname"] = "HighMemoryUsage"
 	alertEvent = event.NewAlertManagerEvent(templateData)
 	matchingWorkflows = engine.SelectWorkflows(alertEvent)
-	assert.Len(t, matchingWorkflows, 0)
+	assert.Empty(t, matchingWorkflows)
 }
