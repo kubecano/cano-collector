@@ -4,7 +4,7 @@ import (
 	"context"
 )
 
-//go:generate mockgen -destination=../../../mocks/slack_thread_manager_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/sender/interfaces SlackThreadManagerInterface
+//go:generate mockgen -source=slack_thread_manager.go -destination=../../../mocks/slack_thread_manager_mock.go -package=mocks
 
 // SlackThreadManagerInterface defines the contract for managing Slack thread relationships
 type SlackThreadManagerInterface interface {

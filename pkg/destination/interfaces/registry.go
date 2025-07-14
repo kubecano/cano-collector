@@ -4,7 +4,7 @@ import (
 	config_destination "github.com/kubecano/cano-collector/config/destination"
 )
 
-//go:generate mockgen -destination=../../../mocks/destination_registry_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/destination/interfaces DestinationRegistryInterface
+//go:generate mockgen -source=registry.go -destination=../../../mocks/destination_registry_mock.go -package=mocks
 
 // DestinationRegistryInterface defines the interface for destination registry
 type DestinationRegistryInterface interface {

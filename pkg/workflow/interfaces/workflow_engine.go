@@ -5,7 +5,7 @@ import (
 	"github.com/kubecano/cano-collector/pkg/core/event"
 )
 
-//go:generate mockgen -source=workflow_engine.go -destination=../../mocks/workflow_engine_mock.go -package=mocks
+//go:generate mockgen -source=workflow_engine.go -destination=../../../mocks/workflow_engine_mock.go -package=mocks
 
 // WorkflowEngineInterface defines the interface for workflow processing
 type WorkflowEngineInterface interface {

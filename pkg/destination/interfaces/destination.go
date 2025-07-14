@@ -6,7 +6,7 @@ import (
 	issuepkg "github.com/kubecano/cano-collector/pkg/core/issue"
 )
 
-//go:generate mockgen -destination=../../../mocks/destination_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/destination/interfaces DestinationInterface
+//go:generate mockgen -source=destination.go -destination=../../../mocks/destination_mock.go -package=mocks
 type DestinationInterface interface {
 	Send(ctx context.Context, issue *issuepkg.Issue) error
 }

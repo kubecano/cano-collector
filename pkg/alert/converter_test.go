@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/kubecano/cano-collector/config"
-	"github.com/kubecano/cano-collector/pkg/alert/model"
+	"github.com/kubecano/cano-collector/pkg/core/event"
 	"github.com/kubecano/cano-collector/pkg/core/issue"
 	"github.com/kubecano/cano-collector/pkg/enrichment"
 	"github.com/kubecano/cano-collector/pkg/logger"
@@ -19,14 +19,14 @@ func TestConverter_ConvertAlertManagerEventToIssues(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		alertEvent    *model.AlertManagerEvent
+		alertEvent    *event.AlertManagerEvent
 		expectedCount int
 		expectError   bool
 	}{
 		{
 			name: "successful conversion with single alert",
-			alertEvent: &model.AlertManagerEvent{
-				Alerts: []model.PrometheusAlert{
+			alertEvent: &event.AlertManagerEvent{
+				Alerts: []event.PrometheusAlert{
 					{
 						Status:       "firing",
 						Fingerprint:  "test-fingerprint",
@@ -51,8 +51,8 @@ func TestConverter_ConvertAlertManagerEventToIssues(t *testing.T) {
 		},
 		{
 			name: "successful conversion with multiple alerts",
-			alertEvent: &model.AlertManagerEvent{
-				Alerts: []model.PrometheusAlert{
+			alertEvent: &event.AlertManagerEvent{
+				Alerts: []event.PrometheusAlert{
 					{
 						Status:      "firing",
 						Fingerprint: "test-fingerprint-1",
@@ -91,16 +91,16 @@ func TestConverter_ConvertAlertManagerEventToIssues(t *testing.T) {
 		},
 		{
 			name: "empty alerts",
-			alertEvent: &model.AlertManagerEvent{
-				Alerts: []model.PrometheusAlert{},
+			alertEvent: &event.AlertManagerEvent{
+				Alerts: []event.PrometheusAlert{},
 			},
 			expectedCount: 0,
 			expectError:   true,
 		},
 		{
 			name: "alert without alertname",
-			alertEvent: &model.AlertManagerEvent{
-				Alerts: []model.PrometheusAlert{
+			alertEvent: &event.AlertManagerEvent{
+				Alerts: []event.PrometheusAlert{
 					{
 						Status:      "firing",
 						Fingerprint: "test-fingerprint",
@@ -149,7 +149,7 @@ func TestConverter_convertPrometheusAlertToIssue(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		alert            model.PrometheusAlert
+		alert            event.PrometheusAlert
 		expectedTitle    string
 		expectedSeverity issue.Severity
 		expectedStatus   issue.Status
@@ -157,7 +157,7 @@ func TestConverter_convertPrometheusAlertToIssue(t *testing.T) {
 	}{
 		{
 			name: "alert with summary annotation",
-			alert: model.PrometheusAlert{
+			alert: event.PrometheusAlert{
 				Status:      "firing",
 				Fingerprint: "test-fingerprint",
 				StartsAt:    time.Now(),
@@ -177,7 +177,7 @@ func TestConverter_convertPrometheusAlertToIssue(t *testing.T) {
 		},
 		{
 			name: "resolved alert",
-			alert: model.PrometheusAlert{
+			alert: event.PrometheusAlert{
 				Status:      "resolved",
 				Fingerprint: "test-fingerprint",
 				StartsAt:    time.Now().Add(-time.Hour),
@@ -197,7 +197,7 @@ func TestConverter_convertPrometheusAlertToIssue(t *testing.T) {
 		},
 		{
 			name: "alert without summary - uses alertname",
-			alert: model.PrometheusAlert{
+			alert: event.PrometheusAlert{
 				Status:      "firing",
 				Fingerprint: "test-fingerprint",
 				StartsAt:    time.Now(),
@@ -216,7 +216,7 @@ func TestConverter_convertPrometheusAlertToIssue(t *testing.T) {
 		},
 		{
 			name: "alert without alertname",
-			alert: model.PrometheusAlert{
+			alert: event.PrometheusAlert{
 				Status:      "firing",
 				Fingerprint: "test-fingerprint",
 				StartsAt:    time.Now(),
@@ -260,14 +260,14 @@ func TestConverter_createSubject(t *testing.T) {
 
 	tests := []struct {
 		name                string
-		alert               model.PrometheusAlert
+		alert               event.PrometheusAlert
 		expectedSubjectType issue.SubjectType
 		expectedSubjectName string
 		expectedNamespace   string
 	}{
 		{
 			name: "pod subject",
-			alert: model.PrometheusAlert{
+			alert: event.PrometheusAlert{
 				Labels: map[string]string{
 					"pod":       "test-pod",
 					"namespace": "test-namespace",
@@ -280,7 +280,7 @@ func TestConverter_createSubject(t *testing.T) {
 		},
 		{
 			name: "deployment subject",
-			alert: model.PrometheusAlert{
+			alert: event.PrometheusAlert{
 				Labels: map[string]string{
 					"deployment": "test-deployment",
 					"namespace":  "test-namespace",
@@ -292,7 +292,7 @@ func TestConverter_createSubject(t *testing.T) {
 		},
 		{
 			name: "node subject",
-			alert: model.PrometheusAlert{
+			alert: event.PrometheusAlert{
 				Labels: map[string]string{
 					"node": "test-node",
 				},
@@ -303,7 +303,7 @@ func TestConverter_createSubject(t *testing.T) {
 		},
 		{
 			name: "instance as node subject",
-			alert: model.PrometheusAlert{
+			alert: event.PrometheusAlert{
 				Labels: map[string]string{
 					"instance": "test-instance",
 				},
@@ -314,13 +314,40 @@ func TestConverter_createSubject(t *testing.T) {
 		},
 		{
 			name: "unknown subject",
-			alert: model.PrometheusAlert{
+			alert: event.PrometheusAlert{
 				Labels: map[string]string{
 					"custom_label": "custom_value",
 				},
 			},
 			expectedSubjectType: issue.SubjectTypeNone,
 			expectedSubjectName: "Unknown",
+			expectedNamespace:   "",
+		},
+		{
+			name: "kopiowanie annotation do subject.Annotations",
+			alert: event.PrometheusAlert{
+				Labels: map[string]string{
+					"pod": "test-pod",
+				},
+				Annotations: map[string]string{
+					"foo":  "bar",
+					"desc": "opis",
+				},
+			},
+			expectedSubjectType: issue.SubjectTypePod,
+			expectedSubjectName: "test-pod",
+			expectedNamespace:   "",
+		},
+		{
+			name: "kopiowanie labela container do subject.Container",
+			alert: event.PrometheusAlert{
+				Labels: map[string]string{
+					"pod":       "test-pod",
+					"container": "test-container",
+				},
+			},
+			expectedSubjectType: issue.SubjectTypePod,
+			expectedSubjectName: "test-pod",
 			expectedNamespace:   "",
 		},
 	}
@@ -336,6 +363,16 @@ func TestConverter_createSubject(t *testing.T) {
 			// Verify labels are copied
 			for k, v := range tt.alert.Labels {
 				assert.Equal(t, v, subject.Labels[k])
+			}
+			// DODAJ: test kopiowania annotation
+			if len(tt.alert.Annotations) > 0 {
+				for k, v := range tt.alert.Annotations {
+					assert.Equal(t, v, subject.Annotations[k], "Annotation %s powinna być skopiowana do subject", k)
+				}
+			}
+			// DODAJ: test kopiowania container
+			if container, exists := tt.alert.Labels["container"]; exists {
+				assert.Equal(t, container, subject.Container, "Label 'container' powinien być skopiowany do subject.Container")
 			}
 		})
 	}
@@ -387,7 +424,7 @@ func TestConverter_StatusMapping(t *testing.T) {
 func TestConverter_WithGeneratorURL(t *testing.T) {
 	converter := NewConverter(logger.NewLogger("info", "test"))
 
-	alert := model.PrometheusAlert{
+	alert := event.PrometheusAlert{
 		Status:       "firing",
 		Fingerprint:  "test-fingerprint",
 		StartsAt:     time.Now(),
@@ -413,7 +450,7 @@ func TestConverter_WithGeneratorURL(t *testing.T) {
 func TestConverter_WithRunbookURL(t *testing.T) {
 	converter := NewConverter(logger.NewLogger("info", "test"))
 
-	alert := model.PrometheusAlert{
+	alert := event.PrometheusAlert{
 		Status:      "firing",
 		Fingerprint: "test-fingerprint",
 		StartsAt:    time.Now(),
@@ -439,7 +476,7 @@ func TestConverter_WithRunbookURL(t *testing.T) {
 func TestConverter_WithBothGeneratorAndRunbookURLs(t *testing.T) {
 	converter := NewConverter(logger.NewLogger("info", "test"))
 
-	alert := model.PrometheusAlert{
+	alert := event.PrometheusAlert{
 		Status:       "firing",
 		Fingerprint:  "test-fingerprint",
 		StartsAt:     time.Now(),
@@ -475,7 +512,7 @@ func TestConverter_FingerprintHandling(t *testing.T) {
 	converter := NewConverter(logger.NewLogger("info", "test"))
 
 	t.Run("uses alert fingerprint when provided", func(t *testing.T) {
-		alert := model.PrometheusAlert{
+		alert := event.PrometheusAlert{
 			Status:      "firing",
 			Fingerprint: "custom-alert-fingerprint-123",
 			StartsAt:    time.Now(),
@@ -495,7 +532,7 @@ func TestConverter_FingerprintHandling(t *testing.T) {
 	})
 
 	t.Run("generates fingerprint when alert fingerprint is empty", func(t *testing.T) {
-		alert := model.PrometheusAlert{
+		alert := event.PrometheusAlert{
 			Status:      "firing",
 			Fingerprint: "", // Empty fingerprint
 			StartsAt:    time.Now(),
@@ -517,7 +554,7 @@ func TestConverter_FingerprintHandling(t *testing.T) {
 	})
 
 	t.Run("different alerts generate different fingerprints", func(t *testing.T) {
-		alert1 := model.PrometheusAlert{
+		alert1 := event.PrometheusAlert{
 			Status:      "firing",
 			Fingerprint: "", // Let it generate
 			StartsAt:    time.Now(),
@@ -528,7 +565,7 @@ func TestConverter_FingerprintHandling(t *testing.T) {
 			},
 		}
 
-		alert2 := model.PrometheusAlert{
+		alert2 := event.PrometheusAlert{
 			Status:      "firing",
 			Fingerprint: "", // Let it generate
 			StartsAt:    time.Now(),
@@ -550,7 +587,7 @@ func TestConverter_FingerprintHandling(t *testing.T) {
 	})
 
 	t.Run("same alert parameters generate same fingerprint", func(t *testing.T) {
-		alert1 := model.PrometheusAlert{
+		alert1 := event.PrometheusAlert{
 			Status:      "firing",
 			Fingerprint: "", // Let it generate
 			StartsAt:    time.Now(),
@@ -561,7 +598,7 @@ func TestConverter_FingerprintHandling(t *testing.T) {
 			},
 		}
 
-		alert2 := model.PrometheusAlert{
+		alert2 := event.PrometheusAlert{
 			Status:      "firing",
 			Fingerprint: "", // Let it generate
 			StartsAt:    time.Now(),
@@ -587,7 +624,7 @@ func TestConverter_LabelEnrichmentIntegration(t *testing.T) {
 	converter := NewConverter(logger.NewLogger("info", "test"))
 
 	t.Run("adds label and annotation enrichments", func(t *testing.T) {
-		alert := model.PrometheusAlert{
+		alert := event.PrometheusAlert{
 			Status:      "firing",
 			Fingerprint: "test-fingerprint",
 			StartsAt:    time.Now(),
@@ -656,7 +693,7 @@ func TestConverter_LabelEnrichmentIntegration(t *testing.T) {
 		}
 		customConverter := NewConverterWithEnrichmentConfig(logger.NewLogger("info", "test"), enrichmentConfig)
 
-		alert := model.PrometheusAlert{
+		alert := event.PrometheusAlert{
 			Status:      "firing",
 			Fingerprint: "test-fingerprint",
 			StartsAt:    time.Now(),
@@ -691,7 +728,7 @@ func TestConverter_LabelEnrichmentIntegration(t *testing.T) {
 
 	t.Run("handles enrichment errors gracefully", func(t *testing.T) {
 		// Create alert without labels/annotations to test edge case
-		alert := model.PrometheusAlert{
+		alert := event.PrometheusAlert{
 			Status:      "firing",
 			Fingerprint: "test-fingerprint",
 			StartsAt:    time.Now(),
@@ -733,7 +770,7 @@ func TestNewConverterWithConfig(t *testing.T) {
 		assert.NotNil(t, converter.labelEnrichment)
 
 		// Test that labels enrichment is disabled
-		alert := model.PrometheusAlert{
+		alert := event.PrometheusAlert{
 			Status:      "firing",
 			Fingerprint: "test-fingerprint",
 			StartsAt:    time.Now(),
@@ -771,7 +808,7 @@ func TestNewConverterWithConfig(t *testing.T) {
 
 		converter := NewConverterWithConfig(log, enrichmentConfig)
 
-		alert := model.PrometheusAlert{
+		alert := event.PrometheusAlert{
 			Status:      "firing",
 			Fingerprint: "test-fingerprint",
 			StartsAt:    time.Now(),
@@ -804,7 +841,7 @@ func TestNewConverterWithConfig(t *testing.T) {
 
 		converter := NewConverterWithConfig(log, enrichmentConfig)
 
-		alert := model.PrometheusAlert{
+		alert := event.PrometheusAlert{
 			Status:      "firing",
 			Fingerprint: "test-fingerprint",
 			StartsAt:    time.Now(),
@@ -842,7 +879,7 @@ func TestNewConverterWithConfig(t *testing.T) {
 
 		converter := NewConverterWithConfig(log, enrichmentConfig)
 
-		alert := model.PrometheusAlert{
+		alert := event.PrometheusAlert{
 			Status:      "firing",
 			Fingerprint: "test-fingerprint",
 			StartsAt:    time.Now(),

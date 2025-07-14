@@ -14,7 +14,7 @@ import (
 	"github.com/kubecano/cano-collector/pkg/core/event"
 	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
 	metric_interfaces "github.com/kubecano/cano-collector/pkg/metric/interfaces"
-	workflow_interfaces "github.com/kubecano/cano-collector/pkg/workflow/interface"
+	workflow_interfaces "github.com/kubecano/cano-collector/pkg/workflow/interfaces"
 )
 
 // AlertHandler handles incoming alerts from Alertmanager
@@ -23,7 +23,7 @@ type AlertHandler struct {
 	metrics         metric_interfaces.MetricsInterface
 	teamResolver    alert_interfaces.TeamResolverInterface
 	alertDispatcher alert_interfaces.AlertDispatcherInterface
-	converter       *Converter
+	converter       alert_interfaces.ConverterInterface
 	workflowEngine  workflow_interfaces.WorkflowEngineInterface
 }
 
@@ -33,7 +33,7 @@ func NewAlertHandler(
 	metrics metric_interfaces.MetricsInterface,
 	teamResolver alert_interfaces.TeamResolverInterface,
 	alertDispatcher alert_interfaces.AlertDispatcherInterface,
-	converter *Converter,
+	converter alert_interfaces.ConverterInterface,
 	workflowEngine workflow_interfaces.WorkflowEngineInterface,
 ) *AlertHandler {
 	return &AlertHandler{

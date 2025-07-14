@@ -8,7 +8,7 @@ import (
 
 // TeamResolverInterface defines the interface for resolving which team should handle an alert.
 //
-//go:generate mockgen -destination=../../../mocks/team_resolver_mock.go -package=mocks github.com/kubecano/cano-collector/pkg/alert/interfaces TeamResolverInterface
+//go:generate mockgen -source=team_resolver.go -destination=../../../mocks/team_resolver_mock.go -package=mocks
 type TeamResolverInterface interface {
 	ResolveTeam(alert *event.AlertManagerEvent) (*config_team.Team, error)
 	ValidateTeamDestinations(registry destination_interfaces.DestinationRegistryInterface) error
