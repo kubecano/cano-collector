@@ -184,3 +184,181 @@ func TestWorkflowEngine_TriggerMatching(t *testing.T) {
 	matchingWorkflows = engine.SelectWorkflows(alertEvent)
 	assert.Empty(t, matchingWorkflows)
 }
+
+func TestWorkflowEngine_ExecuteWorkflow(t *testing.T) {
+	config := &workflow.WorkflowConfig{
+		ActiveWorkflows: []workflow.WorkflowDefinition{
+			{
+				Name: "test-workflow",
+				Triggers: []workflow.TriggerDefinition{
+					{
+						OnAlertmanagerAlert: &workflow.AlertmanagerAlertTrigger{
+							Status: "firing",
+						},
+					},
+				},
+				Actions: []workflow.ActionDefinition{
+					{
+						ActionType: "create_issue",
+						RawData: map[string]interface{}{
+							"action_type": "create_issue",
+							"data": map[string]interface{}{
+								"title": "Test Issue",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	engine := NewWorkflowEngine(config)
+
+	// Create test AlertManagerEvent
+	templateData := template.Data{
+		Receiver: "test-receiver",
+		Status:   "firing",
+		Alerts: []template.Alert{
+			{
+				Status:   "firing",
+				Labels:   map[string]string{"alertname": "TestAlert", "severity": "warning"},
+				StartsAt: time.Now(),
+			},
+		},
+	}
+
+	alertEvent := event.NewAlertManagerEvent(templateData)
+	workflow := &config.ActiveWorkflows[0]
+
+	// Test ExecuteWorkflow - should return nil (no-op implementation)
+	err := engine.ExecuteWorkflow(workflow, alertEvent)
+	assert.NoError(t, err)
+}
+
+func TestWorkflowEngine_MatchesTrigger_NoAlertmanagerTrigger(t *testing.T) {
+	config := &workflow.WorkflowConfig{
+		ActiveWorkflows: []workflow.WorkflowDefinition{},
+	}
+
+	engine := NewWorkflowEngine(config)
+
+	// Create trigger without OnAlertmanagerAlert
+	trigger := &workflow.TriggerDefinition{
+		OnAlertmanagerAlert: nil, // This will cause matchesTrigger to return false
+	}
+
+	// Create test AlertManagerEvent
+	templateData := template.Data{
+		Receiver: "test-receiver",
+		Status:   "firing",
+		Alerts: []template.Alert{
+			{
+				Status:   "firing",
+				Labels:   map[string]string{"alertname": "TestAlert"},
+				StartsAt: time.Now(),
+			},
+		},
+	}
+
+	alertEvent := event.NewAlertManagerEvent(templateData)
+
+	// Test that trigger without OnAlertmanagerAlert returns false
+	matches := engine.matchesTrigger(trigger, alertEvent)
+	assert.False(t, matches)
+}
+
+func TestWorkflowEngine_MatchesAlertmanagerAlertTrigger_AllFields(t *testing.T) {
+	config := &workflow.WorkflowConfig{
+		ActiveWorkflows: []workflow.WorkflowDefinition{},
+	}
+
+	engine := NewWorkflowEngine(config)
+
+	// Test trigger with all fields specified
+	trigger := &workflow.AlertmanagerAlertTrigger{
+		AlertName: "SpecificAlert",
+		Status:    "firing",
+		Severity:  "critical",
+		Namespace: "production",
+	}
+
+	// Create matching AlertManagerEvent
+	templateData := template.Data{
+		Receiver: "test-receiver",
+		Status:   "firing",
+		Alerts: []template.Alert{
+			{
+				Status: "firing",
+				Labels: map[string]string{
+					"alertname": "SpecificAlert",
+					"severity":  "critical",
+					"namespace": "production",
+				},
+				StartsAt: time.Now(),
+			},
+		},
+	}
+
+	alertEvent := event.NewAlertManagerEvent(templateData)
+
+	// Should match
+	matches := engine.matchesAlertmanagerAlertTrigger(trigger, alertEvent)
+	assert.True(t, matches)
+
+	// Test non-matching alert name
+	templateData.Alerts[0].Labels["alertname"] = "DifferentAlert"
+	alertEvent = event.NewAlertManagerEvent(templateData)
+	matches = engine.matchesAlertmanagerAlertTrigger(trigger, alertEvent)
+	assert.False(t, matches)
+
+	// Test non-matching status
+	templateData.Alerts[0].Labels["alertname"] = "SpecificAlert"
+	templateData.Alerts[0].Status = "resolved"
+	alertEvent = event.NewAlertManagerEvent(templateData)
+	matches = engine.matchesAlertmanagerAlertTrigger(trigger, alertEvent)
+	assert.False(t, matches)
+
+	// Test non-matching severity
+	templateData.Alerts[0].Status = "firing"
+	templateData.Alerts[0].Labels["severity"] = "warning"
+	alertEvent = event.NewAlertManagerEvent(templateData)
+	matches = engine.matchesAlertmanagerAlertTrigger(trigger, alertEvent)
+	assert.False(t, matches)
+
+	// Test non-matching namespace
+	templateData.Alerts[0].Labels["severity"] = "critical"
+	templateData.Alerts[0].Labels["namespace"] = "staging"
+	alertEvent = event.NewAlertManagerEvent(templateData)
+	matches = engine.matchesAlertmanagerAlertTrigger(trigger, alertEvent)
+	assert.False(t, matches)
+}
+
+func TestWorkflowEngine_MatchesAlertmanagerAlertTrigger_EmptyTrigger(t *testing.T) {
+	config := &workflow.WorkflowConfig{
+		ActiveWorkflows: []workflow.WorkflowDefinition{},
+	}
+
+	engine := NewWorkflowEngine(config)
+
+	// Test empty trigger (should match any alert)
+	trigger := &workflow.AlertmanagerAlertTrigger{}
+
+	// Create test AlertManagerEvent
+	templateData := template.Data{
+		Receiver: "test-receiver",
+		Status:   "firing",
+		Alerts: []template.Alert{
+			{
+				Status:   "firing",
+				Labels:   map[string]string{"alertname": "AnyAlert", "severity": "warning"},
+				StartsAt: time.Now(),
+			},
+		},
+	}
+
+	alertEvent := event.NewAlertManagerEvent(templateData)
+
+	// Empty trigger should match any alert
+	matches := engine.matchesAlertmanagerAlertTrigger(trigger, alertEvent)
+	assert.True(t, matches)
+}
