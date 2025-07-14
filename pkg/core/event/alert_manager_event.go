@@ -146,18 +146,22 @@ func validateAlert(alert PrometheusAlert) error {
 
 // GetAlertName returns the alert name from the first alert
 func (a *AlertManagerEvent) GetAlertName() string {
-	if len(a.Alerts) == 0 {
-		return ""
+	if len(a.Alerts) > 0 {
+		if name, exists := a.Alerts[0].Labels["alertname"]; exists {
+			return name
+		}
 	}
-	return a.Alerts[0].Labels["alertname"]
+	return "unknown"
 }
 
 // GetSeverity returns the severity from the first alert
 func (a *AlertManagerEvent) GetSeverity() string {
-	if len(a.Alerts) == 0 {
-		return ""
+	if len(a.Alerts) > 0 {
+		if severity, exists := a.Alerts[0].Labels["severity"]; exists {
+			return severity
+		}
 	}
-	return a.Alerts[0].Labels["severity"]
+	return "unknown"
 }
 
 // GetStartTime returns the start time from the first alert

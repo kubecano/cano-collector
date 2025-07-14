@@ -234,7 +234,7 @@ func TestAlertManagerEvent_GetAlertName_NoAlerts(t *testing.T) {
 		Alerts: []PrometheusAlert{},
 	}
 
-	assert.Empty(t, event.GetAlertName())
+	assert.Equal(t, "unknown", event.GetAlertName())
 }
 
 func TestAlertManagerEvent_GetAlertName_NoAlertName(t *testing.T) {
@@ -246,7 +246,7 @@ func TestAlertManagerEvent_GetAlertName_NoAlertName(t *testing.T) {
 		},
 	}
 
-	assert.Empty(t, event.GetAlertName())
+	assert.Equal(t, "unknown", event.GetAlertName())
 }
 
 func TestAlertManagerEvent_GetSeverity(t *testing.T) {
@@ -266,7 +266,7 @@ func TestAlertManagerEvent_GetSeverity_NoAlerts(t *testing.T) {
 		Alerts: []PrometheusAlert{},
 	}
 
-	assert.Empty(t, event.GetSeverity())
+	assert.Equal(t, "unknown", event.GetSeverity())
 }
 
 func TestAlertManagerEvent_GetSeverity_NoSeverity(t *testing.T) {
@@ -278,7 +278,7 @@ func TestAlertManagerEvent_GetSeverity_NoSeverity(t *testing.T) {
 		},
 	}
 
-	assert.Empty(t, event.GetSeverity())
+	assert.Equal(t, "unknown", event.GetSeverity())
 }
 
 func TestAlertManagerEvent_GetStartTime(t *testing.T) {
