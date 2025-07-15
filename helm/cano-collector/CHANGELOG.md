@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.15](https://github.com/kubecano/cano-collector/compare/cano-collector-helm-v0.0.14...cano-collector-helm-v0.0.15) (2025-07-15)
+
+
+### Features
+
+* CU-8699htzhx - Basic Workflow Framework ([#160](https://github.com/kubecano/cano-collector/issues/160)) ([9989638](https://github.com/kubecano/cano-collector/commit/99896386b1a91a98468de53eaf7aa66c8d8058a3))
+
 ## [0.0.14](https://github.com/kubecano/cano-collector/compare/cano-collector-helm-v0.0.13...cano-collector-helm-v0.0.14) (2025-07-09)
 
 
