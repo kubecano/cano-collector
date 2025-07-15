@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.16](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.15...cano-collector-v0.0.16) (2025-07-15)
+
+
+### Features
+
+* CU-8699htzhx - Basic Workflow Framework ([#158](https://github.com/kubecano/cano-collector/issues/158)) ([2ee6e40](https://github.com/kubecano/cano-collector/commit/2ee6e402c678b78c7fb253906c7490d0880d91b5))
+* CU-8699htzhx - Basic Workflow Framework ([#160](https://github.com/kubecano/cano-collector/issues/160)) ([9989638](https://github.com/kubecano/cano-collector/commit/99896386b1a91a98468de53eaf7aa66c8d8058a3))
+
 ## [0.0.15](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.14...cano-collector-v0.0.15) (2025-07-09)
 
 
