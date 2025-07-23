@@ -87,14 +87,17 @@ func (h *AlertHandler) HandleAlert(c *gin.Context) {
 
 	// Process workflows if workflow engine is available
 	if h.workflowEngine != nil {
-		matchingWorkflows := h.workflowEngine.SelectWorkflows(alertEvent)
+		// Convert AlertManagerEvent to WorkflowEvent
+		workflowEvent := event.NewAlertManagerWorkflowEvent(alertEvent)
+
+		matchingWorkflows := h.workflowEngine.SelectWorkflows(workflowEvent)
 		h.logger.Info("Workflow processing",
 			zap.String("alert_name", alertEvent.GetAlertName()),
 			zap.Int("matching_workflows", len(matchingWorkflows)))
 
 		// Execute matching workflows
 		for _, workflow := range matchingWorkflows {
-			if err := h.workflowEngine.ExecuteWorkflow(workflow, alertEvent); err != nil {
+			if err := h.workflowEngine.ExecuteWorkflow(c.Request.Context(), workflow, workflowEvent); err != nil {
 				h.logger.Error("Failed to execute workflow",
 					zap.Error(err),
 					zap.String("workflow_name", workflow.Name))

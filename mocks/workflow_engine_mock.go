@@ -5,6 +5,7 @@
 package mocks
 
 import (
+	context "context"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -36,21 +37,21 @@ func (m *MockWorkflowEngineInterface) EXPECT() *MockWorkflowEngineInterfaceMockR
 }
 
 // ExecuteWorkflow mocks base method.
-func (m *MockWorkflowEngineInterface) ExecuteWorkflow(workflow *workflow.WorkflowDefinition, event *event.AlertManagerEvent) error {
+func (m *MockWorkflowEngineInterface) ExecuteWorkflow(ctx context.Context, workflow *workflow.WorkflowDefinition, event event.WorkflowEvent) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExecuteWorkflow", workflow, event)
+	ret := m.ctrl.Call(m, "ExecuteWorkflow", ctx, workflow, event)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ExecuteWorkflow indicates an expected call of ExecuteWorkflow.
-func (mr *MockWorkflowEngineInterfaceMockRecorder) ExecuteWorkflow(workflow, event interface{}) *gomock.Call {
+func (mr *MockWorkflowEngineInterfaceMockRecorder) ExecuteWorkflow(ctx, workflow, event interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecuteWorkflow", reflect.TypeOf((*MockWorkflowEngineInterface)(nil).ExecuteWorkflow), workflow, event)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecuteWorkflow", reflect.TypeOf((*MockWorkflowEngineInterface)(nil).ExecuteWorkflow), ctx, workflow, event)
 }
 
 // SelectWorkflows mocks base method.
-func (m *MockWorkflowEngineInterface) SelectWorkflows(event *event.AlertManagerEvent) []*workflow.WorkflowDefinition {
+func (m *MockWorkflowEngineInterface) SelectWorkflows(event event.WorkflowEvent) []*workflow.WorkflowDefinition {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SelectWorkflows", event)
 	ret0, _ := ret[0].([]*workflow.WorkflowDefinition)
