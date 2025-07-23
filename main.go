@@ -26,6 +26,7 @@ import (
 
 	config_team "github.com/kubecano/cano-collector/config/team"
 	"github.com/kubecano/cano-collector/pkg/util"
+	"github.com/kubecano/cano-collector/pkg/workflow/actions"
 )
 
 type AppDependencies struct {
@@ -117,7 +118,12 @@ func run(cfg config.Config, deps AppDependencies) error {
 	teamResolver := deps.TeamResolverFactory(cfg.Teams, log, metricsCollector)
 	alertDispatcher := deps.AlertDispatcherFactory(destinationRegistry, log, metricsCollector)
 	converter := deps.ConverterFactory(log, cfg)
-	workflowEngine := workflow.NewWorkflowEngine(&cfg.Workflows)
+
+	// Initialize workflow components
+	actionRegistry := actions.NewDefaultActionRegistry(log)
+	actionExecutor := actions.NewDefaultActionExecutor(actionRegistry, log, metricsCollector)
+	workflowEngine := workflow.NewWorkflowEngine(&cfg.Workflows, actionExecutor)
+
 	alertHandler := deps.AlertHandlerFactory(cfg, log, metricsCollector, teamResolver, alertDispatcher, converter, workflowEngine)
 
 	// Validate team destinations configuration

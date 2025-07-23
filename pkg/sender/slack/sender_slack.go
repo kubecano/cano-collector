@@ -295,9 +295,7 @@ func (s *SenderSlack) convertEnrichmentToBlocks(enrichment issuepkg.Enrichment) 
 	// Process each block in the enrichment
 	for _, block := range enrichment.Blocks {
 		slackBlock := s.convertBlockToSlack(block)
-		if slackBlock != nil {
-			blocks = append(blocks, slackBlock)
-		}
+		blocks = append(blocks, slackBlock)
 	}
 
 	// Add divider for visual separation between enrichments
