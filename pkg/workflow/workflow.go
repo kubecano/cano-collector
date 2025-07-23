@@ -3,6 +3,7 @@ package workflow
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/kubecano/cano-collector/config/workflow"
 	"github.com/kubecano/cano-collector/pkg/core/event"
@@ -109,12 +110,20 @@ func (we *WorkflowEngine) ExecuteWorkflow(ctx context.Context, wf *workflow.Work
 		// Extract action type from RawData
 		actionType := actionDef.ActionType
 		if actionType == "" {
-			// Try to infer action type from RawData keys
+			// Try to infer action type from RawData keys deterministically
+			var candidateKeys []string
 			for key := range actionDef.RawData {
 				if key != "action_type" {
-					actionType = key
-					break
+					candidateKeys = append(candidateKeys, key)
 				}
+			}
+
+			// Sort keys alphabetically to ensure deterministic behavior
+			sort.Strings(candidateKeys)
+
+			// Use the first key after sorting
+			if len(candidateKeys) > 0 {
+				actionType = candidateKeys[0]
 			}
 		}
 

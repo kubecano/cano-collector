@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 
 	"github.com/kubecano/cano-collector/config/workflow"
 	"github.com/kubecano/cano-collector/pkg/core/event"
+	actions_interfaces "github.com/kubecano/cano-collector/pkg/workflow/actions/interfaces"
 )
 
 // Test helper functions
@@ -357,4 +359,107 @@ func TestWorkflowEngine_MatchesAlertmanagerAlertTrigger(t *testing.T) {
 			assert.Equal(t, tt.shouldMatch, result)
 		})
 	}
+}
+
+// TestWorkflowEngine_ActionTypeInference_Deterministic tests that action type inference is deterministic
+func TestWorkflowEngine_ActionTypeInference_Deterministic(t *testing.T) {
+	// Create a mock executor that captures action configs
+	capturedConfigs := []actions_interfaces.ActionConfig{}
+	mockExecutor := &mockActionExecutor{
+		createActionsFromConfigFunc: func(configs []actions_interfaces.ActionConfig) ([]actions_interfaces.WorkflowAction, error) {
+			capturedConfigs = append(capturedConfigs, configs...)
+			return []actions_interfaces.WorkflowAction{}, nil
+		},
+		executeActionsFunc: func(ctx context.Context, actions []actions_interfaces.WorkflowAction, event event.WorkflowEvent) ([]*actions_interfaces.ActionResult, error) {
+			return []*actions_interfaces.ActionResult{}, nil
+		},
+	}
+
+	// Create a workflow with action that has multiple keys in RawData (to test deterministic inference)
+	workflowConfig := &workflow.WorkflowConfig{
+		ActiveWorkflows: []workflow.WorkflowDefinition{
+			{
+				Name: "test-inference-workflow",
+				Triggers: []workflow.TriggerDefinition{
+					{
+						OnAlertmanagerAlert: &workflow.AlertmanagerAlertTrigger{
+							Status: "firing",
+						},
+					},
+				},
+				Actions: []workflow.ActionDefinition{
+					{
+						// ActionType is empty, so inference should kick in
+						ActionType: "",
+						RawData: map[string]interface{}{
+							"zebra_action": map[string]interface{}{"param1": "value1"},
+							"alpha_action": map[string]interface{}{"param2": "value2"},
+							"beta_action":  map[string]interface{}{"param3": "value3"},
+							"action_type":  "", // This should be ignored
+						},
+					},
+				},
+			},
+		},
+	}
+
+	engine := NewWorkflowEngine(workflowConfig, mockExecutor)
+	workflowEvent := createTestWorkflowEvent("firing", "TestAlert", "warning", "default")
+
+	// Execute workflow multiple times to ensure deterministic behavior
+	ctx := context.Background()
+	workflow := &workflowConfig.ActiveWorkflows[0]
+
+	var inferredTypes []string
+	for i := 0; i < 5; i++ {
+		capturedConfigs = []actions_interfaces.ActionConfig{} // Reset
+		err := engine.ExecuteWorkflow(ctx, workflow, workflowEvent)
+		require.NoError(t, err)
+
+		require.Len(t, capturedConfigs, 1)
+		inferredTypes = append(inferredTypes, capturedConfigs[0].Type)
+	}
+
+	// All inferred types should be the same (deterministic)
+	for i := 1; i < len(inferredTypes); i++ {
+		assert.Equal(t, inferredTypes[0], inferredTypes[i],
+			"Action type inference should be deterministic, but got different types: %v", inferredTypes)
+	}
+
+	// The inferred type should be the alphabetically first key (excluding "action_type")
+	expectedType := "alpha_action" // alphabetically first among: alpha_action, beta_action, zebra_action
+	assert.Equal(t, expectedType, inferredTypes[0],
+		"Action type should be inferred as alphabetically first key")
+}
+
+// mockActionExecutor for testing
+type mockActionExecutor struct {
+	createActionsFromConfigFunc func(configs []actions_interfaces.ActionConfig) ([]actions_interfaces.WorkflowAction, error)
+	executeActionsFunc          func(ctx context.Context, actions []actions_interfaces.WorkflowAction, event event.WorkflowEvent) ([]*actions_interfaces.ActionResult, error)
+}
+
+func (m *mockActionExecutor) ExecuteAction(ctx context.Context, action actions_interfaces.WorkflowAction, event event.WorkflowEvent) (*actions_interfaces.ActionResult, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
+func (m *mockActionExecutor) RegisterAction(actionType string, action actions_interfaces.WorkflowAction) error {
+	return fmt.Errorf("not implemented")
+}
+
+func (m *mockActionExecutor) GetAction(actionType string) (actions_interfaces.WorkflowAction, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
+func (m *mockActionExecutor) CreateActionsFromConfig(configs []actions_interfaces.ActionConfig) ([]actions_interfaces.WorkflowAction, error) {
+	if m.createActionsFromConfigFunc != nil {
+		return m.createActionsFromConfigFunc(configs)
+	}
+	return []actions_interfaces.WorkflowAction{}, nil
+}
+
+func (m *mockActionExecutor) ExecuteActions(ctx context.Context, actions []actions_interfaces.WorkflowAction, event event.WorkflowEvent) ([]*actions_interfaces.ActionResult, error) {
+	if m.executeActionsFunc != nil {
+		return m.executeActionsFunc(ctx, actions, event)
+	}
+	return []*actions_interfaces.ActionResult{}, nil
 }
