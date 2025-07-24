@@ -753,18 +753,21 @@ func TestNewConverterWithConfig(t *testing.T) {
 	log := logger.NewLogger("info", "test")
 
 	t.Run("creates converter with labels disabled", func(t *testing.T) {
-		enrichmentConfig := config.EnrichmentConfig{
-			Labels: config.LabelEnrichmentConfig{
-				Enabled:       false,
-				DisplayFormat: "table",
-			},
-			Annotations: config.AnnotationEnrichmentConfig{
-				Enabled:       true,
-				DisplayFormat: "json",
+		cfg := config.Config{
+			ClusterName: "test-cluster",
+			Enrichment: config.EnrichmentConfig{
+				Labels: config.LabelEnrichmentConfig{
+					Enabled:       false,
+					DisplayFormat: "table",
+				},
+				Annotations: config.AnnotationEnrichmentConfig{
+					Enabled:       true,
+					DisplayFormat: "json",
+				},
 			},
 		}
 
-		converter := NewConverterWithConfig(log, enrichmentConfig)
+		converter := NewConverterWithConfig(log, cfg)
 
 		assert.NotNil(t, converter)
 		assert.NotNil(t, converter.labelEnrichment)
@@ -795,18 +798,21 @@ func TestNewConverterWithConfig(t *testing.T) {
 	})
 
 	t.Run("creates converter with annotations disabled", func(t *testing.T) {
-		enrichmentConfig := config.EnrichmentConfig{
-			Labels: config.LabelEnrichmentConfig{
-				Enabled:       true,
-				DisplayFormat: "json",
-			},
-			Annotations: config.AnnotationEnrichmentConfig{
-				Enabled:       false,
-				DisplayFormat: "table",
+		cfg := config.Config{
+			ClusterName: "test-cluster",
+			Enrichment: config.EnrichmentConfig{
+				Labels: config.LabelEnrichmentConfig{
+					Enabled:       true,
+					DisplayFormat: "json",
+				},
+				Annotations: config.AnnotationEnrichmentConfig{
+					Enabled:       false,
+					DisplayFormat: "table",
+				},
 			},
 		}
 
-		converter := NewConverterWithConfig(log, enrichmentConfig)
+		converter := NewConverterWithConfig(log, cfg)
 
 		alert := event.PrometheusAlert{
 			Status:      "firing",
@@ -830,16 +836,19 @@ func TestNewConverterWithConfig(t *testing.T) {
 	})
 
 	t.Run("creates converter with both disabled", func(t *testing.T) {
-		enrichmentConfig := config.EnrichmentConfig{
-			Labels: config.LabelEnrichmentConfig{
-				Enabled: false,
-			},
-			Annotations: config.AnnotationEnrichmentConfig{
-				Enabled: false,
+		cfg := config.Config{
+			ClusterName: "test-cluster",
+			Enrichment: config.EnrichmentConfig{
+				Labels: config.LabelEnrichmentConfig{
+					Enabled: false,
+				},
+				Annotations: config.AnnotationEnrichmentConfig{
+					Enabled: false,
+				},
 			},
 		}
 
-		converter := NewConverterWithConfig(log, enrichmentConfig)
+		converter := NewConverterWithConfig(log, cfg)
 
 		alert := event.PrometheusAlert{
 			Status:      "firing",
@@ -861,23 +870,60 @@ func TestNewConverterWithConfig(t *testing.T) {
 		assert.Empty(t, iss.Enrichments)
 	})
 
-	t.Run("creates converter with custom include/exclude filters", func(t *testing.T) {
-		enrichmentConfig := config.EnrichmentConfig{
-			Labels: config.LabelEnrichmentConfig{
-				Enabled:       true,
-				DisplayFormat: "table",
-				IncludeLabels: []string{"alertname", "severity"},
-				ExcludeLabels: []string{"instance", "job"},
-			},
-			Annotations: config.AnnotationEnrichmentConfig{
-				Enabled:            true,
-				DisplayFormat:      "json",
-				IncludeAnnotations: []string{"summary"},
-				ExcludeAnnotations: []string{"description"},
+	t.Run("creates converter with cluster name", func(t *testing.T) {
+		cfg := config.Config{
+			ClusterName: "production-cluster",
+			Enrichment: config.EnrichmentConfig{
+				Labels: config.LabelEnrichmentConfig{
+					Enabled:       true,
+					DisplayFormat: "table",
+				},
+				Annotations: config.AnnotationEnrichmentConfig{
+					Enabled:       true,
+					DisplayFormat: "table",
+				},
 			},
 		}
 
-		converter := NewConverterWithConfig(log, enrichmentConfig)
+		converter := NewConverterWithConfig(log, cfg)
+
+		alert := event.PrometheusAlert{
+			Status:      "firing",
+			Fingerprint: "test-fingerprint",
+			StartsAt:    time.Now(),
+			Labels: map[string]string{
+				"alertname": "TestAlert",
+				"severity":  "critical",
+			},
+		}
+
+		iss, err := converter.convertPrometheusAlertToIssue(alert)
+		require.NoError(t, err)
+
+		// Should have cluster name set
+		assert.Equal(t, "production-cluster", iss.ClusterName)
+	})
+
+	t.Run("creates converter with custom include/exclude filters", func(t *testing.T) {
+		cfg := config.Config{
+			ClusterName: "test-cluster",
+			Enrichment: config.EnrichmentConfig{
+				Labels: config.LabelEnrichmentConfig{
+					Enabled:       true,
+					DisplayFormat: "table",
+					IncludeLabels: []string{"alertname", "severity"},
+					ExcludeLabels: []string{"instance", "job"},
+				},
+				Annotations: config.AnnotationEnrichmentConfig{
+					Enabled:            true,
+					DisplayFormat:      "json",
+					IncludeAnnotations: []string{"summary"},
+					ExcludeAnnotations: []string{"description"},
+				},
+			},
+		}
+
+		converter := NewConverterWithConfig(log, cfg)
 
 		alert := event.PrometheusAlert{
 			Status:      "firing",

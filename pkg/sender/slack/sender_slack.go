@@ -227,6 +227,16 @@ func (s *SenderSlack) buildSlackAttachments(issue *issuepkg.Issue) []slackapi.At
 		attachmentBlocks = append(attachmentBlocks, sourceBlock)
 	}
 
+	// Cluster information
+	if issue.ClusterName != "" {
+		clusterText := fmt.Sprintf("🌐 *Cluster:* `%s`", issue.ClusterName)
+		clusterBlock := slackapi.NewSectionBlock(
+			slackapi.NewTextBlockObject("mrkdwn", clusterText, false, false),
+			nil, nil,
+		)
+		attachmentBlocks = append(attachmentBlocks, clusterBlock)
+	}
+
 	// Add any additional metadata that might be useful but not critical
 	if issue.Subject != nil && issue.Subject.Namespace != "" {
 		namespaceText := fmt.Sprintf("🏷️ *Namespace:* `%s`", issue.Subject.Namespace)

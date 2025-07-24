@@ -18,6 +18,7 @@ type Issue struct {
 	Severity       Severity     `json:"severity"`
 	Status         Status       `json:"status"`
 	Source         Source       `json:"source"`
+	ClusterName    string       `json:"cluster_name,omitempty"`
 	Subject        *Subject     `json:"subject"`
 	Enrichments    []Enrichment `json:"enrichments,omitempty"`
 	Links          []Link       `json:"links,omitempty"`

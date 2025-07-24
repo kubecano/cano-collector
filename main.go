@@ -79,7 +79,7 @@ func main() {
 			return router.NewRouterManager(cfg, log, t, m, h, a)
 		},
 		ConverterFactory: func(log logger_interfaces.LoggerInterface, cfg config.Config) alert_interfaces.ConverterInterface {
-			return alert.NewConverterWithConfig(log, cfg.Enrichment)
+			return alert.NewConverterWithConfig(log, cfg)
 		},
 	}
 

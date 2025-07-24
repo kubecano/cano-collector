@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -38,6 +39,7 @@ type Config struct {
 	TracingEndpoint string
 	SentryDSN       string
 	SentryEnabled   bool
+	ClusterName     string
 	Destinations    config_destination.DestinationsConfig
 	Teams           config_team.TeamsConfig
 	Workflows       config_workflow.WorkflowConfig
@@ -56,7 +58,7 @@ func LoadConfigWithLoader(loader FullConfigLoader) (Config, error) {
 		return Config{}, err
 	}
 
-	return Config{
+	config := Config{
 		AppName:         getEnvString("APP_NAME", "cano-collector"),
 		AppVersion:      getEnvString("APP_VERSION", "dev"),
 		AppEnv:          getEnvString("APP_ENV", "production"),
@@ -65,11 +67,19 @@ func LoadConfigWithLoader(loader FullConfigLoader) (Config, error) {
 		TracingEndpoint: getEnvString("TRACING_ENDPOINT", "http://localhost:4317"),
 		SentryDSN:       getEnvString("SENTRY_DSN", ""),
 		SentryEnabled:   getEnvBool("ENABLE_TELEMETRY", true),
+		ClusterName:     getEnvString("CLUSTER_NAME", ""),
 		Destinations:    destinations,
 		Teams:           teams,
 		Workflows:       workflows,
 		Enrichment:      loadEnrichmentConfig(),
-	}, nil
+	}
+
+	// Validate required fields
+	if config.ClusterName == "" {
+		return Config{}, fmt.Errorf("CLUSTER_NAME environment variable is required")
+	}
+
+	return config, nil
 }
 
 type fileConfigLoader struct {
