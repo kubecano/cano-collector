@@ -33,6 +33,7 @@ func NewConverterWithEnrichmentConfig(logger logger_interfaces.LoggerInterface, 
 	return &Converter{
 		logger:          logger,
 		labelEnrichment: enrichment.NewLabelEnrichment(logger, enrichmentConfig),
+		clusterName:     "",
 	}
 }
 
