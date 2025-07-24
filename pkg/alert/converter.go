@@ -16,6 +16,7 @@ import (
 type Converter struct {
 	logger          logger_interfaces.LoggerInterface
 	labelEnrichment *enrichment.LabelEnrichment
+	clusterName     string
 }
 
 // NewConverter creates a new Converter
@@ -23,6 +24,7 @@ func NewConverter(logger logger_interfaces.LoggerInterface) *Converter {
 	return &Converter{
 		logger:          logger,
 		labelEnrichment: enrichment.NewLabelEnrichment(logger, nil), // Use default config
+		clusterName:     "",
 	}
 }
 
@@ -31,26 +33,28 @@ func NewConverterWithEnrichmentConfig(logger logger_interfaces.LoggerInterface, 
 	return &Converter{
 		logger:          logger,
 		labelEnrichment: enrichment.NewLabelEnrichment(logger, enrichmentConfig),
+		clusterName:     "",
 	}
 }
 
-// NewConverterWithConfig creates a new Converter with enrichment configuration from Config
-func NewConverterWithConfig(logger logger_interfaces.LoggerInterface, enrichmentConfig config.EnrichmentConfig) *Converter {
+// NewConverterWithConfig creates a new Converter with configuration from Config
+func NewConverterWithConfig(logger logger_interfaces.LoggerInterface, cfg config.Config) *Converter {
 	// Convert config types to enrichment types
 	enrichmentLabelConfig := &enrichment.LabelEnrichmentConfig{
-		EnableLabels:            enrichmentConfig.Labels.Enabled,
-		EnableAnnotations:       enrichmentConfig.Annotations.Enabled,
-		DisplayFormat:           enrichmentConfig.Labels.DisplayFormat,
-		AnnotationDisplayFormat: enrichmentConfig.Annotations.DisplayFormat,
-		IncludeLabels:           enrichmentConfig.Labels.IncludeLabels,
-		ExcludeLabels:           enrichmentConfig.Labels.ExcludeLabels,
-		IncludeAnnotations:      enrichmentConfig.Annotations.IncludeAnnotations,
-		ExcludeAnnotations:      enrichmentConfig.Annotations.ExcludeAnnotations,
+		EnableLabels:            cfg.Enrichment.Labels.Enabled,
+		EnableAnnotations:       cfg.Enrichment.Annotations.Enabled,
+		DisplayFormat:           cfg.Enrichment.Labels.DisplayFormat,
+		AnnotationDisplayFormat: cfg.Enrichment.Annotations.DisplayFormat,
+		IncludeLabels:           cfg.Enrichment.Labels.IncludeLabels,
+		ExcludeLabels:           cfg.Enrichment.Labels.ExcludeLabels,
+		IncludeAnnotations:      cfg.Enrichment.Annotations.IncludeAnnotations,
+		ExcludeAnnotations:      cfg.Enrichment.Annotations.ExcludeAnnotations,
 	}
 
 	return &Converter{
 		logger:          logger,
 		labelEnrichment: enrichment.NewLabelEnrichment(logger, enrichmentLabelConfig),
+		clusterName:     cfg.ClusterName,
 	}
 }
 
@@ -107,6 +111,7 @@ func (c *Converter) convertPrometheusAlertToIssue(alert event.PrometheusAlert) (
 	iss.Severity = issue.SeverityFromPrometheusLabel(alert.Labels["severity"])
 	iss.Status = issue.StatusFromPrometheusStatus(alert.Status)
 	iss.Source = issue.SourcePrometheus
+	iss.ClusterName = c.clusterName
 	iss.StartsAt = alert.StartsAt
 
 	// Set end time if available

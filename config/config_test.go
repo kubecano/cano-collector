@@ -79,12 +79,14 @@ func TestLoadConfigWithLoader(t *testing.T) {
 	_ = os.Setenv("LOG_LEVEL", "debug")
 	_ = os.Setenv("SENTRY_DSN", "https://example@sentry.io/123")
 	_ = os.Setenv("ENABLE_TELEMETRY", "true")
+	_ = os.Setenv("CLUSTER_NAME", "test-cluster")
 
 	t.Cleanup(func() {
 		_ = os.Unsetenv("APP_NAME")
 		_ = os.Unsetenv("LOG_LEVEL")
 		_ = os.Unsetenv("SENTRY_DSN")
 		_ = os.Unsetenv("ENABLE_TELEMETRY")
+		_ = os.Unsetenv("CLUSTER_NAME")
 	})
 
 	cfg, err := setupTestLoader(t)
@@ -94,12 +96,26 @@ func TestLoadConfigWithLoader(t *testing.T) {
 	assert.Equal(t, "debug", cfg.LogLevel)
 	assert.Equal(t, "https://example@sentry.io/123", cfg.SentryDSN)
 	assert.True(t, cfg.SentryEnabled)
+	assert.Equal(t, "test-cluster", cfg.ClusterName)
 	assert.Len(t, cfg.Destinations.Destinations.Slack, 1)
 	assert.Equal(t, "alerts", cfg.Destinations.Destinations.Slack[0].Name)
 	assert.Len(t, cfg.Teams.Teams, 1)
 	assert.Equal(t, "devops", cfg.Teams.Teams[0].Name)
 	assert.Len(t, cfg.Workflows.ActiveWorkflows, 1)
 	assert.Equal(t, "test-workflow", cfg.Workflows.ActiveWorkflows[0].Name)
+}
+
+func TestLoadConfigWithLoader_MissingClusterName(t *testing.T) {
+	_ = os.Setenv("APP_NAME", "test-app")
+	_ = os.Unsetenv("CLUSTER_NAME") // Ensure CLUSTER_NAME is not set
+
+	t.Cleanup(func() {
+		_ = os.Unsetenv("APP_NAME")
+	})
+
+	_, err := setupTestLoader(t)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "CLUSTER_NAME environment variable is required")
 }
 
 func TestGetEnvString(t *testing.T) {
@@ -348,12 +364,14 @@ func TestLoadEnrichmentConfig(t *testing.T) {
 }
 
 func TestLoadConfigWithLoader_WithEnrichmentConfig(t *testing.T) {
+	_ = os.Setenv("CLUSTER_NAME", "test-cluster")
 	_ = os.Setenv("ENRICHMENT_LABELS_ENABLED", "false")
 	_ = os.Setenv("ENRICHMENT_LABELS_DISPLAY_FORMAT", "json")
 	_ = os.Setenv("ENRICHMENT_ANNOTATIONS_ENABLED", "true")
 	_ = os.Setenv("ENRICHMENT_ANNOTATIONS_DISPLAY_FORMAT", "table")
 
 	t.Cleanup(func() {
+		_ = os.Unsetenv("CLUSTER_NAME")
 		_ = os.Unsetenv("ENRICHMENT_LABELS_ENABLED")
 		_ = os.Unsetenv("ENRICHMENT_LABELS_DISPLAY_FORMAT")
 		_ = os.Unsetenv("ENRICHMENT_ANNOTATIONS_ENABLED")

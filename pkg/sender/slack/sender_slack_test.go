@@ -294,6 +294,43 @@ func TestSenderSlack_BuildSlackAttachments(t *testing.T) {
 	assert.NotEmpty(t, attachment.Blocks.BlockSet)
 }
 
+func TestSenderSlack_BuildSlackAttachments_WithClusterName(t *testing.T) {
+	slackSender, _, _ := setupSenderSlackTest(t)
+
+	// Test issue with cluster name
+	issue := &issuepkg.Issue{
+		Title:       "Test Issue",
+		Description: "Test description",
+		Severity:    issuepkg.SeverityHigh,
+		Status:      issuepkg.StatusFiring,
+		Source:      issuepkg.SourcePrometheus,
+		ClusterName: "production-cluster",
+		Subject:     issuepkg.NewSubject("test-pod", issuepkg.SubjectTypePod),
+	}
+
+	attachments := slackSender.buildSlackAttachments(issue)
+
+	// Should have one attachment
+	assert.Len(t, attachments, 1)
+
+	attachment := attachments[0]
+
+	// Should have blocks with cluster information
+	assert.NotEmpty(t, attachment.Blocks.BlockSet)
+
+	// Convert blocks to find cluster info
+	found := false
+	for _, block := range attachment.Blocks.BlockSet {
+		if sectionBlock, ok := block.(*slack.SectionBlock); ok {
+			if sectionBlock.Text != nil && strings.Contains(sectionBlock.Text.Text, "🌐 *Cluster:* `production-cluster`") {
+				found = true
+				break
+			}
+		}
+	}
+	assert.True(t, found, "Should contain cluster name in attachment")
+}
+
 func TestSenderSlack_BuildSlackAttachments_WithTimeFormatting(t *testing.T) {
 	slackSender, _, _ := setupSenderSlackTest(t)
 

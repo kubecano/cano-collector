@@ -7,6 +7,9 @@ fullnameOverride: ""
 global:
   clusterDomain: "cluster.local"
 
+# Cluster name for multi-cluster environments
+clusterName: "default"
+
 # Install the kube-prometheus-stack chart with Kubecano
 enablePrometheusStack: false
 enabledManagedConfiguration: false
