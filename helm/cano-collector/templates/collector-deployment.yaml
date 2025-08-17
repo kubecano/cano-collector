@@ -127,6 +127,27 @@ spec:
               value: {{ .Values.collector.enrichment.annotations.displayFormat | quote }}
             - name: "ENRICHMENT_ANNOTATIONS_INCLUDE"
               value: {{ .Values.collector.enrichment.annotations.includeAnnotations | join "," | quote }}
+            {{- if .Values.collector.workflow.podLogs.enabled }}
+            # Pod Logs Action Configuration
+            - name: "WORKFLOW_POD_LOGS_DEFAULT_MAX_LINES"
+              value: {{ .Values.collector.workflow.podLogs.defaultMaxLines | quote }}
+            - name: "WORKFLOW_POD_LOGS_DEFAULT_TAIL_LINES"
+              value: {{ .Values.collector.workflow.podLogs.defaultTailLines | quote }}
+            - name: "WORKFLOW_POD_LOGS_DEFAULT_PREVIOUS"
+              value: {{ .Values.collector.workflow.podLogs.defaultPrevious | quote }}
+            - name: "WORKFLOW_POD_LOGS_DEFAULT_TIMESTAMPS"
+              value: {{ .Values.collector.workflow.podLogs.defaultTimestamps | quote }}
+            - name: "WORKFLOW_POD_LOGS_INCLUDE_TIMESTAMP"
+              value: {{ .Values.collector.workflow.podLogs.defaultIncludeTimestamp | quote }}
+            - name: "WORKFLOW_POD_LOGS_INCLUDE_CONTAINER"
+              value: {{ .Values.collector.workflow.podLogs.defaultIncludeContainer | quote }}
+            - name: "WORKFLOW_POD_LOGS_TIMESTAMP_FORMAT"
+              value: {{ .Values.collector.workflow.podLogs.defaultTimestampFormat | quote }}
+            - name: "WORKFLOW_POD_LOGS_JAVA_DEFAULT_MAX_LINES"
+              value: {{ .Values.collector.workflow.podLogs.javaDefaultMaxLines | quote }}
+            - name: "WORKFLOW_POD_LOGS_JAVA_DEFAULT_TAIL_LINES"
+              value: {{ .Values.collector.workflow.podLogs.javaDefaultTailLines | quote }}
+            {{- end }}
             - name: "ENRICHMENT_ANNOTATIONS_EXCLUDE"
               value: {{ .Values.collector.enrichment.annotations.excludeAnnotations | join "," | quote }}
             {{- range .Values.destinations.slack }}

@@ -8,35 +8,13 @@ import (
 
 	"go.uber.org/zap"
 
+	pod_logs_config "github.com/kubecano/cano-collector/config/workflow/actions"
 	"github.com/kubecano/cano-collector/pkg/core/event"
 	"github.com/kubecano/cano-collector/pkg/core/issue"
 	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
 	metric_interfaces "github.com/kubecano/cano-collector/pkg/metric/interfaces"
 	actions_interfaces "github.com/kubecano/cano-collector/pkg/workflow/actions/interfaces"
 )
-
-// PodLogsActionConfig contains configuration for PodLogsAction
-type PodLogsActionConfig struct {
-	actions_interfaces.ActionConfig `yaml:",inline"`
-
-	// MaxLines maximum number of lines to retrieve
-	MaxLines int `yaml:"max_lines" json:"max_lines"`
-
-	// SinceTime retrieve logs since this time (RFC3339 format)
-	SinceTime string `yaml:"since_time" json:"since_time"`
-
-	// TailLines number of lines from the end of the logs to show
-	TailLines int `yaml:"tail_lines" json:"tail_lines"`
-
-	// Container name to get logs from (empty means all containers)
-	Container string `yaml:"container" json:"container"`
-
-	// Previous get logs from previous instance of the container
-	Previous bool `yaml:"previous" json:"previous"`
-
-	// Timestamps add timestamps to each log line
-	Timestamps bool `yaml:"timestamps" json:"timestamps"`
-}
 
 // KubernetesClient represents a simplified kubernetes client interface for testing
 // In real implementation, this would be replaced with kubernetes.Interface
@@ -47,13 +25,13 @@ type KubernetesClient interface {
 // PodLogsAction retrieves pod logs for alerts
 type PodLogsAction struct {
 	*BaseAction
-	config     PodLogsActionConfig
+	config     pod_logs_config.PodLogsActionConfig
 	kubeClient KubernetesClient
 }
 
 // NewPodLogsAction creates a new PodLogsAction
 func NewPodLogsAction(
-	config PodLogsActionConfig,
+	config pod_logs_config.PodLogsActionConfig,
 	logger logger_interfaces.LoggerInterface,
 	metrics metric_interfaces.MetricsInterface,
 	kubeClient KubernetesClient,
@@ -77,7 +55,7 @@ func (a *PodLogsAction) Execute(ctx context.Context, event event.WorkflowEvent) 
 	)
 
 	// Extract pod information from the event
-	podName, namespace := a.extractPodInfo(event)
+	podName, namespace, containerName := a.extractPodInfo(event)
 	if podName == "" {
 		msg := "no pod information found in event"
 		a.logger.Info(msg,
@@ -88,15 +66,24 @@ func (a *PodLogsAction) Execute(ctx context.Context, event event.WorkflowEvent) 
 		return a.CreateSuccessResult(msg), nil
 	}
 
+	// Check if Java container and apply Java defaults if needed
+	if containerName != "" && pod_logs_config.IsJavaContainer(containerName, "") {
+		a.logger.Info("Java container detected, applying Java-specific configuration",
+			zap.String("container_name", containerName),
+		)
+		a.config.ApplyJavaDefaults()
+	}
+
 	a.logger.Info("Extracting logs for pod",
 		zap.String("action_name", a.GetName()),
 		zap.String("pod_name", podName),
 		zap.String("namespace", namespace),
-		zap.String("container", a.config.Container),
+		zap.String("container", containerName),
+		zap.Bool("java_specific", a.config.JavaSpecific),
 	)
 
 	// Get pod logs
-	logs, err := a.getPodLogs(ctx, podName, namespace)
+	logs, err := a.getPodLogs(ctx, podName, namespace, containerName)
 	if err != nil {
 		a.logger.Error("Failed to retrieve pod logs",
 			zap.Error(err),
@@ -108,14 +95,16 @@ func (a *PodLogsAction) Execute(ctx context.Context, event event.WorkflowEvent) 
 	}
 
 	// Create enrichment with logs
-	enrichment := a.createLogsEnrichment(podName, namespace, logs)
+	enrichment := a.createLogsEnrichment(podName, namespace, containerName, logs)
 
 	result := &actions_interfaces.ActionResult{
 		Success: true,
 		Data: map[string]interface{}{
-			"pod_name":  podName,
-			"namespace": namespace,
-			"log_lines": len(strings.Split(logs, "\n")),
+			"pod_name":      podName,
+			"namespace":     namespace,
+			"container":     containerName,
+			"log_lines":     len(strings.Split(logs, "\n")),
+			"java_specific": a.config.JavaSpecific,
 		},
 		Enrichments: []issue.Enrichment{*enrichment},
 		Metadata: map[string]interface{}{
@@ -128,6 +117,7 @@ func (a *PodLogsAction) Execute(ctx context.Context, event event.WorkflowEvent) 
 		zap.String("action_name", a.GetName()),
 		zap.String("pod_name", podName),
 		zap.String("namespace", namespace),
+		zap.String("container", containerName),
 		zap.Int("log_lines", len(strings.Split(logs, "\n"))),
 	)
 
@@ -155,31 +145,57 @@ func (a *PodLogsAction) Validate() error {
 	return nil
 }
 
-// extractPodInfo extracts pod name and namespace from the workflow event
-func (a *PodLogsAction) extractPodInfo(event event.WorkflowEvent) (string, string) {
+// extractPodInfo extracts pod name, namespace and container from the workflow event
+func (a *PodLogsAction) extractPodInfo(workflowEvent event.WorkflowEvent) (string, string, string) {
 	// Get namespace from event - this uses the WorkflowEvent interface method
-	namespace := event.GetNamespace()
+	namespace := workflowEvent.GetNamespace()
 	if namespace == "" {
 		namespace = "default"
 	}
 
+	var containerName string
+
 	// Check if pod name is provided in action parameters
 	if podName := a.GetStringParameter("pod_name", ""); podName != "" {
-		return podName, namespace
+		containerName = a.GetStringParameter("container", a.config.Container)
+		return podName, namespace, containerName
 	}
 
-	// Try to extract from alert name (simplified approach)
-	alertName := event.GetAlertName()
+	// Try to extract from alert labels if this is an AlertManager event
+	if alertEvent, ok := workflowEvent.(*event.AlertManagerWorkflowEvent); ok {
+		labels := alertEvent.GetAlertManagerEvent().GetLabels()
+
+		// Check for pod label
+		if podName, exists := labels["pod"]; exists && podName != "" {
+			// Also check for container label
+			if container, exists := labels["container"]; exists {
+				containerName = container
+			}
+			return podName, namespace, containerName
+		}
+
+		// Check for instance label (sometimes contains pod name)
+		if instance, exists := labels["instance"]; exists && instance != "" {
+			// Instance might be in format "pod-name:port" or just "pod-name"
+			parts := strings.Split(instance, ":")
+			if len(parts) > 0 && parts[0] != "" {
+				return parts[0], namespace, containerName
+			}
+		}
+	}
+
+	// Fallback: try to extract from alert name (simplified approach)
+	alertName := workflowEvent.GetAlertName()
 	if strings.Contains(alertName, "Pod") || strings.Contains(alertName, "pod") {
-		// Look for pod name in parameters or try to parse from alert name
-		return a.GetStringParameter("pod_name", ""), namespace
+		// Look for pod name in parameters
+		return a.GetStringParameter("pod_name", ""), namespace, containerName
 	}
 
-	return "", namespace
+	return "", namespace, containerName
 }
 
 // getPodLogs retrieves logs from the specified pod
-func (a *PodLogsAction) getPodLogs(ctx context.Context, podName, namespace string) (string, error) {
+func (a *PodLogsAction) getPodLogs(ctx context.Context, podName, namespace, containerName string) (string, error) {
 	// Build log options
 	logOptions := map[string]interface{}{
 		"timestamps": a.config.Timestamps,
@@ -187,7 +203,9 @@ func (a *PodLogsAction) getPodLogs(ctx context.Context, podName, namespace strin
 	}
 
 	// Set container if specified
-	if a.config.Container != "" {
+	if containerName != "" {
+		logOptions["container"] = containerName
+	} else if a.config.Container != "" {
 		logOptions["container"] = a.config.Container
 	}
 
@@ -223,20 +241,54 @@ func (a *PodLogsAction) getPodLogs(ctx context.Context, podName, namespace strin
 	return logs, nil
 }
 
-// createLogsEnrichment creates an enrichment with the pod logs
-func (a *PodLogsAction) createLogsEnrichment(podName, namespace, logs string) *issue.Enrichment {
-	// Create a FileBlock for the logs
-	filename := fmt.Sprintf("pod-logs-%s-%s.log", namespace, podName)
+// createLogsEnrichment creates an enrichment with the pod logs using proper naming with timestamps
+func (a *PodLogsAction) createLogsEnrichment(podName, namespace, containerName, logs string) *issue.Enrichment {
+	// Generate filename with timestamp and container name
+	filename := a.generateLogFilename(podName, namespace, containerName)
 	fileBlock := issue.NewFileBlock(filename, []byte(logs), "text/plain")
+
+	// Create title
+	title := fmt.Sprintf("Pod Logs: %s/%s", namespace, podName)
+	if containerName != "" {
+		title = fmt.Sprintf("Pod Logs: %s/%s (%s)", namespace, podName, containerName)
+	}
+	if a.config.JavaSpecific {
+		title = "Java " + title
+	}
 
 	// Create enrichment with the file block
 	enrichment := issue.NewEnrichmentWithType(
 		issue.EnrichmentTypeTextFile,
-		fmt.Sprintf("Pod Logs: %s/%s", namespace, podName),
+		title,
 	)
 	enrichment.AddBlock(fileBlock)
 
 	return enrichment
+}
+
+// generateLogFilename generates appropriate filename with timestamp and container support
+func (a *PodLogsAction) generateLogFilename(podName, namespace, containerName string) string {
+	var filename string
+
+	// Base filename
+	if a.config.JavaSpecific {
+		filename = fmt.Sprintf("java-logs-%s-%s", namespace, podName)
+	} else {
+		filename = fmt.Sprintf("pod-logs-%s-%s", namespace, podName)
+	}
+
+	// Add container name if specified and config allows it
+	if a.config.IncludeContainer && containerName != "" {
+		filename = fmt.Sprintf("%s-%s", filename, containerName)
+	}
+
+	// Add timestamp if config allows it
+	if a.config.IncludeTimestamp {
+		timestamp := time.Now().Format(a.config.TimestampFormat)
+		filename = fmt.Sprintf("%s-%s", filename, timestamp)
+	}
+
+	return filename + ".log"
 }
 
 // GetActionType returns the action type for registration
