@@ -26,6 +26,8 @@ github.com/getsentry/sentry-go v0.35.1 h1:iopow6UVLE2aXu46xKVIs8Z9D/YZkJrHkgozrx
 github.com/getsentry/sentry-go v0.35.1/go.mod h1:C55omcY9ChRQIUcVcGcs+Zdy4ZpQGvNJ7JYHIoSWOtE=
 github.com/getsentry/sentry-go/gin v0.34.0 h1:k4kszBvurhnMlU09oNlzWSOTTjkvoirvmLNPMRvwc/s=
 github.com/getsentry/sentry-go/gin v0.34.0/go.mod h1:Z/nqdw6aFO5GuFdXVxgpFlIhUeOt7oTWlLzxj0I9+TE=
+github.com/getsentry/sentry-go/gin v0.35.1 h1:Y5smwwJyiIbXfNOVkAlgFs25KLC9PIDeY+l10krmQEM=
+github.com/getsentry/sentry-go/gin v0.35.1/go.mod h1:QTQGJir9F3je+gwqek1GP43K8QcgW8OW5MtDLDD1GvQ=
 github.com/gin-contrib/sse v1.1.0 h1:n0w2GMuUpWDVp7qSpvze6fAu9iRxJY4Hmj6AmBOU05w=
 github.com/gin-contrib/sse v1.1.0/go.mod h1:hxRZ5gVpWMT7Z0B0gSNYqqsSCNIJMjzvm6fqCz9vjwM=
 github.com/gin-contrib/zap v1.1.5 h1:qKwhWb4DQgPriCl1AHLLob6hav/KUIctKXIjTmWIN3I=
