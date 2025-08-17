@@ -365,6 +365,357 @@ func TestPodLogsActionFactory_Create(t *testing.T) {
 	assert.False(t, podLogsAction.config.IncludeTimestamp)
 }
 
+func TestPodLogsAction_Execute_MaxLinesLimit(t *testing.T) {
+	logger := logger.NewLogger("debug", "test")
+	metrics := metric.NewMetricsCollector(logger)
+	mockClient := NewMockKubernetesClientForTest()
+
+	config := pod_logs_config.PodLogsActionConfig{
+		ActionConfig: actions_interfaces.ActionConfig{
+			Name:    "test-pod-logs",
+			Type:    "pod_logs",
+			Enabled: true,
+		},
+		MaxLines:         2, // Limit to 2 lines
+		TailLines:        100,
+		Timestamps:       true,
+		IncludeTimestamp: true,
+		IncludeContainer: true,
+		TimestampFormat:  "20060102-150405",
+	}
+
+	action := NewPodLogsAction(config, logger, metrics, mockClient)
+
+	// Set mock logs with more than 2 lines
+	mockClient.SetLogs("test-namespace", "test-pod", "Line 1\nLine 2\nLine 3\nLine 4")
+
+	workflowEvent := createPodLogsTestWorkflowEvent()
+	result, err := action.Execute(context.Background(), workflowEvent)
+
+	require.NoError(t, err)
+	assert.True(t, result.Success)
+
+	// Check that logs were truncated to maxLines
+	assert.Equal(t, 2, result.Data.(map[string]interface{})["log_lines"])
+}
+
+func TestPodLogsAction_Execute_SinceTimeValidation(t *testing.T) {
+	logger := logger.NewLogger("debug", "test")
+	metrics := metric.NewMetricsCollector(logger)
+	mockClient := NewMockKubernetesClientForTest()
+
+	config := pod_logs_config.PodLogsActionConfig{
+		ActionConfig: actions_interfaces.ActionConfig{
+			Name:    "test-pod-logs",
+			Type:    "pod_logs",
+			Enabled: true,
+		},
+		SinceTime: "invalid-time-format", // Invalid RFC3339 format
+		MaxLines:  1000,
+		TailLines: 100,
+	}
+
+	action := NewPodLogsAction(config, logger, metrics, mockClient)
+
+	workflowEvent := createPodLogsTestWorkflowEvent()
+	result, err := action.Execute(context.Background(), workflowEvent)
+
+	require.NoError(t, err)
+	assert.False(t, result.Success) // Should fail due to invalid time format
+}
+
+func TestPodLogsAction_ExtractPodInfo_AlertManagerEvent(t *testing.T) {
+	logger := logger.NewLogger("debug", "test")
+	metrics := metric.NewMetricsCollector(logger)
+	mockClient := NewMockKubernetesClientForTest()
+
+	config := pod_logs_config.PodLogsActionConfig{
+		ActionConfig: actions_interfaces.ActionConfig{
+			Name:    "test-pod-logs",
+			Type:    "pod_logs",
+			Enabled: true,
+		},
+	}
+
+	action := NewPodLogsAction(config, logger, metrics, mockClient)
+
+	// Create AlertManagerWorkflowEvent with labels
+	alertEvent := &event.AlertManagerEvent{
+		BaseEvent: event.BaseEvent{
+			ID:        uuid.New(),
+			Timestamp: time.Now(),
+			Source:    "test",
+			Type:      event.EventTypeAlertManager,
+		},
+		Status: "firing",
+		Alerts: []event.PrometheusAlert{
+			{
+				Labels: map[string]string{
+					"alertname": "TestAlert",
+					"pod":       "test-pod-from-labels",
+					"container": "test-container",
+					"instance":  "pod-with-port:8080",
+					"severity":  "critical",
+					"namespace": "alert-namespace",
+				},
+				Annotations: map[string]string{
+					"summary": "Test alert",
+				},
+			},
+		},
+	}
+
+	workflowEvent := event.NewAlertManagerWorkflowEvent(alertEvent)
+
+	podName, namespace, containerName := action.extractPodInfo(workflowEvent)
+
+	assert.Equal(t, "test-pod-from-labels", podName)
+	assert.Equal(t, "alert-namespace", namespace)
+	assert.Equal(t, "test-container", containerName)
+}
+
+func TestPodLogsAction_ExtractPodInfo_InstanceLabel(t *testing.T) {
+	logger := logger.NewLogger("debug", "test")
+	metrics := metric.NewMetricsCollector(logger)
+	mockClient := NewMockKubernetesClientForTest()
+
+	config := pod_logs_config.PodLogsActionConfig{
+		ActionConfig: actions_interfaces.ActionConfig{
+			Name:    "test-pod-logs",
+			Type:    "pod_logs",
+			Enabled: true,
+		},
+	}
+
+	action := NewPodLogsAction(config, logger, metrics, mockClient)
+
+	// Create AlertManagerWorkflowEvent with instance label only
+	alertEvent := &event.AlertManagerEvent{
+		BaseEvent: event.BaseEvent{
+			ID:        uuid.New(),
+			Timestamp: time.Now(),
+			Source:    "test",
+			Type:      event.EventTypeAlertManager,
+		},
+		Status: "firing",
+		Alerts: []event.PrometheusAlert{
+			{
+				Labels: map[string]string{
+					"alertname": "TestAlert",
+					"instance":  "pod-instance-name:9090",
+					"severity":  "warning",
+					"namespace": "default",
+				},
+				Annotations: map[string]string{
+					"summary": "Test alert",
+				},
+			},
+		},
+	}
+
+	workflowEvent := event.NewAlertManagerWorkflowEvent(alertEvent)
+
+	podName, namespace, containerName := action.extractPodInfo(workflowEvent)
+
+	assert.Equal(t, "pod-instance-name", podName) // Should extract pod name from instance
+	assert.Equal(t, "default", namespace)
+	assert.Empty(t, containerName)
+}
+
+func TestPodLogsAction_ExtractPodInfo_ActionParameters(t *testing.T) {
+	logger := logger.NewLogger("debug", "test")
+	metrics := metric.NewMetricsCollector(logger)
+	mockClient := NewMockKubernetesClientForTest()
+
+	config := pod_logs_config.PodLogsActionConfig{
+		ActionConfig: actions_interfaces.ActionConfig{
+			Name:    "test-pod-logs",
+			Type:    "pod_logs",
+			Enabled: true,
+			Parameters: map[string]interface{}{
+				"pod_name":  "param-pod",
+				"container": "param-container",
+			},
+		},
+		Container: "config-container",
+	}
+
+	action := NewPodLogsAction(config, logger, metrics, mockClient)
+
+	// Create minimal workflow event
+	alertEvent := &event.AlertManagerEvent{
+		BaseEvent: event.BaseEvent{
+			ID:        uuid.New(),
+			Timestamp: time.Now(),
+			Source:    "test",
+			Type:      event.EventTypeAlertManager,
+		},
+		Status: "firing",
+		Alerts: []event.PrometheusAlert{
+			{
+				Labels: map[string]string{
+					"alertname": "TestAlert",
+					"severity":  "info",
+					"namespace": "param-namespace",
+				},
+				Annotations: map[string]string{
+					"summary": "Test alert",
+				},
+			},
+		},
+	}
+
+	workflowEvent := event.NewAlertManagerWorkflowEvent(alertEvent)
+
+	podName, namespace, containerName := action.extractPodInfo(workflowEvent)
+
+	assert.Equal(t, "param-pod", podName) // Should get from parameters
+	assert.Equal(t, "param-namespace", namespace)
+	assert.Equal(t, "param-container", containerName) // Should get from parameters
+}
+
+func TestPodLogsAction_Validate_Errors(t *testing.T) {
+	logger := logger.NewLogger("debug", "test")
+	metrics := metric.NewMetricsCollector(logger)
+
+	tests := []struct {
+		name       string
+		config     pod_logs_config.PodLogsActionConfig
+		kubeClient KubernetesClient
+		wantErr    string
+	}{
+		{
+			name: "nil kubernetes client",
+			config: pod_logs_config.PodLogsActionConfig{
+				ActionConfig: actions_interfaces.ActionConfig{
+					Name:    "test",
+					Type:    "pod_logs",
+					Enabled: true,
+				},
+				MaxLines:  1000,
+				TailLines: 100,
+			},
+			kubeClient: nil,
+			wantErr:    "kubernetes client is required",
+		},
+		{
+			name: "negative max lines",
+			config: pod_logs_config.PodLogsActionConfig{
+				ActionConfig: actions_interfaces.ActionConfig{
+					Name:    "test",
+					Type:    "pod_logs",
+					Enabled: true,
+				},
+				MaxLines:  -1,
+				TailLines: 100,
+			},
+			kubeClient: NewMockKubernetesClientForTest(),
+			wantErr:    "max_lines must be non-negative",
+		},
+		{
+			name: "negative tail lines",
+			config: pod_logs_config.PodLogsActionConfig{
+				ActionConfig: actions_interfaces.ActionConfig{
+					Name:    "test",
+					Type:    "pod_logs",
+					Enabled: true,
+				},
+				MaxLines:  1000,
+				TailLines: -1,
+			},
+			kubeClient: NewMockKubernetesClientForTest(),
+			wantErr:    "tail_lines must be non-negative",
+		},
+		{
+			name: "invalid base config",
+			config: pod_logs_config.PodLogsActionConfig{
+				ActionConfig: actions_interfaces.ActionConfig{
+					Name:    "", // Empty name should trigger ValidateBasicConfig error
+					Type:    "pod_logs",
+					Enabled: true,
+				},
+				MaxLines:  1000,
+				TailLines: 100,
+			},
+			kubeClient: NewMockKubernetesClientForTest(),
+			wantErr:    "action name cannot be empty",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			action := NewPodLogsAction(tt.config, logger, metrics, tt.kubeClient)
+			err := action.Validate()
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestPodLogsAction_GenerateLogFilename_EdgeCases(t *testing.T) {
+	tests := []struct {
+		name             string
+		config           pod_logs_config.PodLogsActionConfig
+		podName          string
+		namespace        string
+		containerName    string
+		expectedContains []string
+	}{
+		{
+			name: "no timestamp, no container",
+			config: pod_logs_config.PodLogsActionConfig{
+				IncludeTimestamp: false,
+				IncludeContainer: false,
+				JavaSpecific:     false,
+			},
+			podName:          "simple-pod",
+			namespace:        "simple-ns",
+			containerName:    "container",
+			expectedContains: []string{"pod-logs-simple-ns-simple-pod.log"},
+		},
+		{
+			name: "empty container name",
+			config: pod_logs_config.PodLogsActionConfig{
+				IncludeTimestamp: false,
+				IncludeContainer: true,
+				JavaSpecific:     false,
+			},
+			podName:          "pod",
+			namespace:        "ns",
+			containerName:    "",
+			expectedContains: []string{"pod-logs-ns-pod.log"}, // No container in name
+		},
+		{
+			name: "java with empty container",
+			config: pod_logs_config.PodLogsActionConfig{
+				IncludeTimestamp: false,
+				IncludeContainer: true,
+				JavaSpecific:     true,
+			},
+			podName:          "java-pod",
+			namespace:        "java-ns",
+			containerName:    "",
+			expectedContains: []string{"java-logs-java-ns-java-pod.log"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			action := &PodLogsAction{config: tt.config}
+			filename := action.generateLogFilename(tt.podName, tt.namespace, tt.containerName)
+
+			for _, expected := range tt.expectedContains {
+				assert.Contains(t, filename, expected)
+			}
+		})
+	}
+}
+
 func TestPodLogsActionFactory_ValidateConfig(t *testing.T) {
 	logger := logger.NewLogger("debug", "test")
 	metrics := metric.NewMetricsCollector(logger)
@@ -373,57 +724,74 @@ func TestPodLogsActionFactory_ValidateConfig(t *testing.T) {
 	factory := NewPodLogsActionFactory(logger, metrics, mockClient)
 
 	tests := []struct {
-		name        string
-		config      actions_interfaces.ActionConfig
-		expectError bool
-		errorMsg    string
+		name    string
+		config  actions_interfaces.ActionConfig
+		wantErr string
 	}{
 		{
-			name: "Valid config",
+			name: "valid config",
 			config: actions_interfaces.ActionConfig{
-				Name: "test",
-				Type: "pod_logs",
-			},
-			expectError: false,
-		},
-		{
-			name: "Invalid action type",
-			config: actions_interfaces.ActionConfig{
-				Name: "test",
-				Type: "invalid",
-			},
-			expectError: true,
-			errorMsg:    "invalid action type",
-		},
-		{
-			name: "Empty name",
-			config: actions_interfaces.ActionConfig{
-				Name: "",
-				Type: "pod_logs",
-			},
-			expectError: true,
-			errorMsg:    "action name cannot be empty",
-		},
-		{
-			name: "Invalid max_lines",
-			config: actions_interfaces.ActionConfig{
-				Name: "test",
-				Type: "pod_logs",
+				Name:    "test-pod-logs",
+				Type:    "pod_logs",
+				Enabled: true,
 				Parameters: map[string]interface{}{
-					"max_lines": -1,
+					"max_lines":  500,
+					"tail_lines": 50,
 				},
 			},
-			expectError: true,
-			errorMsg:    "max_lines must be non-negative",
+			wantErr: "",
+		},
+		{
+			name: "invalid action type",
+			config: actions_interfaces.ActionConfig{
+				Name:    "test-action",
+				Type:    "invalid_type",
+				Enabled: true,
+			},
+			wantErr: "invalid action type for PodLogsActionFactory",
+		},
+		{
+			name: "invalid parameter type",
+			config: actions_interfaces.ActionConfig{
+				Name:    "test-pod-logs",
+				Type:    "pod_logs",
+				Enabled: true,
+				Parameters: map[string]interface{}{
+					"max_lines": "not-a-number", // Should be int
+				},
+			},
+			wantErr: "max_lines must be an integer",
+		},
+		{
+			name: "empty action name",
+			config: actions_interfaces.ActionConfig{
+				Name:    "",
+				Type:    "pod_logs",
+				Enabled: true,
+			},
+			wantErr: "action name cannot be empty",
+		},
+		{
+			name: "negative values",
+			config: actions_interfaces.ActionConfig{
+				Name:    "test-pod-logs",
+				Type:    "pod_logs",
+				Enabled: true,
+				Parameters: map[string]interface{}{
+					"max_lines": -100,
+				},
+			},
+			wantErr: "max_lines must be non-negative",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := factory.ValidateConfig(tt.config)
-			if tt.expectError {
+
+			if tt.wantErr != "" {
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), tt.errorMsg)
+				assert.Contains(t, err.Error(), tt.wantErr)
 			} else {
 				require.NoError(t, err)
 			}
@@ -431,67 +799,154 @@ func TestPodLogsActionFactory_ValidateConfig(t *testing.T) {
 	}
 }
 
-func TestPodLogsAction_Validate(t *testing.T) {
+func TestPodLogsActionFactory_Create_Errors(t *testing.T) {
 	logger := logger.NewLogger("debug", "test")
 	metrics := metric.NewMetricsCollector(logger)
+	mockClient := NewMockKubernetesClientForTest()
+
+	factory := NewPodLogsActionFactory(logger, metrics, mockClient)
 
 	tests := []struct {
-		name        string
-		kubeClient  KubernetesClient
-		config      pod_logs_config.PodLogsActionConfig
-		expectError bool
-		errorMsg    string
+		name    string
+		config  actions_interfaces.ActionConfig
+		wantErr string
 	}{
 		{
-			name:       "Valid action",
-			kubeClient: NewMockKubernetesClientForTest(),
-			config: pod_logs_config.PodLogsActionConfig{
-				ActionConfig: actions_interfaces.ActionConfig{
-					Name: "test",
-					Type: "pod_logs",
+			name: "invalid parameter in create",
+			config: actions_interfaces.ActionConfig{
+				Name:    "test-pod-logs",
+				Type:    "pod_logs",
+				Enabled: true,
+				Parameters: map[string]interface{}{
+					"timestamps": "invalid-bool", // Should be bool
 				},
-				MaxLines:  1000,
-				TailLines: 100,
 			},
-			expectError: false,
+			wantErr: "timestamps must be a boolean",
 		},
 		{
-			name:       "Nil Kubernetes client",
-			kubeClient: nil,
-			config: pod_logs_config.PodLogsActionConfig{
-				ActionConfig: actions_interfaces.ActionConfig{
-					Name: "test",
-					Type: "pod_logs",
+			name: "empty timestamp format",
+			config: actions_interfaces.ActionConfig{
+				Name:    "test-pod-logs",
+				Type:    "pod_logs",
+				Enabled: true,
+				Parameters: map[string]interface{}{
+					"timestamp_format": "",
 				},
 			},
-			expectError: true,
-			errorMsg:    "kubernetes client is required",
-		},
-		{
-			name:       "Negative max_lines",
-			kubeClient: NewMockKubernetesClientForTest(),
-			config: pod_logs_config.PodLogsActionConfig{
-				ActionConfig: actions_interfaces.ActionConfig{
-					Name: "test",
-					Type: "pod_logs",
-				},
-				MaxLines: -1,
-			},
-			expectError: true,
-			errorMsg:    "max_lines must be non-negative",
+			wantErr: "timestamp_format cannot be empty",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			action := NewPodLogsAction(tt.config, logger, metrics, tt.kubeClient)
-			err := action.Validate()
-			if tt.expectError {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tt.errorMsg)
-			} else {
-				require.NoError(t, err)
-			}
+			action, err := factory.Create(tt.config)
+
+			require.Error(t, err)
+			assert.Nil(t, action)
+			assert.Contains(t, err.Error(), tt.wantErr)
 		})
 	}
+}
+
+func TestPodLogsActionFactory_GetActionType(t *testing.T) {
+	logger := logger.NewLogger("debug", "test")
+	metrics := metric.NewMetricsCollector(logger)
+	mockClient := NewMockKubernetesClientForTest()
+
+	factory := NewPodLogsActionFactory(logger, metrics, mockClient)
+
+	assert.Equal(t, "pod_logs", factory.GetActionType())
+}
+
+func TestPodLogsAction_GetActionType(t *testing.T) {
+	logger := logger.NewLogger("debug", "test")
+	metrics := metric.NewMetricsCollector(logger)
+	mockClient := NewMockKubernetesClientForTest()
+
+	config := pod_logs_config.PodLogsActionConfig{
+		ActionConfig: actions_interfaces.ActionConfig{
+			Name:    "test-pod-logs",
+			Type:    "pod_logs",
+			Enabled: true,
+		},
+	}
+
+	action := NewPodLogsAction(config, logger, metrics, mockClient)
+
+	assert.Equal(t, "pod_logs", action.GetActionType())
+}
+
+func TestPodLogsAction_GetPodLogs_ValidSinceTime(t *testing.T) {
+	logger := logger.NewLogger("debug", "test")
+	metrics := metric.NewMetricsCollector(logger)
+	mockClient := NewMockKubernetesClientForTest()
+
+	config := pod_logs_config.PodLogsActionConfig{
+		ActionConfig: actions_interfaces.ActionConfig{
+			Name:    "test-pod-logs",
+			Type:    "pod_logs",
+			Enabled: true,
+		},
+		SinceTime: "2025-01-08T10:00:00Z", // Valid RFC3339 format
+		MaxLines:  1000,
+		TailLines: 100,
+	}
+
+	action := NewPodLogsAction(config, logger, metrics, mockClient)
+
+	// Set mock logs
+	mockClient.SetLogs("test-namespace", "test-pod", "Valid time test logs")
+
+	workflowEvent := createPodLogsTestWorkflowEvent()
+	result, err := action.Execute(context.Background(), workflowEvent)
+
+	require.NoError(t, err)
+	assert.True(t, result.Success) // Should succeed with valid time format
+}
+
+func TestPodLogsAction_ExtractPodInfo_FromAlertName(t *testing.T) {
+	logger := logger.NewLogger("debug", "test")
+	metrics := metric.NewMetricsCollector(logger)
+	mockClient := NewMockKubernetesClientForTest()
+
+	config := pod_logs_config.PodLogsActionConfig{
+		ActionConfig: actions_interfaces.ActionConfig{
+			Name:    "test-pod-logs",
+			Type:    "pod_logs",
+			Enabled: true,
+		},
+	}
+
+	action := NewPodLogsAction(config, logger, metrics, mockClient)
+
+	// Create AlertManagerWorkflowEvent with Pod in alert name
+	alertEvent := &event.AlertManagerEvent{
+		BaseEvent: event.BaseEvent{
+			ID:        uuid.New(),
+			Timestamp: time.Now(),
+			Source:    "test",
+			Type:      event.EventTypeAlertManager,
+		},
+		Status: "firing",
+		Alerts: []event.PrometheusAlert{
+			{
+				Labels: map[string]string{
+					"alertname": "PodCrashLooping", // Contains "Pod"
+					"namespace": "test-namespace",
+				},
+				Annotations: map[string]string{
+					"summary": "Pod is crash looping",
+				},
+			},
+		},
+	}
+
+	workflowEvent := event.NewAlertManagerWorkflowEvent(alertEvent)
+
+	podName, namespace, containerName := action.extractPodInfo(workflowEvent)
+
+	// Should extract from action parameters when alert name contains "Pod"
+	assert.Empty(t, podName) // No pod_name parameter set
+	assert.Equal(t, "test-namespace", namespace)
+	assert.Empty(t, containerName)
 }

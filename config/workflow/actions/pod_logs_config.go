@@ -196,12 +196,51 @@ func IsJavaContainer(containerName, imageName string) bool {
 	containerNameLower := strings.ToLower(containerName)
 
 	for _, indicator := range javaIndicators {
-		if strings.Contains(imageNameLower, indicator) || strings.Contains(containerNameLower, indicator) {
+		// Check for word boundaries to avoid false positives like "javanese" containing "java"
+		if containsWord(imageNameLower, indicator) || containsWord(containerNameLower, indicator) {
 			return true
 		}
 	}
 
 	return false
+}
+
+// containsWord checks if a word exists as a complete word (with word boundaries)
+func containsWord(text, word string) bool {
+	if word == "" {
+		return true // Empty string is contained in any string
+	}
+
+	if !strings.Contains(text, word) {
+		return false
+	}
+
+	// Simple word boundary check: word should be surrounded by non-alphanumeric characters
+	// or be at the start/end of the string
+	index := strings.Index(text, word)
+	for index != -1 {
+		start := index == 0 || !isAlphaNumeric(text[index-1])
+		end := index+len(word) == len(text) || !isAlphaNumeric(text[index+len(word)])
+
+		if start && end {
+			return true
+		}
+
+		// Look for next occurrence
+		remaining := text[index+1:]
+		nextIndex := strings.Index(remaining, word)
+		if nextIndex == -1 {
+			break
+		}
+		index = index + 1 + nextIndex
+	}
+
+	return false
+}
+
+// isAlphaNumeric checks if a byte represents an alphanumeric character
+func isAlphaNumeric(b byte) bool {
+	return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || (b >= '0' && b <= '9')
 }
 
 // Helper functions for environment variables
