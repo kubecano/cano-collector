@@ -2,11 +2,12 @@ apiVersion: v2
 name: cano-collector
 description: Cano-collector Helm chart for Kubernetes
 type: application
-version: 0.0.15
+version: 0.0.16
 appVersion: 0.0.16
 dependencies:
   - name: kube-prometheus-stack
     version: 76.4.0
     condition: enablePrometheusStack
     repository: https://prometheus-community.github.io/helm-charts
+
 # Updated for app release cano-collector-v0.0.16 at 2025-08-17T21:12:15Z

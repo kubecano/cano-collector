@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.0.16](https://github.com/kubecano/cano-collector/compare/cano-collector-helm-v0.0.15...cano-collector-helm-v0.0.16) (2025-08-17)
+
+
+### Features
+
+* **helm:** bump chart for app release cano-collector-v0.0.16 ([716004b](https://github.com/kubecano/cano-collector/commit/716004bf77452b1a420984dd8a090776ed07b9bc))
+
+
+### Bug Fixes
+
+* Helm template syntax error ([#187](https://github.com/kubecano/cano-collector/issues/187)) ([59605c6](https://github.com/kubecano/cano-collector/commit/59605c641ff3a20d042b1c3b4543aae7bfad7d1b))
+
 ## [0.0.15](https://github.com/kubecano/cano-collector/compare/cano-collector-helm-v0.0.14...cano-collector-helm-v0.0.15) (2025-08-17)
 
 
