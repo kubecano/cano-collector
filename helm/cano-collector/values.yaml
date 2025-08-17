@@ -94,6 +94,83 @@ workflows:
           data: {}
       stop: false
 
+    # Pod Logs Examples (disabled by default - enable with --set workflows.examples.podLogs.enabled=true)
+    # Basic pod logs collection for any firing alert
+    - name: "pod-logs-basic"
+      enabled: false
+      triggers:
+        - on_alertmanager_alert:
+            status: "firing"
+      actions:
+        - action_type: "pod_logs"
+          data:
+            max_lines: 500
+            tail_lines: 100
+            timestamps: true
+      stop: false
+
+    # Java-specific pod logs with increased limits for stack traces
+    - name: "pod-logs-java"
+      enabled: false
+      triggers:
+        - on_alertmanager_alert:
+            status: "firing"
+            alert_name: "JavaAppError"
+      actions:
+        - action_type: "pod_logs"
+          data:
+            java_specific: true
+            max_lines: 5000
+            tail_lines: 500
+            timestamps: true
+            include_timestamp: true
+            include_container: true
+      stop: false
+
+    # Critical alerts with previous container logs (useful for crash investigations)
+    - name: "pod-logs-critical-crashes"
+      enabled: true
+      triggers:
+        - on_alertmanager_alert:
+            status: "firing"
+            severity: "critical"
+            alert_name: "PodCrashLooping"
+      actions:
+        - action_type: "pod_logs"
+          data:
+            previous: true
+            max_lines: 2000
+            tail_lines: 300
+            timestamps: true
+            include_timestamp: true
+      stop: false
+
+    # Comprehensive investigation: current + previous logs
+    - name: "pod-logs-comprehensive"
+      enabled: false
+      triggers:
+        - on_alertmanager_alert:
+            status: "firing"
+            severity: "critical"
+      actions:
+        # Get current logs
+        - action_type: "pod_logs"
+          data:
+            max_lines: 1000
+            tail_lines: 200
+            timestamps: true
+            include_timestamp: true
+            include_container: true
+        # Get previous logs for comparison
+        - action_type: "pod_logs"
+          data:
+            previous: true
+            max_lines: 500
+            tail_lines: 100
+            timestamps: true
+            include_timestamp: true
+      stop: false
+
 collector:
   image:
     name: cano-collector
@@ -101,6 +178,27 @@ collector:
     tag: ~
     pullPolicy: IfNotPresent
   enableTelemetry: true
+  # Workflow configuration
+  workflow:
+    podLogs:
+      # Enable pod logs action configuration
+      enabled: true
+      
+      # Basic defaults for pod logs collection
+      defaultMaxLines: 1000
+      defaultTailLines: 100
+      defaultTimestamps: true
+      defaultPrevious: false
+      defaultIncludeTimestamp: true
+      defaultIncludeContainer: true
+      defaultTimestampFormat: "20060102-150405"
+      
+      # Java-specific configuration (auto-applied when Java container detected)
+      javaDefaultMaxLines: 5000
+      javaDefaultTailLines: 500
+      
+      # Advanced settings
+      defaultTimeout: "30s"
   sentry_dsn: https://4f1a66f025c60830fec303a094dcdf94@o1120648.ingest.sentry.io/6156573
   appEnv: production
   logLevel: info
