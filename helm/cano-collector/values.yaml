@@ -145,6 +145,24 @@ workflows:
             include_timestamp: true
       stop: false
 
+    # KubePodCrashLooping alerts with pod logs collection
+    - name: "pod-logs-kube-crash-looping"
+      enabled: true
+      triggers:
+        - on_alertmanager_alert:
+            status: "firing"
+            alert_name: "KubePodCrashLooping"
+      actions:
+        - action_type: "pod_logs"
+          data:
+            previous: true
+            max_lines: 2000
+            tail_lines: 300
+            timestamps: true
+            include_timestamp: true
+            include_container: true
+      stop: false
+
     # Comprehensive investigation: current + previous logs
     - name: "pod-logs-comprehensive"
       enabled: false
