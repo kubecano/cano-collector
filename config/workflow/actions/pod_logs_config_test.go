@@ -22,10 +22,10 @@ func TestNewPodLogsActionConfigWithDefaults(t *testing.T) {
 	assert.Equal(t, "pod_logs", config.Type)
 	assert.Equal(t, 1000, config.MaxLines)
 	assert.Equal(t, 100, config.TailLines)
-	assert.Equal(t, false, config.Previous)
-	assert.Equal(t, true, config.Timestamps)
-	assert.Equal(t, true, config.IncludeTimestamp)
-	assert.Equal(t, true, config.IncludeContainer)
+	assert.False(t, config.Previous)
+	assert.True(t, config.Timestamps)
+	assert.True(t, config.IncludeTimestamp)
+	assert.True(t, config.IncludeContainer)
 	assert.Equal(t, "20060102-150405", config.TimestampFormat)
 }
 
@@ -58,10 +58,10 @@ func TestNewPodLogsActionConfigWithDefaultsEnvironmentVariables(t *testing.T) {
 
 	assert.Equal(t, 2000, config.MaxLines)
 	assert.Equal(t, 200, config.TailLines)
-	assert.Equal(t, true, config.Previous)
-	assert.Equal(t, false, config.Timestamps)
-	assert.Equal(t, false, config.IncludeTimestamp)
-	assert.Equal(t, false, config.IncludeContainer)
+	assert.True(t, config.Previous)
+	assert.False(t, config.Timestamps)
+	assert.False(t, config.IncludeTimestamp)
+	assert.False(t, config.IncludeContainer)
 	assert.Equal(t, "2006-01-02_15-04-05", config.TimestampFormat)
 }
 
@@ -83,7 +83,7 @@ func TestPodLogsActionConfigApplyJavaDefaults(t *testing.T) {
 	config := NewPodLogsActionConfigWithDefaults(baseConfig)
 	config.ApplyJavaDefaults()
 
-	assert.Equal(t, true, config.JavaSpecific)
+	assert.True(t, config.JavaSpecific)
 	assert.Equal(t, 10000, config.MaxLines)
 	assert.Equal(t, 1000, config.TailLines)
 }
@@ -219,15 +219,15 @@ func TestPodLogsActionConfigUpdateFromParameters(t *testing.T) {
 	require.NoError(t, err)
 
 	// Note: when java_specific=true, ApplyJavaDefaults() overrides max_lines and tail_lines
-	assert.Equal(t, 5000, config.MaxLines)  // Java default from env or default value
-	assert.Equal(t, 500, config.TailLines)  // Java default from env or default value
-	assert.Equal(t, true, config.Previous)
-	assert.Equal(t, false, config.Timestamps)
+	assert.Equal(t, 5000, config.MaxLines) // Java default from env or default value
+	assert.Equal(t, 500, config.TailLines) // Java default from env or default value
+	assert.True(t, config.Previous)
+	assert.False(t, config.Timestamps)
 	assert.Equal(t, "app-container", config.Container)
 	assert.Equal(t, "2023-01-01T00:00:00Z", config.SinceTime)
-	assert.Equal(t, true, config.JavaSpecific)
-	assert.Equal(t, false, config.IncludeTimestamp)
-	assert.Equal(t, false, config.IncludeContainer)
+	assert.True(t, config.JavaSpecific)
+	assert.False(t, config.IncludeTimestamp)
+	assert.False(t, config.IncludeContainer)
 	assert.Equal(t, "2006-01-02_15-04-05", config.TimestampFormat)
 }
 

@@ -83,7 +83,7 @@ func (r *RealKubernetesClient) GetPodLogs(ctx context.Context, namespace, podNam
 
 	// Request logs from Kubernetes API
 	req := r.clientset.CoreV1().Pods(namespace).GetLogs(podName, podLogOpts)
-	
+
 	podLogs, err := req.Stream(ctx)
 	if err != nil {
 		// Handle 404 errors gracefully like Robusta does

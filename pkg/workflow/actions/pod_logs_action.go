@@ -253,7 +253,7 @@ func (a *PodLogsAction) createLogsEnrichment(podName, namespace, containerName, 
 		title = fmt.Sprintf("Pod Logs: %s/%s (%s)", namespace, podName, containerName)
 	}
 	if a.config.JavaSpecific {
-		title = fmt.Sprintf("Java %s", title)
+		title = "Java " + title
 	}
 
 	// Create enrichment with the file block

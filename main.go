@@ -121,13 +121,13 @@ func run(cfg config.Config, deps AppDependencies) error {
 
 	// Initialize workflow components
 	actionRegistry := actions.NewDefaultActionRegistry(log)
-	
+
 	// Register workflow actions
 	if err := registerWorkflowActions(actionRegistry, log, metricsCollector); err != nil {
 		log.Fatalf("Failed to register workflow actions: %v", err)
 		return err
 	}
-	
+
 	actionExecutor := actions.NewDefaultActionExecutor(actionRegistry, log, metricsCollector)
 	workflowEngine := workflow.NewWorkflowEngine(&cfg.Workflows, actionExecutor)
 
