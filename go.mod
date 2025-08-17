@@ -11,7 +11,7 @@ require (
 	github.com/gin-gonic/gin v1.10.1
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
-	github.com/hellofresh/health-go/v5 v5.5.4
+	github.com/hellofresh/health-go/v5 v5.5.5
 	github.com/prometheus/alertmanager v0.28.1
 	github.com/prometheus/client_golang v1.23.0
 	github.com/slack-go/slack v0.17.3
