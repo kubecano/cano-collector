@@ -218,8 +218,9 @@ func TestPodLogsActionConfigUpdateFromParameters(t *testing.T) {
 	err := config.UpdateFromParameters(parameters)
 	require.NoError(t, err)
 
-	assert.Equal(t, 2000, config.MaxLines)
-	assert.Equal(t, 200, config.TailLines)
+	// Note: when java_specific=true, ApplyJavaDefaults() overrides max_lines and tail_lines
+	assert.Equal(t, 5000, config.MaxLines)  // Java default from env or default value
+	assert.Equal(t, 500, config.TailLines)  // Java default from env or default value
 	assert.Equal(t, true, config.Previous)
 	assert.Equal(t, false, config.Timestamps)
 	assert.Equal(t, "app-container", config.Container)

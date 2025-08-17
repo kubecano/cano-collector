@@ -121,6 +121,13 @@ func run(cfg config.Config, deps AppDependencies) error {
 
 	// Initialize workflow components
 	actionRegistry := actions.NewDefaultActionRegistry(log)
+	
+	// Register workflow actions
+	if err := registerWorkflowActions(actionRegistry, log, metricsCollector); err != nil {
+		log.Fatalf("Failed to register workflow actions: %v", err)
+		return err
+	}
+	
 	actionExecutor := actions.NewDefaultActionExecutor(actionRegistry, log, metricsCollector)
 	workflowEngine := workflow.NewWorkflowEngine(&cfg.Workflows, actionExecutor)
 
@@ -163,6 +170,28 @@ func run(cfg config.Config, deps AppDependencies) error {
 	log.Debug("Router setup complete")
 	routerManager.StartServer(r)
 
+	return nil
+}
+
+// registerWorkflowActions registers all available workflow actions in the action registry
+func registerWorkflowActions(actionRegistry *actions.DefaultActionRegistry, log logger_interfaces.LoggerInterface, metrics metric_interfaces.MetricsInterface) error {
+	// Create Kubernetes client for pod logs action
+	var kubeClient actions.KubernetesClient
+	realClient, err := actions.NewRealKubernetesClient(log)
+	if err != nil {
+		log.Warnf("Failed to create real Kubernetes client, using placeholder client: %v", err)
+		kubeClient = actions.NewPlaceholderKubernetesClient(log)
+	} else {
+		kubeClient = realClient
+	}
+
+	// Register Pod Logs Action Factory
+	podLogsFactory := actions.NewPodLogsActionFactory(log, metrics, kubeClient)
+	if err := actionRegistry.Register("pod_logs", podLogsFactory); err != nil {
+		return err
+	}
+
+	log.Info("Workflow actions registered successfully")
 	return nil
 }
 

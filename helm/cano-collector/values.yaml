@@ -196,6 +196,7 @@ collector:
       # Java-specific configuration (auto-applied when Java container detected)
       javaDefaultMaxLines: 5000
       javaDefaultTailLines: 500
+      javaDefaultTimeout: "60s"
       
       # Advanced settings
       defaultTimeout: "30s"
