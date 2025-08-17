@@ -73,6 +73,7 @@ Validate Slack destination configuration
 {{- fail (printf "Slack destination '%s' api_key_value_from must have secretKey" $destination.name) -}}
 {{- end -}}
 {{- end -}}
+{{- end -}}
 
 {{/*
 Validate cluster name
@@ -80,7 +81,6 @@ Validate cluster name
 {{- define "cano-collector.validateClusterName" -}}
 {{- if not .Values.clusterName -}}
 {{- fail "A valid .Values.clusterName entry is required!" -}}
-{{- end -}}
 {{- end -}}
 {{- end -}}
 
