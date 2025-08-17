@@ -9,3 +9,4 @@ dependencies:
     version: 76.4.0
     condition: enablePrometheusStack
     repository: https://prometheus-community.github.io/helm-charts
+# Updated for app release cano-collector-v0.0.16 at 2025-08-17T21:12:15Z
