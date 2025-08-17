@@ -66,8 +66,10 @@ func TestRun_WithMocks(t *testing.T) {
 
 	// Mock zachowania
 	mockLogger.EXPECT().Debug(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Panicf(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Fatalf(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Warnf(gomock.Any(), gomock.Any()).AnyTimes()
 
 	mockHealth.EXPECT().RegisterHealthChecks().Return(nil).Times(1)
 
