@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.0.16](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.15...cano-collector-v0.0.16) (2025-08-17)
+
+
+### Features
+
+* CU-8699htzhx - Basic Workflow Framework ([#158](https://github.com/kubecano/cano-collector/issues/158)) ([2ee6e40](https://github.com/kubecano/cano-collector/commit/2ee6e402c678b78c7fb253906c7490d0880d91b5))
+* CU-8699htzhx - Basic Workflow Framework ([#160](https://github.com/kubecano/cano-collector/issues/160)) ([9989638](https://github.com/kubecano/cano-collector/commit/99896386b1a91a98468de53eaf7aa66c8d8058a3))
+* CU-8699hu0gw - Workflow Actions Foundation ([#165](https://github.com/kubecano/cano-collector/issues/165)) ([ff7b52c](https://github.com/kubecano/cano-collector/commit/ff7b52cfba123f9fd8bd6480a77eebae86ef96e8))
+* CU-8699hu2yw - Pod logs workflow action ([#173](https://github.com/kubecano/cano-collector/issues/173)) ([6132a19](https://github.com/kubecano/cano-collector/commit/6132a19fb3a80bb46c4c4481cc2acd937fd742ba))
+* CU-8699r3z08 - Add cluster name to configuration ([#166](https://github.com/kubecano/cano-collector/issues/166)) ([82283e1](https://github.com/kubecano/cano-collector/commit/82283e19762a3cbadb20d2bcae111c6854b5d6b1))
+
+
+### Bug Fixes
+
+* **deps:** update kubernetes packages to v0.33.4 ([#184](https://github.com/kubecano/cano-collector/issues/184)) ([07b8a2d](https://github.com/kubecano/cano-collector/commit/07b8a2d90e7aedb1aaf00a455eccaab9b65842a6))
+* **deps:** update module github.com/getsentry/sentry-go to v0.35.1 ([#164](https://github.com/kubecano/cano-collector/issues/164)) ([b744ba8](https://github.com/kubecano/cano-collector/commit/b744ba8b35a0650e27c07b46430c062141cb64ed))
+* **deps:** update module github.com/getsentry/sentry-go/gin to v0.35.1 ([#168](https://github.com/kubecano/cano-collector/issues/168)) ([0b7ca54](https://github.com/kubecano/cano-collector/commit/0b7ca54050b9fdc3cbe2f1ca202f9c95db49a106))
+* **deps:** update module github.com/hellofresh/health-go/v5 to v5.5.5 ([#169](https://github.com/kubecano/cano-collector/issues/169)) ([185731b](https://github.com/kubecano/cano-collector/commit/185731b60fff59e4554f48723509402feafc6d96))
+* **deps:** update module github.com/prometheus/client_golang to v1.23.0 ([#180](https://github.com/kubecano/cano-collector/issues/180)) ([02a05d8](https://github.com/kubecano/cano-collector/commit/02a05d8399992cdbe741503c6abe4711dc2aafe5))
+
 ## [0.0.15](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.14...cano-collector-v0.0.15) (2025-07-09)
 
 

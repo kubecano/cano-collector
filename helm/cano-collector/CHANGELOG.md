@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.0.15](https://github.com/kubecano/cano-collector/compare/cano-collector-helm-v0.0.14...cano-collector-helm-v0.0.15) (2025-08-17)
+
+
+### Features
+
+* CU-8699htzhx - Basic Workflow Framework ([#160](https://github.com/kubecano/cano-collector/issues/160)) ([9989638](https://github.com/kubecano/cano-collector/commit/99896386b1a91a98468de53eaf7aa66c8d8058a3))
+* CU-8699hu2yw - Pod logs workflow action ([#173](https://github.com/kubecano/cano-collector/issues/173)) ([6132a19](https://github.com/kubecano/cano-collector/commit/6132a19fb3a80bb46c4c4481cc2acd937fd742ba))
+* CU-8699r3z08 - Add cluster name to configuration ([#166](https://github.com/kubecano/cano-collector/issues/166)) ([82283e1](https://github.com/kubecano/cano-collector/commit/82283e19762a3cbadb20d2bcae111c6854b5d6b1))
+
 ## [0.0.14](https://github.com/kubecano/cano-collector/compare/cano-collector-helm-v0.0.13...cano-collector-helm-v0.0.14) (2025-07-09)
 
 
