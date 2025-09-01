@@ -158,6 +158,34 @@ func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slackapi.Block {
 	)
 	blocks = append(blocks, headerBlock)
 
+	// For resolved alerts, only show minimal information
+	if issue.IsResolved() {
+		// Add source and cluster information
+		sourceText := fmt.Sprintf("📍 Source: %s", strings.ToUpper(issue.Source.String()))
+		if issue.ClusterName != "" {
+			sourceText += fmt.Sprintf("\n🌐 Cluster: %s", issue.ClusterName)
+		}
+		sourceBlock := slackapi.NewSectionBlock(
+			slackapi.NewTextBlockObject("mrkdwn", sourceText, false, false),
+			nil, nil,
+		)
+		blocks = append(blocks, sourceBlock)
+
+		// Add resolved timestamp if available
+		if issue.EndsAt != nil {
+			resolvedText := fmt.Sprintf("🕐 Resolved: %s", issue.EndsAt.UTC().Format("2006-01-02 15:04:05 UTC"))
+			resolvedBlock := slackapi.NewSectionBlock(
+				slackapi.NewTextBlockObject("mrkdwn", resolvedText, false, false),
+				nil, nil,
+			)
+			blocks = append(blocks, resolvedBlock)
+		}
+
+		// Return early for resolved alerts - skip all other details
+		return blocks
+	}
+
+	// For firing alerts, show full details
 	// Separate runbook links (display as text) from other links (display as buttons)
 	var runbookLinks []issuepkg.Link
 	var otherLinks []issuepkg.Link
