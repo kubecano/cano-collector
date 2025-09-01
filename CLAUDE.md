@@ -23,6 +23,7 @@ make lint
 GOGC=20 GOMAXPROCS=2 golangci-lint run --fix --verbose
 
 # Generate mocks
+make gogen
 go generate ./...
 ```
 
@@ -110,6 +111,8 @@ go tool cover -html=coverage.out
 ### Mock Generation
 ```bash
 # Mocks are generated using go:generate directives
+make gogen
+# Or directly:
 go generate ./...
 ```
 
@@ -143,6 +146,7 @@ Currently implemented actions:
 - Supports file uploads for logs and data
 - Thread management for related alerts
 - Color-coded messages based on severity
+- Minimal notifications for resolved alerts (shows only source, cluster, timestamp)
 
 ### Error Handling
 - Structured error logging with zap
