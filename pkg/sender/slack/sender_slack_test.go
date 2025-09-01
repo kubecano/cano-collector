@@ -224,6 +224,77 @@ func TestSenderSlack_BuildSlackBlocks(t *testing.T) {
 	assert.True(t, found, "Should contain runbook URL as text block")
 }
 
+func TestSenderSlack_BuildSlackBlocks_ResolvedAlert(t *testing.T) {
+	slackSender, _, _ := setupSenderSlackTest(t)
+
+	// Create a resolved issue with timestamp
+	resolvedTime := time.Now().Add(-time.Minute)
+	resolvedIssue := &issuepkg.Issue{
+		Title:       "Resolved Alert",
+		Description: "This alert has been resolved",
+		Severity:    issuepkg.SeverityInfo,
+		Status:      issuepkg.StatusResolved,
+		Source:      issuepkg.SourcePrometheus,
+		ClusterName: "test-cluster",
+		EndsAt:      &resolvedTime,
+		Links: []issuepkg.Link{
+			{Text: "Generator URL", URL: "https://example.com/graph", Type: issuepkg.LinkTypePrometheusGenerator},
+			{Text: "Runbook", URL: "https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubepodcrashlooping", Type: issuepkg.LinkTypeRunbook},
+		},
+		Enrichments: []issuepkg.Enrichment{
+			{
+				Title: stringPtr("Alert Labels"),
+				Blocks: []issuepkg.BaseBlock{
+					&issuepkg.TableBlock{
+						TableName: "Labels",
+						Headers:   []string{"Label", "Value"},
+						Rows:      [][]string{{"severity", "low"}},
+					},
+				},
+			},
+		},
+	}
+
+	blocks := slackSender.buildSlackBlocks(resolvedIssue)
+
+	// For resolved alerts, should only have: header, source info, resolved timestamp (3 blocks max)
+	assert.LessOrEqual(t, len(blocks), 3)
+
+	// First block should be header
+	headerBlock, ok := blocks[0].(*slack.SectionBlock)
+	assert.True(t, ok, "First block should be section block (header)")
+	assert.Contains(t, headerBlock.Text.Text, "Alert resolved")
+	assert.Contains(t, headerBlock.Text.Text, "✅")
+
+	// Should contain source information
+	foundSource := false
+	foundResolved := false
+	for _, block := range blocks {
+		if sectionBlock, ok := block.(*slack.SectionBlock); ok {
+			if strings.Contains(sectionBlock.Text.Text, "Source: PROMETHEUS") &&
+				strings.Contains(sectionBlock.Text.Text, "Cluster: test-cluster") {
+				foundSource = true
+			}
+			if strings.Contains(sectionBlock.Text.Text, "Resolved:") {
+				foundResolved = true
+			}
+		}
+	}
+	assert.True(t, foundSource, "Should contain source and cluster information")
+	assert.True(t, foundResolved, "Should contain resolved timestamp")
+
+	// Should NOT contain enrichments, links, or description blocks
+	for _, block := range blocks {
+		if sectionBlock, ok := block.(*slack.SectionBlock); ok {
+			assert.NotContains(t, sectionBlock.Text.Text, "Alert:")
+			assert.NotContains(t, sectionBlock.Text.Text, "Runbook URL:")
+		}
+		// Should not have action blocks (links)
+		_, isActionBlock := block.(*slack.ActionBlock)
+		assert.False(t, isActionBlock, "Resolved alerts should not have action blocks")
+	}
+}
+
 // Helper function for string pointer
 func stringPtr(s string) *string {
 	return &s
