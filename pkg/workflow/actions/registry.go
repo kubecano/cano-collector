@@ -17,14 +17,16 @@ import (
 type DefaultActionRegistry struct {
 	factories map[string]actions_interfaces.ActionFactory
 	logger    logger_interfaces.LoggerInterface
+	metrics   metric_interfaces.MetricsInterface
 	mu        sync.RWMutex
 }
 
 // NewDefaultActionRegistry creates a new default action registry
-func NewDefaultActionRegistry(logger logger_interfaces.LoggerInterface) *DefaultActionRegistry {
+func NewDefaultActionRegistry(logger logger_interfaces.LoggerInterface, metrics metric_interfaces.MetricsInterface) *DefaultActionRegistry {
 	return &DefaultActionRegistry{
 		factories: make(map[string]actions_interfaces.ActionFactory),
 		logger:    logger,
+		metrics:   metrics,
 	}
 }
 
@@ -217,4 +219,76 @@ func (e *DefaultActionExecutor) ExecuteActions(ctx context.Context, actions []ac
 	}
 
 	return results, nil
+}
+
+// LabelFilterActionFactory creates LabelFilterAction instances
+type LabelFilterActionFactory struct {
+	logger  logger_interfaces.LoggerInterface
+	metrics metric_interfaces.MetricsInterface
+}
+
+// NewLabelFilterActionFactory creates a new LabelFilterActionFactory
+func NewLabelFilterActionFactory(logger logger_interfaces.LoggerInterface, metrics metric_interfaces.MetricsInterface) *LabelFilterActionFactory {
+	return &LabelFilterActionFactory{
+		logger:  logger,
+		metrics: metrics,
+	}
+}
+
+// Create creates a new LabelFilterAction instance
+func (f *LabelFilterActionFactory) Create(config actions_interfaces.ActionConfig) (actions_interfaces.WorkflowAction, error) {
+	if err := f.ValidateConfig(config); err != nil {
+		return nil, err
+	}
+
+	return NewLabelFilterAction(config, f.logger, f.metrics), nil
+}
+
+// GetActionType returns the action type this factory creates
+func (f *LabelFilterActionFactory) GetActionType() string {
+	return "label_filter"
+}
+
+// ValidateConfig validates the action configuration
+func (f *LabelFilterActionFactory) ValidateConfig(config actions_interfaces.ActionConfig) error {
+	if config.Type != "label_filter" {
+		return fmt.Errorf("invalid action type for LabelFilterActionFactory: %s", config.Type)
+	}
+	return nil
+}
+
+// SeverityRouterActionFactory creates SeverityRouterAction instances
+type SeverityRouterActionFactory struct {
+	logger  logger_interfaces.LoggerInterface
+	metrics metric_interfaces.MetricsInterface
+}
+
+// NewSeverityRouterActionFactory creates a new SeverityRouterActionFactory
+func NewSeverityRouterActionFactory(logger logger_interfaces.LoggerInterface, metrics metric_interfaces.MetricsInterface) *SeverityRouterActionFactory {
+	return &SeverityRouterActionFactory{
+		logger:  logger,
+		metrics: metrics,
+	}
+}
+
+// Create creates a new SeverityRouterAction instance
+func (f *SeverityRouterActionFactory) Create(config actions_interfaces.ActionConfig) (actions_interfaces.WorkflowAction, error) {
+	if err := f.ValidateConfig(config); err != nil {
+		return nil, err
+	}
+
+	return NewSeverityRouterAction(config, f.logger, f.metrics), nil
+}
+
+// GetActionType returns the action type this factory creates
+func (f *SeverityRouterActionFactory) GetActionType() string {
+	return "severity_router"
+}
+
+// ValidateConfig validates the action configuration
+func (f *SeverityRouterActionFactory) ValidateConfig(config actions_interfaces.ActionConfig) error {
+	if config.Type != "severity_router" {
+		return fmt.Errorf("invalid action type for SeverityRouterActionFactory: %s", config.Type)
+	}
+	return nil
 }
