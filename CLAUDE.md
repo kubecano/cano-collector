@@ -4,7 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Cano Collector is a Kubernetes alert and event ingestion agent that enriches alerts from Alertmanager and Kubernetes events with contextual information before routing them to configured destinations. It's part of the broader Kubecano platform and currently focuses on Slack integration as its MVP.
+Cano Collector is a **defensive security monitoring tool** - a Kubernetes alert and event ingestion agent that enriches alerts from Alertmanager and Kubernetes events with contextual information before routing them to configured destinations. It reduces alert noise through intelligent routing and contextual enrichment, saving DevOps teams time in cluster diagnostics.
+
+**Key capabilities:**
+- Receives alerts from Alertmanager webhooks
+- Enriches with context (pod logs, resource status, labels)
+- Routes intelligently to appropriate teams
+- Sends to multiple destinations (Slack, Teams, PagerDuty - planned)
+- Minimal notifications for resolved alerts to reduce noise
+
+It's part of the broader Kubecano platform and currently focuses on Slack integration as its MVP.
 
 ## Development Commands
 
@@ -70,12 +79,51 @@ go tool cover -html=coverage.out
    - `config/destination/` - Destination configuration management
    - `config/team/` - Team routing configuration
 
+### Technology Stack
+
+**Backend & Core:**
+- **Go 1.25** - Main programming language
+- **Gin** - HTTP web framework for webhooks
+- **gomock** - Mock generation for testing
+- **testify** - Testing framework with assertions
+
+**Kubernetes & Infrastructure:**
+- **Kubernetes Client-Go** - K8s API integration
+- **Helm** - Packaging and deployment
+- **k3s** - Lightweight Kubernetes for testing
+
+**Monitoring & Observability:**
+- **Prometheus** - Metrics collection (`prometheus/client_golang`)
+- **Grafana** - Dashboards and visualization
+- **Zap (uber-go/zap)** - Structured logging
+- **Sentry** - Error tracking and monitoring
+- **OpenTelemetry/Jaeger** - Distributed tracing
+
+**Messaging & Notifications:**
+- **Slack API** - Primary notification channel (`slack-go/slack`)
+- **Slack Block Kit** - Rich message formatting
+- Support planned: Teams, PagerDuty, OpsGenie, Jira
+
+**Configuration & Storage:**
+- **YAML** - Configuration files
+- **Environment Variables** - Runtime configuration
+- **DynamoDB** - NoSQL storage (SaaS components)
+- **AWS SSM** - Secrets management
+
+**CI/CD & Quality:**
+- **GitHub Actions** - CI/CD pipelines
+- **golangci-lint** - Static analysis and code quality
+- **Sonar** - Additional code quality checks
+- **Renovate/Dependabot** - Automated dependency updates
+
 ### Key Patterns
 
-- **Dependency Injection**: Main function uses factory functions for all components
+- **Clean Architecture**: Clear separation between domain and infrastructure
+- **Dependency Injection**: Factory functions for all components
 - **Strategy Pattern**: Destinations implement `DestinationInterface`
 - **Factory Pattern**: Destination creation through `DestinationFactoryInterface`
 - **Interface Segregation**: Clear interfaces in `*/interfaces/` directories
+- **Repository Pattern**: Configuration loaders with interfaces
 
 ### Data Flow
 
@@ -136,10 +184,37 @@ Issues can contain multiple enrichment blocks:
 - `FileBlock` - File attachments with content
 - `JsonBlock` - Raw JSON data
 
+### Project Structure
+
+**Root Directory:**
+- `main.go` - Application entry point
+- `Makefile` - Build, test, lint commands
+- `Dockerfile` - Containerization
+- `helm/` - Helm chart for Kubernetes deployment
+
+**Core Packages (`pkg/`):**
+- **`core/`** - Domain models (Issue, Events, Enrichments)
+- **`alert/`** - Alert processing pipeline (handler, converter, dispatcher)
+- **`workflow/`** - Workflow engine and actions (pod logs, resource status)
+- **`destination/`** + **`sender/`** - Notification system (Slack, Teams, etc.)
+- **`config/`** - Configuration management (teams, destinations, workflows)
+
+**Infrastructure (`pkg/`):**
+- **`logger/`**, **`metric/`**, **`tracer/`** - Observability
+- **`health/`** - Health checks
+- **`router/`** - Routing logic
+- **`util/`** - Shared utilities
+
+**Other:**
+- **`docs/`** - Sphinx documentation (RST format)
+- **`mocks/`** - Generated test mocks
+- **`dashboards/`** - Grafana dashboards
+
 ### Workflow Actions
 Currently implemented actions:
 - `pod_logs` - Retrieves Kubernetes pod logs
 - `resource_status` - Gets resource status information
+- **Planned**: label filtering, severity routing, pod investigation, Java debugging
 
 ### Slack Integration
 - Uses Slack Block Kit for rich message formatting
