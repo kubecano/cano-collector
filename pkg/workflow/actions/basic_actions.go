@@ -38,22 +38,17 @@ func (a *LabelFilterAction) Execute(ctx context.Context, event core_event.Workfl
 		zap.String("event_type", string(event.GetType())),
 	)
 
-	// Extract alert from event
-	alertEvent, ok := event.(*core_event.AlertManagerWorkflowEvent)
-	if !ok {
-		err := fmt.Errorf("label filter action requires AlertManagerWorkflowEvent, got %T", event)
-		a.logger.Error("Invalid event type for label filter action", zap.Error(err))
+	// Extract alert from event using common helper
+	alertEvent, err := a.ExtractAlertEvent(event, "label filter")
+	if err != nil {
 		return a.CreateErrorResult(err, nil), err
 	}
 
-	// Get the first alert (assuming single alert processing)
-	if len(alertEvent.GetAlertManagerEvent().Alerts) == 0 {
-		err := fmt.Errorf("no alerts found in event")
-		a.logger.Error("No alerts in event", zap.Error(err))
+	// Get the first alert using common helper
+	alert, err := a.GetFirstAlert(alertEvent, "label filter")
+	if err != nil {
 		return a.CreateErrorResult(err, nil), err
 	}
-
-	alert := alertEvent.GetAlertManagerEvent().Alerts[0]
 
 	// Check if alert passes filter
 	passed, reason := a.shouldPassFilter(alert.Labels)
@@ -127,38 +122,6 @@ func (a *LabelFilterAction) shouldPassFilter(labels map[string]string) (bool, st
 	return true, "all label filters passed"
 }
 
-// getMapParameter retrieves a map parameter from action configuration
-func (a *LabelFilterAction) getMapParameter(key string) map[string]string {
-	if value, exists := a.GetParameter(key); exists {
-		if mapValue, ok := value.(map[string]interface{}); ok {
-			result := make(map[string]string)
-			for k, v := range mapValue {
-				if strValue, ok := v.(string); ok {
-					result[k] = strValue
-				}
-			}
-			return result
-		}
-	}
-	return make(map[string]string)
-}
-
-// getSliceParameter retrieves a slice parameter from action configuration
-func (a *LabelFilterAction) getSliceParameter(key string) []string {
-	if value, exists := a.GetParameter(key); exists {
-		if sliceValue, ok := value.([]interface{}); ok {
-			result := make([]string, 0, len(sliceValue))
-			for _, v := range sliceValue {
-				if strValue, ok := v.(string); ok {
-					result = append(result, strValue)
-				}
-			}
-			return result
-		}
-	}
-	return make([]string, 0)
-}
-
 // Validate validates the LabelFilterAction configuration
 func (a *LabelFilterAction) Validate() error {
 	if err := a.ValidateBasicConfig(); err != nil {
@@ -201,25 +164,20 @@ func (a *SeverityRouterAction) Execute(ctx context.Context, event core_event.Wor
 		zap.String("event_type", string(event.GetType())),
 	)
 
-	// Extract alert from event
-	alertEvent, ok := event.(*core_event.AlertManagerWorkflowEvent)
-	if !ok {
-		err := fmt.Errorf("severity router action requires AlertManagerWorkflowEvent, got %T", event)
-		a.logger.Error("Invalid event type for severity router action", zap.Error(err))
+	// Extract alert from event using common helper
+	alertEvent, err := a.ExtractAlertEvent(event, "severity router")
+	if err != nil {
 		return a.CreateErrorResult(err, nil), err
 	}
 
-	// Get the first alert (assuming single alert processing)
-	if len(alertEvent.GetAlertManagerEvent().Alerts) == 0 {
-		err := fmt.Errorf("no alerts found in event")
-		a.logger.Error("No alerts in event", zap.Error(err))
+	// Get the first alert using common helper
+	alert, err := a.GetFirstAlert(alertEvent, "severity router")
+	if err != nil {
 		return a.CreateErrorResult(err, nil), err
 	}
-
-	alert := alertEvent.GetAlertManagerEvent().Alerts[0]
 
 	// Determine severity from alert labels
-	severity, originalLabel := a.extractSeverityFromAlert(alert)
+	severity, originalLabel := a.extractSeverityFromAlert(*alert)
 
 	// Get destination mapping for this severity
 	destination := a.getDestinationForSeverity(severity, originalLabel)
