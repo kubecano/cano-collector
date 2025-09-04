@@ -95,7 +95,8 @@ func createTestWorkflowEvent(status, alertname, severity, namespace string) even
 
 func TestDefaultActionRegistry_NewDefaultActionRegistry(t *testing.T) {
 	logger := logger.NewLogger("debug", "test")
-	registry := NewDefaultActionRegistry(logger)
+	metrics := metric.NewMetricsCollector(logger)
+	registry := NewDefaultActionRegistry(logger, metrics)
 
 	assert.NotNil(t, registry)
 	assert.Empty(t, registry.GetRegisteredTypes())
@@ -103,7 +104,8 @@ func TestDefaultActionRegistry_NewDefaultActionRegistry(t *testing.T) {
 
 func TestDefaultActionRegistry_Register(t *testing.T) {
 	logger := logger.NewLogger("debug", "test")
-	registry := NewDefaultActionRegistry(logger)
+	metrics := metric.NewMetricsCollector(logger)
+	registry := NewDefaultActionRegistry(logger, metrics)
 
 	factory := &mockActionFactory{actionType: "test_action"}
 
@@ -133,7 +135,8 @@ func TestDefaultActionRegistry_Register(t *testing.T) {
 
 func TestDefaultActionRegistry_Create(t *testing.T) {
 	logger := logger.NewLogger("debug", "test")
-	registry := NewDefaultActionRegistry(logger)
+	metrics := metric.NewMetricsCollector(logger)
+	registry := NewDefaultActionRegistry(logger, metrics)
 
 	mockAction := &mockWorkflowAction{name: "test-action"}
 	factory := &mockActionFactory{
@@ -186,7 +189,8 @@ func TestDefaultActionRegistry_Create(t *testing.T) {
 
 func TestDefaultActionRegistry_ThreadSafety(t *testing.T) {
 	logger := logger.NewLogger("debug", "test")
-	registry := NewDefaultActionRegistry(logger)
+	metrics := metric.NewMetricsCollector(logger)
+	registry := NewDefaultActionRegistry(logger, metrics)
 
 	// Test concurrent registrations and creations
 	done := make(chan bool, 10)
@@ -228,7 +232,7 @@ func TestDefaultActionRegistry_ThreadSafety(t *testing.T) {
 func TestDefaultActionExecutor_NewDefaultActionExecutor(t *testing.T) {
 	logger := logger.NewLogger("debug", "test")
 	metrics := metric.NewMetricsCollector(logger)
-	registry := NewDefaultActionRegistry(logger)
+	registry := NewDefaultActionRegistry(logger, metrics)
 
 	executor := NewDefaultActionExecutor(registry, logger, metrics)
 
@@ -238,7 +242,7 @@ func TestDefaultActionExecutor_NewDefaultActionExecutor(t *testing.T) {
 func TestDefaultActionExecutor_ExecuteAction(t *testing.T) {
 	logger := logger.NewLogger("debug", "test")
 	metrics := metric.NewMetricsCollector(logger)
-	registry := NewDefaultActionRegistry(logger)
+	registry := NewDefaultActionRegistry(logger, metrics)
 	executor := NewDefaultActionExecutor(registry, logger, metrics)
 
 	// Create test event
@@ -308,7 +312,7 @@ func TestDefaultActionExecutor_ExecuteAction(t *testing.T) {
 func TestDefaultActionExecutor_CreateActionsFromConfig(t *testing.T) {
 	logger := logger.NewLogger("debug", "test")
 	metrics := metric.NewMetricsCollector(logger)
-	registry := NewDefaultActionRegistry(logger)
+	registry := NewDefaultActionRegistry(logger, metrics)
 	executor := NewDefaultActionExecutor(registry, logger, metrics)
 
 	// Register test factory
@@ -349,7 +353,7 @@ func TestDefaultActionExecutor_CreateActionsFromConfig(t *testing.T) {
 func TestDefaultActionExecutor_ExecuteActions(t *testing.T) {
 	logger := logger.NewLogger("debug", "test")
 	metrics := metric.NewMetricsCollector(logger)
-	registry := NewDefaultActionRegistry(logger)
+	registry := NewDefaultActionRegistry(logger, metrics)
 	executor := NewDefaultActionExecutor(registry, logger, metrics)
 
 	event := createTestWorkflowEvent("firing", "TestAlert", "warning", "default")
@@ -395,7 +399,7 @@ func TestDefaultActionExecutor_ExecuteActions(t *testing.T) {
 func TestDefaultActionExecutor_DeprecatedMethods(t *testing.T) {
 	logger := logger.NewLogger("debug", "test")
 	metrics := metric.NewMetricsCollector(logger)
-	registry := NewDefaultActionRegistry(logger)
+	registry := NewDefaultActionRegistry(logger, metrics)
 	executor := NewDefaultActionExecutor(registry, logger, metrics)
 
 	mockAction := &mockWorkflowAction{name: "test-action"}
