@@ -120,7 +120,7 @@ func run(cfg config.Config, deps AppDependencies) error {
 	converter := deps.ConverterFactory(log, cfg)
 
 	// Initialize workflow components
-	actionRegistry := actions.NewDefaultActionRegistry(log)
+	actionRegistry := actions.NewDefaultActionRegistry(log, metricsCollector)
 
 	// Register workflow actions
 	if err := registerWorkflowActions(actionRegistry, log, metricsCollector); err != nil {
@@ -188,6 +188,18 @@ func registerWorkflowActions(actionRegistry *actions.DefaultActionRegistry, log 
 	// Register Pod Logs Action Factory
 	podLogsFactory := actions.NewPodLogsActionFactory(log, metrics, kubeClient)
 	if err := actionRegistry.Register("pod_logs", podLogsFactory); err != nil {
+		return err
+	}
+
+	// Register Label Filter Action Factory
+	labelFilterFactory := actions.NewLabelFilterActionFactory(log, metrics)
+	if err := actionRegistry.Register("label_filter", labelFilterFactory); err != nil {
+		return err
+	}
+
+	// Register Severity Router Action Factory
+	severityRouterFactory := actions.NewSeverityRouterActionFactory(log, metrics)
+	if err := actionRegistry.Register("severity_router", severityRouterFactory); err != nil {
 		return err
 	}
 

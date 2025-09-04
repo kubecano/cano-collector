@@ -7,6 +7,7 @@ import (
 
 	"go.uber.org/zap"
 
+	core_event "github.com/kubecano/cano-collector/pkg/core/event"
 	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
 	metric_interfaces "github.com/kubecano/cano-collector/pkg/metric/interfaces"
 	actions_interfaces "github.com/kubecano/cano-collector/pkg/workflow/actions/interfaces"
@@ -195,4 +196,57 @@ func (ba *BaseAction) ExecuteWithTimeout(ctx context.Context, fn func(context.Co
 	case <-timeoutCtx.Done():
 		return nil, fmt.Errorf("action %s timed out after %v", ba.config.Name, ba.GetTimeout())
 	}
+}
+
+// ExtractAlertEvent extracts AlertManagerWorkflowEvent from a WorkflowEvent
+func (ba *BaseAction) ExtractAlertEvent(event core_event.WorkflowEvent, actionType string) (*core_event.AlertManagerWorkflowEvent, error) {
+	alertEvent, ok := event.(*core_event.AlertManagerWorkflowEvent)
+	if !ok {
+		err := fmt.Errorf("%s action requires AlertManagerWorkflowEvent, got %T", actionType, event)
+		ba.logger.Error("Invalid event type for action", zap.String("action_type", actionType), zap.Error(err))
+		return nil, err
+	}
+	return alertEvent, nil
+}
+
+// GetFirstAlert extracts the first alert from an AlertManagerWorkflowEvent
+func (ba *BaseAction) GetFirstAlert(alertEvent *core_event.AlertManagerWorkflowEvent, actionType string) (*core_event.PrometheusAlert, error) {
+	if len(alertEvent.GetAlertManagerEvent().Alerts) == 0 {
+		err := fmt.Errorf("no alerts found in event")
+		ba.logger.Error("No alerts in event", zap.String("action_type", actionType), zap.Error(err))
+		return nil, err
+	}
+	return &alertEvent.GetAlertManagerEvent().Alerts[0], nil
+}
+
+// getMapParameter retrieves a map parameter from action configuration
+func (ba *BaseAction) getMapParameter(key string) map[string]string {
+	if value, exists := ba.GetParameter(key); exists {
+		if mapValue, ok := value.(map[string]interface{}); ok {
+			result := make(map[string]string)
+			for k, v := range mapValue {
+				if strValue, ok := v.(string); ok {
+					result[k] = strValue
+				}
+			}
+			return result
+		}
+	}
+	return make(map[string]string)
+}
+
+// getSliceParameter retrieves a slice parameter from action configuration
+func (ba *BaseAction) getSliceParameter(key string) []string {
+	if value, exists := ba.GetParameter(key); exists {
+		if sliceValue, ok := value.([]interface{}); ok {
+			result := make([]string, 0, len(sliceValue))
+			for _, v := range sliceValue {
+				if strValue, ok := v.(string); ok {
+					result = append(result, strValue)
+				}
+			}
+			return result
+		}
+	}
+	return make([]string, 0)
 }
