@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.0.17](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.16...cano-collector-v0.0.17) (2025-09-07)
+
+
+### Features
+
+* 8699hu48u -Simple Workflow Actions ([#206](https://github.com/kubecano/cano-collector/issues/206)) ([2b5e5f7](https://github.com/kubecano/cano-collector/commit/2b5e5f75b35c7dba856fd22d049c3507d24a161b))
+* CU-869a60a2n - Add shorter Slack message for resolved alerts ([#197](https://github.com/kubecano/cano-collector/issues/197)) ([4c5ae07](https://github.com/kubecano/cano-collector/commit/4c5ae075f60c7c11eb6c9f703ea2a9be1220b0df))
+
+
+### Bug Fixes
+
+* **deps:** update kubernetes packages to v0.34.0 ([#201](https://github.com/kubecano/cano-collector/issues/201)) ([510e0f8](https://github.com/kubecano/cano-collector/commit/510e0f8ee28b3e3aea00d4694659d259372200b2))
+* **deps:** update module go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin to v0.63.0 ([#203](https://github.com/kubecano/cano-collector/issues/203)) ([4823f72](https://github.com/kubecano/cano-collector/commit/4823f726883e88993478651b387c5d6291a0b0d3))
+* **deps:** update opentelemetry-go monorepo to v1.38.0 ([#204](https://github.com/kubecano/cano-collector/issues/204)) ([d16b021](https://github.com/kubecano/cano-collector/commit/d16b02131d5f985c17bab79ce53381500dc23d6c))
+
 ## [0.0.16](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.15...cano-collector-v0.0.16) (2025-08-17)
 
 
