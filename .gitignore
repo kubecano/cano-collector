@@ -26,3 +26,5 @@ go.work.sum
 .env
 custom_values.yaml
 docs/_build
+CLAUDE.md
+.claude
