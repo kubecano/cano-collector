@@ -16,9 +16,6 @@ type WorkflowEngineInterface interface {
 	// SelectWorkflows returns workflows that match the given event
 	SelectWorkflows(event event.WorkflowEvent) []*workflow.WorkflowDefinition
 
-	// ExecuteWorkflow executes a single workflow for the given event
-	ExecuteWorkflow(ctx context.Context, workflow *workflow.WorkflowDefinition, event event.WorkflowEvent) error
-
 	// ExecuteWorkflowWithEnrichments executes a workflow and returns enrichments from the results
 	ExecuteWorkflowWithEnrichments(ctx context.Context, workflow *workflow.WorkflowDefinition, event event.WorkflowEvent) ([]issue.Enrichment, error)
 

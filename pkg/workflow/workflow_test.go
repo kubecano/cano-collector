@@ -12,6 +12,9 @@ import (
 
 	"github.com/kubecano/cano-collector/config/workflow"
 	"github.com/kubecano/cano-collector/pkg/core/event"
+	"github.com/kubecano/cano-collector/pkg/core/issue"
+	"github.com/kubecano/cano-collector/pkg/logger"
+	"github.com/kubecano/cano-collector/pkg/metric"
 	actions_interfaces "github.com/kubecano/cano-collector/pkg/workflow/actions/interfaces"
 )
 
@@ -237,17 +240,18 @@ func TestWorkflowEngine_TriggerMatching(t *testing.T) {
 	assert.Empty(t, matchingWorkflows)
 }
 
-func TestWorkflowEngine_ExecuteWorkflow(t *testing.T) {
+func TestWorkflowEngine_ExecuteWorkflowWithEnrichments_NoExecutor(t *testing.T) {
 	config := createBasicWorkflowConfig()
 	engine := createTestEngine(config)
 
 	workflowEvent := createTestWorkflowEvent("firing", "TestAlert", "warning", "default")
 	workflow := &config.ActiveWorkflows[0]
 
-	// Test ExecuteWorkflow - should return error due to missing executor
+	// Test ExecuteWorkflowWithEnrichments - should return error due to missing executor
 	ctx := context.Background()
-	err := engine.ExecuteWorkflow(ctx, workflow, workflowEvent)
+	enrichments, err := engine.ExecuteWorkflowWithEnrichments(ctx, workflow, workflowEvent)
 	require.Error(t, err)
+	assert.Nil(t, enrichments)
 	assert.Contains(t, err.Error(), "action executor is not configured")
 }
 
@@ -413,7 +417,7 @@ func TestWorkflowEngine_ActionTypeInference_Deterministic(t *testing.T) {
 	var inferredTypes []string
 	for i := 0; i < 5; i++ {
 		capturedConfigs = []actions_interfaces.ActionConfig{} // Reset
-		err := engine.ExecuteWorkflow(ctx, workflow, workflowEvent)
+		_, err := engine.ExecuteWorkflowWithEnrichments(ctx, workflow, workflowEvent)
 		require.NoError(t, err)
 
 		require.Len(t, capturedConfigs, 1)
@@ -462,4 +466,224 @@ func (m *mockActionExecutor) ExecuteActions(ctx context.Context, actions []actio
 		return m.executeActionsFunc(ctx, actions, event)
 	}
 	return []*actions_interfaces.ActionResult{}, nil
+}
+
+// Test createActionConfigs method
+func TestWorkflowEngine_CreateActionConfigs(t *testing.T) {
+	engine := createTestEngine(&workflow.WorkflowConfig{})
+
+	tests := []struct {
+		name          string
+		workflowDef   *workflow.WorkflowDefinition
+		expectedCount int
+		expectError   bool
+		expectedTypes []string
+	}{
+		{
+			name: "single action with explicit type",
+			workflowDef: &workflow.WorkflowDefinition{
+				Name: "test-workflow",
+				Actions: []workflow.ActionDefinition{
+					{
+						ActionType: "pod_logs",
+						RawData: map[string]interface{}{
+							"namespace": "default",
+						},
+					},
+				},
+			},
+			expectedCount: 1,
+			expectError:   false,
+			expectedTypes: []string{"pod_logs"},
+		},
+		{
+			name: "action with inferred type",
+			workflowDef: &workflow.WorkflowDefinition{
+				Name: "test-workflow",
+				Actions: []workflow.ActionDefinition{
+					{
+						ActionType: "",
+						RawData: map[string]interface{}{
+							"pod_logs": map[string]interface{}{
+								"namespace": "default",
+							},
+							"action_type": "", // Should be ignored
+						},
+					},
+				},
+			},
+			expectedCount: 1,
+			expectError:   false,
+			expectedTypes: []string{"pod_logs"},
+		},
+		{
+			name: "action with no type",
+			workflowDef: &workflow.WorkflowDefinition{
+				Name: "test-workflow",
+				Actions: []workflow.ActionDefinition{
+					{
+						ActionType: "",
+						RawData:    map[string]interface{}{},
+					},
+				},
+			},
+			expectedCount: 0,
+			expectError:   true,
+		},
+		{
+			name: "multiple actions with deterministic inference",
+			workflowDef: &workflow.WorkflowDefinition{
+				Name: "test-workflow",
+				Actions: []workflow.ActionDefinition{
+					{
+						ActionType: "",
+						RawData: map[string]interface{}{
+							"zebra_action": map[string]interface{}{},
+							"alpha_action": map[string]interface{}{},
+						},
+					},
+				},
+			},
+			expectedCount: 1,
+			expectError:   false,
+			expectedTypes: []string{"alpha_action"}, // Should be alphabetically first
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			configs, err := engine.createActionConfigs(tt.workflowDef)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Len(t, configs, tt.expectedCount)
+
+			for i, expectedType := range tt.expectedTypes {
+				assert.Equal(t, expectedType, configs[i].Type)
+				assert.Equal(t, fmt.Sprintf("%s-action-%d", tt.workflowDef.Name, i), configs[i].Name)
+				assert.True(t, configs[i].Enabled)
+				assert.Equal(t, 30, configs[i].Timeout)
+			}
+		})
+	}
+}
+
+// Test ExecuteWorkflowWithEnrichments method
+func TestWorkflowEngine_ExecuteWorkflowWithEnrichments(t *testing.T) {
+	// Create a mock executor that returns enrichments
+	mockExecutor := &mockActionExecutor{
+		createActionsFromConfigFunc: func(configs []actions_interfaces.ActionConfig) ([]actions_interfaces.WorkflowAction, error) {
+			return []actions_interfaces.WorkflowAction{}, nil
+		},
+		executeActionsFunc: func(ctx context.Context, actions []actions_interfaces.WorkflowAction, event event.WorkflowEvent) ([]*actions_interfaces.ActionResult, error) {
+			enrichment := issue.NewEnrichmentWithType(issue.EnrichmentTypeTextFile, "Test Enrichment")
+			enrichment.AddBlock(issue.NewMarkdownBlock("Test content"))
+			return []*actions_interfaces.ActionResult{
+				{
+					Success:     true,
+					Enrichments: []issue.Enrichment{*enrichment},
+				},
+			}, nil
+		},
+	}
+
+	config := createBasicWorkflowConfig()
+	log := logger.NewLogger("debug", "test")
+	metrics := metric.NewMetricsCollector(log)
+	engine := NewWorkflowEngine(config, mockExecutor, log, metrics)
+
+	ctx := context.Background()
+	workflowEvent := createTestWorkflowEvent("firing", "TestAlert", "warning", "default")
+	workflow := &config.ActiveWorkflows[0]
+
+	enrichments, err := engine.ExecuteWorkflowWithEnrichments(ctx, workflow, workflowEvent)
+	require.NoError(t, err)
+	assert.Len(t, enrichments, 1)
+	assert.Equal(t, "Test Enrichment", *enrichments[0].Title)
+}
+
+// Test ExecuteWorkflowsWithEnrichments method
+func TestWorkflowEngine_ExecuteWorkflowsWithEnrichments(t *testing.T) {
+	// Create a mock executor that returns enrichments
+	mockExecutor := &mockActionExecutor{
+		createActionsFromConfigFunc: func(configs []actions_interfaces.ActionConfig) ([]actions_interfaces.WorkflowAction, error) {
+			return []actions_interfaces.WorkflowAction{}, nil
+		},
+		executeActionsFunc: func(ctx context.Context, actions []actions_interfaces.WorkflowAction, event event.WorkflowEvent) ([]*actions_interfaces.ActionResult, error) {
+			enrichment := issue.NewEnrichmentWithType(issue.EnrichmentTypeTextFile, "Multiple Enrichment")
+			enrichment.AddBlock(issue.NewMarkdownBlock("Multiple content"))
+			return []*actions_interfaces.ActionResult{
+				{
+					Success:     true,
+					Enrichments: []issue.Enrichment{*enrichment},
+				},
+			}, nil
+		},
+	}
+
+	config := createBasicWorkflowConfig()
+	log := logger.NewLogger("debug", "test")
+	metrics := metric.NewMetricsCollector(log)
+	engine := NewWorkflowEngine(config, mockExecutor, log, metrics)
+
+	ctx := context.Background()
+	workflowEvent := createTestWorkflowEvent("firing", "TestAlert", "warning", "default")
+	workflows := []*workflow.WorkflowDefinition{
+		&config.ActiveWorkflows[0],
+		&config.ActiveWorkflows[1],
+	}
+
+	enrichments, err := engine.ExecuteWorkflowsWithEnrichments(ctx, workflows, workflowEvent)
+	require.NoError(t, err)
+	assert.Len(t, enrichments, 2) // One from each workflow
+	assert.Equal(t, "Multiple Enrichment", *enrichments[0].Title)
+}
+
+// Test ExecuteWorkflowWithEnrichments error cases
+func TestWorkflowEngine_ExecuteWorkflowWithEnrichments_Errors(t *testing.T) {
+	config := createBasicWorkflowConfig()
+	log := logger.NewLogger("debug", "test")
+	metrics := metric.NewMetricsCollector(log)
+	engine := NewWorkflowEngine(config, nil, log, metrics)
+
+	ctx := context.Background()
+	workflowEvent := createTestWorkflowEvent("firing", "TestAlert", "warning", "default")
+
+	// Test nil workflow
+	enrichments, err := engine.ExecuteWorkflowWithEnrichments(ctx, nil, workflowEvent)
+	require.Error(t, err)
+	assert.Nil(t, enrichments)
+	assert.Contains(t, err.Error(), "workflow definition cannot be nil")
+
+	// Test nil event
+	workflow := &config.ActiveWorkflows[0]
+	enrichments, err = engine.ExecuteWorkflowWithEnrichments(ctx, workflow, nil)
+	require.Error(t, err)
+	assert.Nil(t, enrichments)
+	assert.Contains(t, err.Error(), "workflow event cannot be nil")
+
+	// Test nil executor
+	enrichments, err = engine.ExecuteWorkflowWithEnrichments(ctx, workflow, workflowEvent)
+	require.Error(t, err)
+	assert.Nil(t, enrichments)
+	assert.Contains(t, err.Error(), "action executor is not configured")
+}
+
+// Test ExecuteWorkflowsWithEnrichments with empty workflow list
+func TestWorkflowEngine_ExecuteWorkflowsWithEnrichments_EmptyList(t *testing.T) {
+	config := createBasicWorkflowConfig()
+	log := logger.NewLogger("debug", "test")
+	metrics := metric.NewMetricsCollector(log)
+	engine := NewWorkflowEngine(config, nil, log, metrics)
+
+	ctx := context.Background()
+	workflowEvent := createTestWorkflowEvent("firing", "TestAlert", "warning", "default")
+
+	enrichments, err := engine.ExecuteWorkflowsWithEnrichments(ctx, []*workflow.WorkflowDefinition{}, workflowEvent)
+	require.NoError(t, err)
+	assert.Empty(t, enrichments)
 }

@@ -37,20 +37,6 @@ func (m *MockWorkflowEngineInterface) EXPECT() *MockWorkflowEngineInterfaceMockR
 	return m.recorder
 }
 
-// ExecuteWorkflow mocks base method.
-func (m *MockWorkflowEngineInterface) ExecuteWorkflow(ctx context.Context, workflow *workflow.WorkflowDefinition, event event.WorkflowEvent) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExecuteWorkflow", ctx, workflow, event)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// ExecuteWorkflow indicates an expected call of ExecuteWorkflow.
-func (mr *MockWorkflowEngineInterfaceMockRecorder) ExecuteWorkflow(ctx, workflow, event interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecuteWorkflow", reflect.TypeOf((*MockWorkflowEngineInterface)(nil).ExecuteWorkflow), ctx, workflow, event)
-}
-
 // ExecuteWorkflowWithEnrichments mocks base method.
 func (m *MockWorkflowEngineInterface) ExecuteWorkflowWithEnrichments(ctx context.Context, workflow *workflow.WorkflowDefinition, event event.WorkflowEvent) ([]issue.Enrichment, error) {
 	m.ctrl.T.Helper()

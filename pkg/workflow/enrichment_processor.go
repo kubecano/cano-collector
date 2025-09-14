@@ -2,11 +2,9 @@ package workflow
 
 import (
 	"context"
-	"fmt"
 
 	"go.uber.org/zap"
 
-	"github.com/kubecano/cano-collector/config/workflow"
 	"github.com/kubecano/cano-collector/pkg/core/event"
 	"github.com/kubecano/cano-collector/pkg/core/issue"
 	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
@@ -62,7 +60,7 @@ func (ep *EnrichmentProcessor) ProcessWorkflowEnrichments(
 	enrichments, err := workflowEngine.ExecuteWorkflowsWithEnrichments(ctx, matchingWorkflows, workflowEvent)
 	if err != nil {
 		ep.logger.Error("Failed to execute workflows for enrichments", zap.Error(err))
-		return nil
+		return err
 	}
 
 	// Group enrichments by workflow name for application to issues
@@ -97,39 +95,4 @@ func (ep *EnrichmentProcessor) ProcessWorkflowEnrichments(
 	)
 
 	return nil
-}
-
-// executeWorkflowForEnrichments executes a workflow and extracts enrichments from the results
-func (ep *EnrichmentProcessor) executeWorkflowForEnrichments(
-	ctx context.Context,
-	workflowEngine workflow_interfaces.WorkflowEngineInterface,
-	workflowDef *workflow.WorkflowDefinition,
-	workflowEvent event.WorkflowEvent,
-) ([]issue.Enrichment, error) {
-	// Use a custom executor to capture enrichments instead of executing through the main engine
-	// This prevents duplicate execution but allows us to collect enrichments
-
-	// For now, we'll execute the workflow and extract enrichments
-	// In a future optimization, we could modify the engine to return enrichments
-	// without executing side effects
-
-	err := workflowEngine.ExecuteWorkflow(ctx, workflowDef, workflowEvent)
-	if err != nil {
-		return nil, fmt.Errorf("workflow execution failed: %w", err)
-	}
-
-	// Since the current ExecuteWorkflow doesn't return enrichments directly,
-	// we need to modify this approach. For now, we'll return empty enrichments
-	// and rely on the fact that the workflow has already been executed in the AlertHandler.
-
-	// TODO: This is a design limitation - we need to either:
-	// 1. Modify WorkflowEngine.ExecuteWorkflow to return ActionResults with enrichments
-	// 2. Or create a separate method that executes workflows and returns enrichments
-	// 3. Or modify the AlertHandler to pass enrichments to the converter
-
-	ep.logger.Warn("EnrichmentProcessor currently relies on workflow execution in AlertHandler",
-		zap.String("workflow_name", workflowDef.Name),
-		zap.String("note", "This is a design limitation that needs to be addressed"))
-
-	return []issue.Enrichment{}, nil
 }
