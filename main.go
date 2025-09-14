@@ -129,7 +129,7 @@ func run(cfg config.Config, deps AppDependencies) error {
 	}
 
 	actionExecutor := actions.NewDefaultActionExecutor(actionRegistry, log, metricsCollector)
-	workflowEngine := workflow.NewWorkflowEngine(&cfg.Workflows, actionExecutor)
+	workflowEngine := workflow.NewWorkflowEngine(&cfg.Workflows, actionExecutor, log, metricsCollector)
 
 	alertHandler := deps.AlertHandlerFactory(cfg, log, metricsCollector, teamResolver, alertDispatcher, converter, workflowEngine)
 

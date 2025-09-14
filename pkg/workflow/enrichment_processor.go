@@ -58,26 +58,22 @@ func (ep *EnrichmentProcessor) ProcessWorkflowEnrichments(
 		zap.Int("issues_count", len(issues)),
 	)
 
-	// Execute workflows and collect enrichments
-	allEnrichments := make(map[string][]issue.Enrichment) // workflow name -> enrichments
+	// Execute workflows and collect enrichments using the new enrichment-aware method
+	enrichments, err := workflowEngine.ExecuteWorkflowsWithEnrichments(ctx, matchingWorkflows, workflowEvent)
+	if err != nil {
+		ep.logger.Error("Failed to execute workflows for enrichments", zap.Error(err))
+		return nil
+	}
 
-	for _, workflow := range matchingWorkflows {
-		// Execute workflow and capture enrichments
-		enrichments, err := ep.executeWorkflowForEnrichments(ctx, workflowEngine, workflow, workflowEvent)
-		if err != nil {
-			ep.logger.Error("Failed to execute workflow for enrichments",
-				zap.Error(err),
-				zap.String("workflow_name", workflow.Name))
-			continue
-		}
-
-		if len(enrichments) > 0 {
-			allEnrichments[workflow.Name] = enrichments
-			ep.logger.Info("Collected enrichments from workflow",
-				zap.String("workflow_name", workflow.Name),
-				zap.Int("enrichments_count", len(enrichments)),
-			)
-		}
+	// Group enrichments by workflow name for application to issues
+	allEnrichments := make(map[string][]issue.Enrichment)
+	if len(enrichments) > 0 {
+		// For now, we'll apply all enrichments from all workflows
+		// Future enhancement could track which workflow generated which enrichments
+		allEnrichments["all_workflows"] = enrichments
+		ep.logger.Info("Collected enrichments from workflows",
+			zap.Int("total_enrichments", len(enrichments)),
+		)
 	}
 
 	// Apply enrichments to all issues

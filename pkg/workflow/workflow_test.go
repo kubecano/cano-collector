@@ -125,7 +125,7 @@ func createSpecificWorkflowConfig(alertName, status, severity, namespace string)
 
 // createTestEngine creates a WorkflowEngine with nil executor for testing
 func createTestEngine(config *workflow.WorkflowConfig) *WorkflowEngine {
-	return NewWorkflowEngine(config, nil)
+	return NewWorkflowEngine(config, nil, nil, nil)
 }
 
 // Test functions
@@ -403,7 +403,7 @@ func TestWorkflowEngine_ActionTypeInference_Deterministic(t *testing.T) {
 		},
 	}
 
-	engine := NewWorkflowEngine(workflowConfig, mockExecutor)
+	engine := NewWorkflowEngine(workflowConfig, mockExecutor, nil, nil)
 	workflowEvent := createTestWorkflowEvent("firing", "TestAlert", "warning", "default")
 
 	// Execute workflow multiple times to ensure deterministic behavior

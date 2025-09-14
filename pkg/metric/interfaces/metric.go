@@ -30,4 +30,9 @@ type MetricsInterface interface {
 	// Routing metrics
 	IncRoutingDecisions(teamName, destinationType, decision string)
 	IncTeamsMatched(teamName, alertName string)
+
+	// Workflow metrics
+	IncWorkflowsExecuted(workflowName, status string)
+	ObserveWorkflowEnrichments(workflowName string, enrichmentCount int)
+	IncWorkflowEnrichmentErrors(workflowName, errorType string)
 }

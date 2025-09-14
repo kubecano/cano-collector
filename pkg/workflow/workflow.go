@@ -5,9 +5,13 @@ import (
 	"fmt"
 	"sort"
 
+	"go.uber.org/zap"
+
 	"github.com/kubecano/cano-collector/config/workflow"
 	"github.com/kubecano/cano-collector/pkg/core/event"
 	"github.com/kubecano/cano-collector/pkg/core/issue"
+	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
+	metric_interfaces "github.com/kubecano/cano-collector/pkg/metric/interfaces"
 	actions_interfaces "github.com/kubecano/cano-collector/pkg/workflow/actions/interfaces"
 )
 
@@ -15,13 +19,17 @@ import (
 type WorkflowEngine struct {
 	config   *workflow.WorkflowConfig
 	executor actions_interfaces.ActionExecutor
+	logger   logger_interfaces.LoggerInterface
+	metrics  metric_interfaces.MetricsInterface
 }
 
 // NewWorkflowEngine creates a new workflow engine
-func NewWorkflowEngine(config *workflow.WorkflowConfig, executor actions_interfaces.ActionExecutor) *WorkflowEngine {
+func NewWorkflowEngine(config *workflow.WorkflowConfig, executor actions_interfaces.ActionExecutor, logger logger_interfaces.LoggerInterface, metrics metric_interfaces.MetricsInterface) *WorkflowEngine {
 	return &WorkflowEngine{
 		config:   config,
 		executor: executor,
+		logger:   logger,
+		metrics:  metrics,
 	}
 }
 
@@ -157,13 +165,19 @@ func (we *WorkflowEngine) ExecuteWorkflow(ctx context.Context, wf *workflow.Work
 	// Create workflow actions from configs
 	workflowActions, err := we.executor.CreateActionsFromConfig(actionConfigs)
 	if err != nil {
-		return fmt.Errorf("failed to create actions for workflow '%s': %w", wf.Name, err)
+		we.logger.Error("Failed to create actions for workflow",
+			zap.String("workflow", wf.Name),
+			zap.Error(err))
+		return err
 	}
 
 	// Execute actions in sequence using the provided context
 	results, err := we.executor.ExecuteActions(ctx, workflowActions, event)
 	if err != nil {
-		return fmt.Errorf("failed to execute actions for workflow '%s': %w", wf.Name, err)
+		we.logger.Error("Failed to execute actions for workflow",
+			zap.String("workflow", wf.Name),
+			zap.Error(err))
+		return err
 	}
 
 	// Process results - check if any action failed
@@ -180,8 +194,12 @@ func (we *WorkflowEngine) ExecuteWorkflow(ctx context.Context, wf *workflow.Work
 
 	// Return error if any actions failed (could be configurable in the future)
 	if len(actionErrors) > 0 {
-		return fmt.Errorf("workflow '%s' completed with %d/%d actions successful, errors: %v",
-			wf.Name, successCount, len(results), actionErrors)
+		we.logger.Error("Workflow completed with action failures",
+			zap.String("workflow", wf.Name),
+			zap.Int("successful_actions", successCount),
+			zap.Int("total_actions", len(results)),
+			zap.Any("action_errors", actionErrors))
+		return fmt.Errorf("workflow '%s' completed with %d/%d actions successful", wf.Name, successCount, len(results))
 	}
 
 	return nil
@@ -254,13 +272,19 @@ func (we *WorkflowEngine) ExecuteWorkflowWithEnrichments(ctx context.Context, wf
 	// Create workflow actions from configs
 	workflowActions, err := we.executor.CreateActionsFromConfig(actionConfigs)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create actions for workflow '%s': %w", wf.Name, err)
+		we.logger.Error("Failed to create actions for workflow",
+			zap.String("workflow", wf.Name),
+			zap.Error(err))
+		return nil, err
 	}
 
 	// Execute actions in sequence using the provided context
 	results, err := we.executor.ExecuteActions(ctx, workflowActions, event)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute actions for workflow '%s': %w", wf.Name, err)
+		we.logger.Error("Failed to execute actions for workflow",
+			zap.String("workflow", wf.Name),
+			zap.Error(err))
+		return nil, err
 	}
 
 	// Collect enrichments from all successful action results
@@ -275,9 +299,31 @@ func (we *WorkflowEngine) ExecuteWorkflowWithEnrichments(ctx context.Context, wf
 		} else if result.Error != nil {
 			// Log error but don't fail completely - collect what we can
 			// This allows partial enrichment even if some actions fail
-			fmt.Printf("Action %d in workflow '%s' failed: %v\n", i, wf.Name, result.Error)
+			we.logger.Warn("Action failed in workflow, continuing with partial enrichment",
+				zap.Int("action_index", i),
+				zap.String("workflow", wf.Name),
+				zap.Error(result.Error))
+			we.metrics.IncWorkflowEnrichmentErrors(wf.Name, "action_execution_failed")
 		}
 	}
+
+	// Record metrics for workflow execution
+	if successCount == len(results) {
+		we.metrics.IncWorkflowsExecuted(wf.Name, "success")
+	} else if successCount > 0 {
+		we.metrics.IncWorkflowsExecuted(wf.Name, "partial_success")
+	} else {
+		we.metrics.IncWorkflowsExecuted(wf.Name, "failed")
+	}
+
+	// Record enrichment count
+	we.metrics.ObserveWorkflowEnrichments(wf.Name, len(allEnrichments))
+
+	we.logger.Info("Workflow execution completed",
+		zap.String("workflow", wf.Name),
+		zap.Int("successful_actions", successCount),
+		zap.Int("total_actions", len(results)),
+		zap.Int("enrichments_generated", len(allEnrichments)))
 
 	return allEnrichments, nil
 }
@@ -294,7 +340,10 @@ func (we *WorkflowEngine) ExecuteWorkflowsWithEnrichments(ctx context.Context, w
 	for _, wf := range workflows {
 		enrichments, err := we.ExecuteWorkflowWithEnrichments(ctx, wf, event)
 		if err != nil {
-			errors = append(errors, fmt.Errorf("workflow '%s' failed: %w", wf.Name, err))
+			we.logger.Error("Workflow execution failed, continuing with others",
+				zap.String("workflow", wf.Name),
+				zap.Error(err))
+			errors = append(errors, err)
 			continue
 		}
 		allEnrichments = append(allEnrichments, enrichments...)
@@ -303,7 +352,10 @@ func (we *WorkflowEngine) ExecuteWorkflowsWithEnrichments(ctx context.Context, w
 	// Return enrichments even if some workflows failed
 	// This allows graceful degradation
 	if len(errors) > 0 && len(allEnrichments) == 0 {
-		return nil, fmt.Errorf("all workflows failed: %v", errors)
+		we.logger.Error("All workflows failed, no enrichments collected",
+			zap.Int("workflow_count", len(workflows)),
+			zap.Int("error_count", len(errors)))
+		return nil, fmt.Errorf("all %d workflows failed", len(workflows))
 	}
 
 	return allEnrichments, nil
