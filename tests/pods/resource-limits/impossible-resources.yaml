@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: impossible-resources-test
+  labels:
+    app: test-pod
+    test-type: resource-limits
+    scenario: impossible-resources
+spec:
+  containers:
+  - name: resource-monster
+    image: busybox:latest
+    command: ["echo", "This should never run due to impossible resource requirements"]
+    resources:
+      limits:
+        cpu: "1000"     # 1000 CPU cores - impossible on any single node
+        memory: "1000Gi" # 1000 GB RAM - impossible on most nodes
+      requests:
+        cpu: "500"      # 500 CPU cores - impossible
+        memory: "500Gi" # 500 GB RAM - impossible
+  restartPolicy: Always
+  # Pod requests impossible amounts of CPU and memory
+  # No Kubernetes node will have these resources available
+  # Pod will permanently remain in Pending state
+  # Scheduler will never be able to place this pod
+  # Events will show "Insufficient memory" and "Insufficient cpu"
+  # This tests cano-collector's handling of permanently unschedulable pods

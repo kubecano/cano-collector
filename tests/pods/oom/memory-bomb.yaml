@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: memory-bomb-test
+  labels:
+    app: test-pod
+    test-type: oom
+    scenario: memory-bomb
+spec:
+  containers:
+  - name: memory-bomb
+    image: busybox:latest
+    command: ["sh", "-c"]
+    args:
+    - |
+      echo "Starting memory bomb test..."
+      echo "Memory limit: 128Mi, will try to allocate 200MB"
+      echo "This should trigger OOMKilled event"
+      
+      # Fast memory allocation - fills 200MB quickly
+      # Using 'yes' to generate data, 'tr' to replace newlines with 'x'
+      # 'head -c 200m' takes first 200MB, 'grep n' keeps it in memory
+      yes | tr \\n x | head -c 200m | grep n
+    resources:
+      limits:
+        memory: "128Mi"  # 128 MiB limit
+        cpu: "500m"
+      requests:
+        memory: "64Mi"
+        cpu: "100m"
+  restartPolicy: Always
+  # Process will be killed by OOM killer when memory usage exceeds 128Mi
+  # Kubernetes will restart the pod, creating crash loop with OOMKilled reason

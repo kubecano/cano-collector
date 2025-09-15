@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: replica-failure-test
+  labels:
+    app: test-deployment
+    test-type: deployment
+    scenario: replica-failure
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: replica-failure-app
+  template:
+    metadata:
+      labels:
+        app: replica-failure-app
+        test-type: deployment
+        scenario: replica-failure
+    spec:
+      containers:
+      - name: failing-app
+        # Using non-existent image to cause ImagePullBackOff
+        image: nonexistent-registry.io/fake/app:v1.0.0
+        command: ["echo", "This should never run"]
+        ports:
+        - containerPort: 8080
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+      restartPolicy: Always
+  # Deployment strategy to show failure progression
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+# Deployment will try to create 3 replicas
+# All replicas will fail due to ImagePullBackOff
+# Deployment will show ReplicaFailure condition
+# Available replicas will remain 0/3
+# Events will show "Failed to pull image" for each replica attempt

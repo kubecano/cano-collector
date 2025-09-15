@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: loadbalancer-pending-test
+  labels:
+    app: test-service
+    test-type: service
+    scenario: loadbalancer-pending
+spec:
+  selector:
+    app: lb-test-app
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+    protocol: TCP
+  type: LoadBalancer
+  # Optional: Specify load balancer class that might not be available
+  # loadBalancerClass: "example.com/custom-lb"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: lb-test-pod
+  labels:
+    app: lb-test-app
+    test-type: service
+    scenario: loadbalancer-pending
+spec:
+  containers:
+  - name: test-app
+    image: nginx:alpine
+    ports:
+    - containerPort: 8080
+    command: ["sh", "-c"]
+    args:
+    - |
+      # Configure nginx to listen on port 8080
+      echo 'server { listen 8080; location / { return 200 "LoadBalancer Test App"; } }' > /etc/nginx/conf.d/default.conf
+      nginx -g 'daemon off;'
+  restartPolicy: Always
+# LoadBalancer service will be created and try to provision external IP
+# In many environments (minikube, kind, some cloud setups), this will:
+# - Remain in "Pending" state indefinitely
+# - Show no external IP assigned
+# - Events may show load balancer provisioning issues
+# 
+# Expected behavior:
+# - Service status shows "LoadBalancer Ingress: <pending>"
+# - External IP remains <none> or <pending>
+# - cano-collector should detect LoadBalancer in pending state
+#
+# Note: In cloud environments with proper LB support, this might actually work
+# To force failure, uncomment the loadBalancerClass line with non-existent class

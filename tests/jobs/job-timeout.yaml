@@ -1,0 +1,48 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-timeout-test
+  labels:
+    app: test-job
+    test-type: job
+    scenario: job-timeout
+spec:
+  # Job will timeout after 30 seconds
+  activeDeadlineSeconds: 30
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: test-job
+        test-type: job
+        scenario: job-timeout
+    spec:
+      containers:
+      - name: slow-task
+        image: busybox:latest
+        command: ["sh", "-c"]
+        args:
+        - |
+          echo "Starting long-running job that will timeout..."
+          echo "Job configured with 30 second timeout"
+          echo "This task will take 60 seconds, causing timeout"
+          
+          # Simulate long-running task that exceeds deadline
+          for i in $(seq 1 60); do
+            echo "Working... step $i/60"
+            sleep 1
+          done
+          
+          echo "This should not be reached due to timeout"
+        resources:
+          limits:
+            memory: "64Mi"
+            cpu: "100m"
+          requests:
+            memory: "32Mi"
+            cpu: "50m"
+      restartPolicy: Never
+  # Job has activeDeadlineSeconds: 30 but task takes 60 seconds
+  # Kubernetes will terminate the job after 30 seconds
+  # Job will be marked as Failed with reason "DeadlineExceeded"
+  # Events will show timeout-related messages

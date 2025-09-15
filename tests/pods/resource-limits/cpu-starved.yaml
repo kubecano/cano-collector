@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cpu-starved-test
+  labels:
+    app: test-pod
+    test-type: resource-limits
+    scenario: cpu-starved
+spec:
+  containers:
+  - name: cpu-hungry
+    image: busybox:latest
+    command: ["sh", "-c"]
+    args:
+    - |
+      echo "Starting CPU intensive task..."
+      echo "This pod requests more CPU than typically available on a node"
+      echo "Should remain in Pending state due to insufficient CPU resources"
+      
+      # CPU intensive task (if ever scheduled)
+      while true; do
+        echo "Consuming CPU cycles..." > /dev/null
+      done
+    resources:
+      limits:
+        cpu: "2000m"    # 2 CPU cores limit
+        memory: "128Mi"
+      requests:
+        cpu: "1500m"    # Request 1.5 CPU cores - often more than available
+        memory: "64Mi"
+  restartPolicy: Always
+  # Pod requests 1.5 CPU cores which may not be available on many nodes
+  # Kubernetes scheduler cannot place the pod due to insufficient CPU
+  # Pod will remain in Pending state with FailedScheduling events
+  # Events will show "Insufficient cpu" or similar resource constraint messages

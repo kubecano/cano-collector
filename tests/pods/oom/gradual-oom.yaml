@@ -1,0 +1,79 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gradual-oom-script
+  labels:
+    test-type: oom
+    scenario: gradual-oom
+data:
+  leak-memory.py: |
+    #!/usr/bin/env python3
+    import time
+    import sys
+    
+    def leak_memory():
+        print("Starting gradual memory leak simulation...")
+        print("Memory limit: 64Mi, will slowly consume memory")
+        
+        # List to hold memory chunks
+        memory_chunks = []
+        chunk_size = 1024 * 1024  # 1MB chunks
+        
+        try:
+            for i in range(100):  # Try to allocate 100MB total
+                print(f"Allocating chunk {i+1} (1MB)... Total: {(i+1)}MB")
+                
+                # Allocate 1MB of data
+                chunk = 'x' * chunk_size
+                memory_chunks.append(chunk)
+                
+                # Keep references to prevent garbage collection
+                # Sleep to make it gradual
+                time.sleep(2)
+                
+                # Print memory usage simulation
+                if (i + 1) % 10 == 0:
+                    print(f"Memory usage: ~{i+1}MB")
+                    
+        except MemoryError:
+            print("Memory allocation failed - out of memory")
+            sys.exit(1)
+        except Exception as e:
+            print(f"Error during memory allocation: {e}")
+            sys.exit(1)
+    
+    if __name__ == "__main__":
+        leak_memory()
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: gradual-oom-test
+  labels:
+    app: test-pod
+    test-type: oom
+    scenario: gradual-oom
+spec:
+  containers:
+  - name: python-leaker
+    image: python:3.9-alpine
+    volumeMounts:
+    - name: leak-script
+      mountPath: /app
+    command: ["python3", "/app/leak-memory.py"]
+    resources:
+      limits:
+        memory: "64Mi"  # 64 MiB limit
+        cpu: "200m"
+      requests:
+        memory: "32Mi"
+        cpu: "50m"
+  volumes:
+  - name: leak-script
+    configMap:
+      name: gradual-oom-script
+      defaultMode: 0755
+  restartPolicy: Always
+  # Python script gradually allocates memory until hitting 64Mi limit
+  # OOM killer will terminate the process when limit is exceeded
+  # Provides more realistic memory leak scenario than memory bomb

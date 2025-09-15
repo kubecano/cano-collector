@@ -1,0 +1,77 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-bad-config
+  labels:
+    test-type: crash-loop
+    scenario: nginx-crash
+data:
+  nginx.conf: |
+    # Invalid nginx configuration with syntax errors
+    # This will cause nginx to fail startup validation
+    
+    events {
+        worker_connections 1024
+    }
+    
+    http {
+        include /etc/nginx/mime.types;
+        default_type application/octet-stream;
+        
+        server {
+            listen 80  # ERROR: missing semicolon
+            server_name localhost;
+            
+            location / {
+                root /usr/share/nginx/html;
+                index index.html index.htm
+                # ERROR: missing semicolon
+            }
+            
+            location /health {
+                return 200 "OK"  # ERROR: missing semicolon
+            }
+        # ERROR: missing closing brace for server block
+    # ERROR: missing closing brace for http block
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-crash-test
+  labels:
+    app: test-pod
+    test-type: crash-loop
+    scenario: nginx-crash
+spec:
+  containers:
+  - name: nginx
+    image: nginx:alpine
+    volumeMounts:
+    - name: nginx-config
+      mountPath: /etc/nginx/nginx.conf
+      subPath: nginx.conf
+    ports:
+    - containerPort: 80
+    # Resource limits for crash loop scenarios
+    resources:
+      limits:
+        memory: "128Mi"
+        cpu: "200m"
+      requests:
+        memory: "64Mi"
+        cpu: "50m"
+    # Optional: Add readiness probe to show failed state
+    readinessProbe:
+      httpGet:
+        path: /
+        port: 80
+      initialDelaySeconds: 1
+      periodSeconds: 5
+  volumes:
+  - name: nginx-config
+    configMap:
+      name: nginx-bad-config
+  restartPolicy: Always
+  # Nginx will fail to start due to invalid configuration
+  # Process exits with non-zero code, Kubernetes restarts
+  # Creates CrashLoopBackOff pattern

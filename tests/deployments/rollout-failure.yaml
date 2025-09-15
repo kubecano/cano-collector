@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rollout-failure-test
+  labels:
+    app: test-deployment
+    test-type: deployment
+    scenario: rollout-failure
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: rollout-failure-app
+  template:
+    metadata:
+      labels:
+        app: rollout-failure-app
+        test-type: deployment
+        scenario: rollout-failure
+    spec:
+      containers:
+      - name: failing-rollout
+        image: busybox:latest
+        command: ["sleep", "1"]  # Will crash immediately
+        resources:
+          limits:
+            memory: "64Mi"
+            cpu: "100m"
+          requests:
+            memory: "32Mi"
+            cpu: "50m"
+      restartPolicy: Always
+  # Problematic rolling update strategy
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0  # No pods can be unavailable
+      maxSurge: 0        # No extra pods can be created
+  # Set progress deadline to make failure happen faster  
+  progressDeadlineSeconds: 30
+# This configuration creates an impossible rolling update scenario:
+# - maxUnavailable: 0 means no existing pods can be terminated
+# - maxSurge: 0 means no new pods can be created beyond replica count
+# - This makes rolling updates impossible
+# - Deployment will fail with ProgressDeadlineExceeded condition
+# - Additionally, pods will crash due to sleep 1 command

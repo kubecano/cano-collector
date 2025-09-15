@@ -1,0 +1,68 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: java-crash-code
+  labels:
+    test-type: crash-loop
+    scenario: jdk-crash
+data:
+  CrashApp.java: |
+    public class CrashApp {
+        public static void main(String[] args) {
+            System.out.println("Starting Java application...");
+            System.out.println("Application initializing...");
+            
+            try {
+                // Give time to observe startup in logs
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            
+            System.out.println("Application startup complete");
+            System.out.println("Simulating critical error...");
+            
+            // Simulate application crash with RuntimeException
+            throw new RuntimeException("Simulated application crash - database connection failed");
+        }
+    }
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: jdk-crash-test
+  labels:
+    app: test-pod
+    test-type: crash-loop
+    scenario: jdk-crash
+spec:
+  containers:
+  - name: java-app
+    image: openjdk:11-jre-slim
+    volumeMounts:
+    - name: java-code
+      mountPath: /app
+    command: ["sh", "-c"]
+    args:
+    - |
+      echo "Compiling Java application..."
+      cd /app
+      javac CrashApp.java
+      echo "Starting Java application..."
+      java CrashApp
+    workingDir: /app
+    # Resource limits to prevent excessive resource usage during crash loops
+    resources:
+      limits:
+        memory: "256Mi"
+        cpu: "500m"
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+  volumes:
+  - name: java-code
+    configMap:
+      name: java-crash-code
+  restartPolicy: Always
+  # Java app will crash with RuntimeException, exit code 1
+  # Kubernetes will restart, creating CrashLoopBackOff

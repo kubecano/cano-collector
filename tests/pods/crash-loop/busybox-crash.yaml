@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: busybox-crash-test
+  labels:
+    app: test-pod
+    test-type: crash-loop
+    scenario: busybox-crash
+spec:
+  containers:
+  - name: busybox
+    image: busybox:latest
+    command: ["sleep", "1"]
+    # Container will sleep for 1 second, then exit with code 0
+    # Kubernetes will restart it due to restartPolicy: Always
+    # This creates CrashLoopBackOff after several restarts
+  restartPolicy: Always
+  # Pod will be restarted indefinitely, creating crash loop

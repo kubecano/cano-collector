@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scaling-test
+  labels:
+    app: test-deployment
+    test-type: deployment
+    scenario: scaling-test
+spec:
+  replicas: 1  # Start with 1 replica, can be scaled manually for testing
+  selector:
+    matchLabels:
+      app: scaling-test-app
+  template:
+    metadata:
+      labels:
+        app: scaling-test-app
+        test-type: deployment
+        scenario: scaling-test
+    spec:
+      containers:
+      - name: test-app
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+        # Add readiness probe to show scaling events clearly
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 2
+          periodSeconds: 5
+      restartPolicy: Always
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+---
+# Instructions for manual scaling tests:
+# 
+# To test scaling UP (should generate ScalingUp events):
+# kubectl scale deployment scaling-test --replicas=5
+# 
+# To test scaling DOWN (should generate ScalingDown events):  
+# kubectl scale deployment scaling-test --replicas=1
+#
+# To test rapid scaling changes:
+# kubectl scale deployment scaling-test --replicas=10
+# kubectl scale deployment scaling-test --replicas=2
+#
+# Monitor with:
+# kubectl get deployment scaling-test -w
+# kubectl get pods -l app=scaling-test-app -w
+# kubectl get events --sort-by=.metadata.creationTimestamp
