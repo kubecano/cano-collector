@@ -12,6 +12,7 @@ import (
 
 	alert_interfaces "github.com/kubecano/cano-collector/pkg/alert/interfaces"
 	"github.com/kubecano/cano-collector/pkg/core/event"
+	"github.com/kubecano/cano-collector/pkg/core/issue"
 	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
 	metric_interfaces "github.com/kubecano/cano-collector/pkg/metric/interfaces"
 	workflow_interfaces "github.com/kubecano/cano-collector/pkg/workflow/interfaces"
@@ -86,6 +87,7 @@ func (h *AlertHandler) HandleAlert(c *gin.Context) {
 	h.metrics.ObserveAlert(alertEvent.Receiver, alertEvent.Status)
 
 	// Process workflows if workflow engine is available
+	var workflowEnrichments []issue.Enrichment
 	if h.workflowEngine != nil {
 		// Convert AlertManagerEvent to WorkflowEvent
 		workflowEvent := event.NewAlertManagerWorkflowEvent(alertEvent)
@@ -95,13 +97,18 @@ func (h *AlertHandler) HandleAlert(c *gin.Context) {
 			zap.String("alert_name", alertEvent.GetAlertName()),
 			zap.Int("matching_workflows", len(matchingWorkflows)))
 
-		// Execute matching workflows
-		for _, workflow := range matchingWorkflows {
-			if err := h.workflowEngine.ExecuteWorkflow(c.Request.Context(), workflow, workflowEvent); err != nil {
-				h.logger.Error("Failed to execute workflow",
-					zap.Error(err),
-					zap.String("workflow_name", workflow.Name))
-			}
+		// Execute workflows and collect enrichments
+		enrichments, err := h.workflowEngine.ExecuteWorkflowsWithEnrichments(c.Request.Context(), matchingWorkflows, workflowEvent)
+		if err != nil {
+			h.logger.Error("Failed to execute workflows with enrichments",
+				zap.Error(err),
+				zap.String("alert_name", alertEvent.GetAlertName()))
+			// Continue processing even if workflows fail
+		} else {
+			workflowEnrichments = enrichments
+			h.logger.Info("Collected workflow enrichments",
+				zap.String("alert_name", alertEvent.GetAlertName()),
+				zap.Int("enrichments_count", len(enrichments)))
 		}
 	}
 
@@ -121,6 +128,19 @@ func (h *AlertHandler) HandleAlert(c *gin.Context) {
 		h.metrics.IncAlertErrors(alertEvent.GetAlertName(), "conversion_failed")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to convert alert"})
 		return
+	}
+
+	// Apply workflow enrichments to all issues
+	if len(workflowEnrichments) > 0 {
+		for _, issueItem := range issues {
+			for _, enrichment := range workflowEnrichments {
+				issueItem.AddEnrichment(enrichment)
+			}
+		}
+		h.logger.Info("Applied workflow enrichments to issues",
+			zap.String("alert_name", alertEvent.GetAlertName()),
+			zap.Int("issues_count", len(issues)),
+			zap.Int("enrichments_count", len(workflowEnrichments)))
 	}
 
 	// Dispatch issues to team destinations

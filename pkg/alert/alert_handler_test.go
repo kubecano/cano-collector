@@ -17,6 +17,7 @@ import (
 	config_team "github.com/kubecano/cano-collector/config/team"
 	"github.com/kubecano/cano-collector/config/workflow"
 	"github.com/kubecano/cano-collector/mocks"
+	"github.com/kubecano/cano-collector/pkg/core/issue"
 	"github.com/kubecano/cano-collector/pkg/metric"
 )
 
@@ -72,6 +73,7 @@ func setupTestRouter(t *testing.T) alertHandlerTestDeps {
 	mockTeamResolver.EXPECT().ResolveTeam(gomock.Any()).Return(mockTeam, nil).AnyTimes()
 	mockAlertDispatcher.EXPECT().DispatchIssues(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	mockWorkflowEngine.EXPECT().SelectWorkflows(gomock.Any()).Return([]*workflow.WorkflowDefinition{}).AnyTimes()
+	mockWorkflowEngine.EXPECT().ExecuteWorkflowsWithEnrichments(gomock.Any(), gomock.Any(), gomock.Any()).Return([]issue.Enrichment{}, nil).AnyTimes()
 
 	converter := NewConverter(mockLogger)
 	alertHandler := NewAlertHandler(mockLogger, mockMetrics, mockTeamResolver, mockAlertDispatcher, converter, mockWorkflowEngine)
@@ -287,6 +289,7 @@ func TestAlertHandler_NoTeamResolved(t *testing.T) {
 	mockTeamResolver.EXPECT().ResolveTeam(gomock.Any()).Return(nil, nil).AnyTimes()
 	mockAlertDispatcher.EXPECT().DispatchIssues(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	mockWorkflowEngine.EXPECT().SelectWorkflows(gomock.Any()).Return([]*workflow.WorkflowDefinition{}).AnyTimes()
+	mockWorkflowEngine.EXPECT().ExecuteWorkflowsWithEnrichments(gomock.Any(), gomock.Any(), gomock.Any()).Return([]issue.Enrichment{}, nil).AnyTimes()
 
 	converter := NewConverter(mockLogger)
 	alertHandler := NewAlertHandler(mockLogger, mockMetrics, mockTeamResolver, mockAlertDispatcher, converter, mockWorkflowEngine)
@@ -354,6 +357,7 @@ func TestAlertHandler_TeamResolutionFailed(t *testing.T) {
 	mockTeamResolver.EXPECT().ResolveTeam(gomock.Any()).Return(nil, errors.New("team resolution failed"))
 	mockAlertDispatcher.EXPECT().DispatchIssues(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	mockWorkflowEngine.EXPECT().SelectWorkflows(gomock.Any()).Return([]*workflow.WorkflowDefinition{}).AnyTimes()
+	mockWorkflowEngine.EXPECT().ExecuteWorkflowsWithEnrichments(gomock.Any(), gomock.Any(), gomock.Any()).Return([]issue.Enrichment{}, nil).AnyTimes()
 
 	converter := NewConverter(mockLogger)
 	alertHandler := NewAlertHandler(mockLogger, mockMetrics, mockTeamResolver, mockAlertDispatcher, converter, mockWorkflowEngine)

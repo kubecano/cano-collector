@@ -11,6 +11,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	workflow "github.com/kubecano/cano-collector/config/workflow"
 	event "github.com/kubecano/cano-collector/pkg/core/event"
+	issue "github.com/kubecano/cano-collector/pkg/core/issue"
 )
 
 // MockWorkflowEngineInterface is a mock of WorkflowEngineInterface interface.
@@ -36,18 +37,34 @@ func (m *MockWorkflowEngineInterface) EXPECT() *MockWorkflowEngineInterfaceMockR
 	return m.recorder
 }
 
-// ExecuteWorkflow mocks base method.
-func (m *MockWorkflowEngineInterface) ExecuteWorkflow(ctx context.Context, workflow *workflow.WorkflowDefinition, event event.WorkflowEvent) error {
+// ExecuteWorkflowWithEnrichments mocks base method.
+func (m *MockWorkflowEngineInterface) ExecuteWorkflowWithEnrichments(ctx context.Context, workflow *workflow.WorkflowDefinition, event event.WorkflowEvent) ([]issue.Enrichment, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExecuteWorkflow", ctx, workflow, event)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret := m.ctrl.Call(m, "ExecuteWorkflowWithEnrichments", ctx, workflow, event)
+	ret0, _ := ret[0].([]issue.Enrichment)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
-// ExecuteWorkflow indicates an expected call of ExecuteWorkflow.
-func (mr *MockWorkflowEngineInterfaceMockRecorder) ExecuteWorkflow(ctx, workflow, event interface{}) *gomock.Call {
+// ExecuteWorkflowWithEnrichments indicates an expected call of ExecuteWorkflowWithEnrichments.
+func (mr *MockWorkflowEngineInterfaceMockRecorder) ExecuteWorkflowWithEnrichments(ctx, workflow, event interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecuteWorkflow", reflect.TypeOf((*MockWorkflowEngineInterface)(nil).ExecuteWorkflow), ctx, workflow, event)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecuteWorkflowWithEnrichments", reflect.TypeOf((*MockWorkflowEngineInterface)(nil).ExecuteWorkflowWithEnrichments), ctx, workflow, event)
+}
+
+// ExecuteWorkflowsWithEnrichments mocks base method.
+func (m *MockWorkflowEngineInterface) ExecuteWorkflowsWithEnrichments(ctx context.Context, workflows []*workflow.WorkflowDefinition, event event.WorkflowEvent) ([]issue.Enrichment, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExecuteWorkflowsWithEnrichments", ctx, workflows, event)
+	ret0, _ := ret[0].([]issue.Enrichment)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ExecuteWorkflowsWithEnrichments indicates an expected call of ExecuteWorkflowsWithEnrichments.
+func (mr *MockWorkflowEngineInterfaceMockRecorder) ExecuteWorkflowsWithEnrichments(ctx, workflows, event interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecuteWorkflowsWithEnrichments", reflect.TypeOf((*MockWorkflowEngineInterface)(nil).ExecuteWorkflowsWithEnrichments), ctx, workflows, event)
 }
 
 // SelectWorkflows mocks base method.

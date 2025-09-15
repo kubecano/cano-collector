@@ -119,6 +119,30 @@ func (mr *MockMetricsInterfaceMockRecorder) IncTeamsMatched(teamName, alertName 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IncTeamsMatched", reflect.TypeOf((*MockMetricsInterface)(nil).IncTeamsMatched), teamName, alertName)
 }
 
+// IncWorkflowEnrichmentErrors mocks base method.
+func (m *MockMetricsInterface) IncWorkflowEnrichmentErrors(workflowName, errorType string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "IncWorkflowEnrichmentErrors", workflowName, errorType)
+}
+
+// IncWorkflowEnrichmentErrors indicates an expected call of IncWorkflowEnrichmentErrors.
+func (mr *MockMetricsInterfaceMockRecorder) IncWorkflowEnrichmentErrors(workflowName, errorType interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IncWorkflowEnrichmentErrors", reflect.TypeOf((*MockMetricsInterface)(nil).IncWorkflowEnrichmentErrors), workflowName, errorType)
+}
+
+// IncWorkflowsExecuted mocks base method.
+func (m *MockMetricsInterface) IncWorkflowsExecuted(workflowName, status string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "IncWorkflowsExecuted", workflowName, status)
+}
+
+// IncWorkflowsExecuted indicates an expected call of IncWorkflowsExecuted.
+func (mr *MockMetricsInterfaceMockRecorder) IncWorkflowsExecuted(workflowName, status interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IncWorkflowsExecuted", reflect.TypeOf((*MockMetricsInterface)(nil).IncWorkflowsExecuted), workflowName, status)
+}
+
 // ObserveAlert mocks base method.
 func (m *MockMetricsInterface) ObserveAlert(receiver, status string) {
 	m.ctrl.T.Helper()
@@ -165,6 +189,18 @@ func (m *MockMetricsInterface) ObserveHTTPRequestDuration(method, path, status s
 func (mr *MockMetricsInterfaceMockRecorder) ObserveHTTPRequestDuration(method, path, status, duration interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ObserveHTTPRequestDuration", reflect.TypeOf((*MockMetricsInterface)(nil).ObserveHTTPRequestDuration), method, path, status, duration)
+}
+
+// ObserveWorkflowEnrichments mocks base method.
+func (m *MockMetricsInterface) ObserveWorkflowEnrichments(workflowName string, enrichmentCount int) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "ObserveWorkflowEnrichments", workflowName, enrichmentCount)
+}
+
+// ObserveWorkflowEnrichments indicates an expected call of ObserveWorkflowEnrichments.
+func (mr *MockMetricsInterfaceMockRecorder) ObserveWorkflowEnrichments(workflowName, enrichmentCount interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ObserveWorkflowEnrichments", reflect.TypeOf((*MockMetricsInterface)(nil).ObserveWorkflowEnrichments), workflowName, enrichmentCount)
 }
 
 // PrometheusMiddleware mocks base method.

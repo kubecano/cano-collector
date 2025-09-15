@@ -5,8 +5,13 @@ import (
 	"fmt"
 	"sort"
 
+	"go.uber.org/zap"
+
 	"github.com/kubecano/cano-collector/config/workflow"
 	"github.com/kubecano/cano-collector/pkg/core/event"
+	"github.com/kubecano/cano-collector/pkg/core/issue"
+	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
+	metric_interfaces "github.com/kubecano/cano-collector/pkg/metric/interfaces"
 	actions_interfaces "github.com/kubecano/cano-collector/pkg/workflow/actions/interfaces"
 )
 
@@ -14,13 +19,17 @@ import (
 type WorkflowEngine struct {
 	config   *workflow.WorkflowConfig
 	executor actions_interfaces.ActionExecutor
+	logger   logger_interfaces.LoggerInterface
+	metrics  metric_interfaces.MetricsInterface
 }
 
 // NewWorkflowEngine creates a new workflow engine
-func NewWorkflowEngine(config *workflow.WorkflowConfig, executor actions_interfaces.ActionExecutor) *WorkflowEngine {
+func NewWorkflowEngine(config *workflow.WorkflowConfig, executor actions_interfaces.ActionExecutor, logger logger_interfaces.LoggerInterface, metrics metric_interfaces.MetricsInterface) *WorkflowEngine {
 	return &WorkflowEngine{
 		config:   config,
 		executor: executor,
+		logger:   logger,
+		metrics:  metrics,
 	}
 }
 
@@ -89,21 +98,100 @@ func (we *WorkflowEngine) matchesAlertmanagerAlertTrigger(trigger *workflow.Aler
 	return true
 }
 
-// ExecuteWorkflow executes a single workflow for the given event
-func (we *WorkflowEngine) ExecuteWorkflow(ctx context.Context, wf *workflow.WorkflowDefinition, event event.WorkflowEvent) error {
+// ExecuteWorkflowWithEnrichments executes a workflow and returns enrichments from the results
+func (we *WorkflowEngine) ExecuteWorkflowWithEnrichments(ctx context.Context, wf *workflow.WorkflowDefinition, event event.WorkflowEvent) ([]issue.Enrichment, error) {
 	if wf == nil {
-		return fmt.Errorf("workflow definition cannot be nil")
+		return nil, fmt.Errorf("workflow definition cannot be nil")
 	}
 
 	if event == nil {
-		return fmt.Errorf("workflow event cannot be nil")
+		return nil, fmt.Errorf("workflow event cannot be nil")
 	}
 
 	if we.executor == nil {
-		return fmt.Errorf("action executor is not configured")
+		return nil, fmt.Errorf("action executor is not configured")
 	}
 
 	// Convert workflow action definitions to action configs
+	actionConfigs, err := we.createActionConfigs(wf)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create workflow actions from configs
+	workflowActions, err := we.executor.CreateActionsFromConfig(actionConfigs)
+	if err != nil {
+		if we.logger != nil {
+			we.logger.Error("Failed to create actions for workflow",
+				zap.String("workflow", wf.Name),
+				zap.Error(err))
+		}
+		return nil, err
+	}
+
+	// Execute actions in sequence using the provided context
+	results, err := we.executor.ExecuteActions(ctx, workflowActions, event)
+	if err != nil {
+		if we.logger != nil {
+			we.logger.Error("Failed to execute actions for workflow",
+				zap.String("workflow", wf.Name),
+				zap.Error(err))
+		}
+		return nil, err
+	}
+
+	// Collect enrichments from all successful action results
+	var allEnrichments []issue.Enrichment
+	successCount := 0
+
+	for i, result := range results {
+		if result.Success {
+			successCount++
+			// Add enrichments from this action result
+			allEnrichments = append(allEnrichments, result.Enrichments...)
+		} else if result.Error != nil {
+			// Log error but don't fail completely - collect what we can
+			// This allows partial enrichment even if some actions fail
+			if we.logger != nil {
+				we.logger.Warn("Action failed in workflow, continuing with partial enrichment",
+					zap.Int("action_index", i),
+					zap.String("workflow", wf.Name),
+					zap.Error(result.Error))
+			}
+			if we.metrics != nil {
+				we.metrics.IncWorkflowEnrichmentErrors(wf.Name, "action_execution_failed")
+			}
+		}
+	}
+
+	// Record metrics for workflow execution
+	if we.metrics != nil {
+		if successCount == len(results) {
+			we.metrics.IncWorkflowsExecuted(wf.Name, "success")
+		} else if successCount > 0 {
+			we.metrics.IncWorkflowsExecuted(wf.Name, "partial_success")
+		} else {
+			we.metrics.IncWorkflowsExecuted(wf.Name, "failed")
+		}
+
+		// Record enrichment count
+		we.metrics.ObserveWorkflowEnrichments(wf.Name, len(allEnrichments))
+	}
+
+	if we.logger != nil {
+		we.logger.Info("Workflow execution completed",
+			zap.String("workflow", wf.Name),
+			zap.Int("successful_actions", successCount),
+			zap.Int("total_actions", len(results)),
+			zap.Int("enrichments_generated", len(allEnrichments)))
+	}
+
+	return allEnrichments, nil
+}
+
+// createActionConfigs converts workflow action definitions to action configs
+// This method extracts the common logic shared between ExecuteWorkflow and ExecuteWorkflowWithEnrichments
+func (we *WorkflowEngine) createActionConfigs(wf *workflow.WorkflowDefinition) ([]actions_interfaces.ActionConfig, error) {
 	actionConfigs := make([]actions_interfaces.ActionConfig, 0, len(wf.Actions))
 
 	for i, actionDef := range wf.Actions {
@@ -128,7 +216,7 @@ func (we *WorkflowEngine) ExecuteWorkflow(ctx context.Context, wf *workflow.Work
 		}
 
 		if actionType == "" {
-			return fmt.Errorf("action %d in workflow '%s' has no action type", i, wf.Name)
+			return nil, fmt.Errorf("action %d in workflow '%s' has no action type", i, wf.Name)
 		}
 
 		// Create action config
@@ -153,35 +241,38 @@ func (we *WorkflowEngine) ExecuteWorkflow(ctx context.Context, wf *workflow.Work
 		actionConfigs = append(actionConfigs, actionConfig)
 	}
 
-	// Create workflow actions from configs
-	workflowActions, err := we.executor.CreateActionsFromConfig(actionConfigs)
-	if err != nil {
-		return fmt.Errorf("failed to create actions for workflow '%s': %w", wf.Name, err)
+	return actionConfigs, nil
+}
+
+// ExecuteWorkflowsWithEnrichments executes multiple workflows and returns all enrichments
+func (we *WorkflowEngine) ExecuteWorkflowsWithEnrichments(ctx context.Context, workflows []*workflow.WorkflowDefinition, event event.WorkflowEvent) ([]issue.Enrichment, error) {
+	if len(workflows) == 0 {
+		return []issue.Enrichment{}, nil
 	}
 
-	// Execute actions in sequence using the provided context
-	results, err := we.executor.ExecuteActions(ctx, workflowActions, event)
-	if err != nil {
-		return fmt.Errorf("failed to execute actions for workflow '%s': %w", wf.Name, err)
-	}
+	var allEnrichments []issue.Enrichment
+	var errors []error
 
-	// Process results - check if any action failed
-	var actionErrors []error
-	successCount := 0
-
-	for i, result := range results {
-		if result.Success {
-			successCount++
-		} else if result.Error != nil {
-			actionErrors = append(actionErrors, fmt.Errorf("action %d failed: %w", i, result.Error))
+	for _, wf := range workflows {
+		enrichments, err := we.ExecuteWorkflowWithEnrichments(ctx, wf, event)
+		if err != nil {
+			we.logger.Error("Workflow execution failed, continuing with others",
+				zap.String("workflow", wf.Name),
+				zap.Error(err))
+			errors = append(errors, err)
+			continue
 		}
+		allEnrichments = append(allEnrichments, enrichments...)
 	}
 
-	// Return error if any actions failed (could be configurable in the future)
-	if len(actionErrors) > 0 {
-		return fmt.Errorf("workflow '%s' completed with %d/%d actions successful, errors: %v",
-			wf.Name, successCount, len(results), actionErrors)
+	// Return enrichments even if some workflows failed
+	// This allows graceful degradation
+	if len(errors) > 0 && len(allEnrichments) == 0 {
+		we.logger.Error("All workflows failed, no enrichments collected",
+			zap.Int("workflow_count", len(workflows)),
+			zap.Int("error_count", len(errors)))
+		return nil, fmt.Errorf("all %d workflows failed", len(workflows))
 	}
 
-	return nil
+	return allEnrichments, nil
 }
