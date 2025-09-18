@@ -1,0 +1,45 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-failure-test
+  labels:
+    app: test-job
+    test-type: job
+    scenario: job-failure
+spec:
+  # Job will retry 3 times before marking as failed
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: test-job
+        test-type: job
+        scenario: job-failure
+    spec:
+      containers:
+      - name: failing-task
+        image: busybox:latest
+        command: ["sh", "-c"]
+        args:
+        - |
+          echo "Starting job that will always fail..."
+          echo "Attempt number: $(date)"
+          echo "This job is designed to fail for testing purposes"
+          
+          # Simulate some work before failing
+          sleep 3
+          
+          echo "Job failed with critical error"
+          exit 1  # Always exit with failure code
+        resources:
+          limits:
+            memory: "64Mi"
+            cpu: "100m"
+          requests:
+            memory: "32Mi"
+            cpu: "50m"
+      restartPolicy: Never  # Job pods should not restart
+  # Job will attempt to run 4 times (initial + 3 retries)
+  # Each execution will fail with exit code 1
+  # After backoffLimit is reached, Job will be marked as Failed
+  # Events will show "Failed" and "BackoffLimitExceeded"

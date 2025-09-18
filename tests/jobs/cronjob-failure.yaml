@@ -1,0 +1,56 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cronjob-failure-test
+  labels:
+    app: test-cronjob
+    test-type: job
+    scenario: cronjob-failure
+spec:
+  # Run every 2 minutes for testing purposes
+  schedule: "*/2 * * * *"
+  # Keep last 3 successful and 3 failed jobs for observation
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    metadata:
+      labels:
+        app: test-cronjob
+        test-type: job
+        scenario: cronjob-failure
+    spec:
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            app: test-cronjob
+            test-type: job
+            scenario: cronjob-failure
+        spec:
+          containers:
+          - name: failing-cron-task
+            image: busybox:latest
+            command: ["sh", "-c"]
+            args:
+            - |
+              echo "CronJob execution started at: $(date)"
+              echo "This CronJob is designed to fail for testing"
+              
+              # Simulate some work
+              sleep 5
+              
+              echo "CronJob failed with error"
+              exit 1  # Always fail
+            resources:
+              limits:
+                memory: "64Mi"
+                cpu: "100m"
+              requests:
+                memory: "32Mi"
+                cpu: "50m"
+          restartPolicy: Never
+  # CronJob will create new Jobs every 2 minutes
+  # Each Job will fail with exit code 1
+  # Creates recurring failure pattern for testing
+  # Events will show repeated job failures
+  # Useful for testing alert fatigue and aggregation scenarios

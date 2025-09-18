@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dns-failure-test
+  labels:
+    app: test-pod
+    test-type: network
+    scenario: dns-failure
+spec:
+  containers:
+  - name: dns-test
+    image: busybox:latest
+    command: ["sh", "-c"]
+    args:
+    - |
+      echo "Testing DNS resolution for non-existent services..."
+      echo "This should fail and cause container to exit"
+      
+      # Try to resolve DNS for services that don't exist
+      echo "Attempting to resolve non-existent-service.cluster.local..."
+      nslookup non-existent-service.cluster.local
+      
+      if [ $? -ne 0 ]; then
+        echo "DNS resolution failed as expected"
+        echo "Application cannot start without required services"
+        exit 1
+      fi
+      
+      echo "This should not be reached"
+    resources:
+      limits:
+        memory: "64Mi"
+        cpu: "100m"
+      requests:
+        memory: "32Mi"
+        cpu: "50m"
+  restartPolicy: Always
+  # Container will attempt DNS resolution for non-existent service
+  # nslookup will fail, script exits with code 1
+  # Kubernetes restarts the container, creating crash loop
+  # Simulates applications that fail to start due to missing dependencies

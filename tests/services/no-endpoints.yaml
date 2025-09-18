@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: no-endpoints-test
+  labels:
+    app: test-service
+    test-type: service
+    scenario: no-endpoints
+spec:
+  selector:
+    # Selector that matches no existing pods
+    app: non-existent-app
+    version: v999
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+    protocol: TCP
+  type: ClusterIP
+# This service will be created but will have no endpoints
+# because no pods match the selector (app: non-existent-app)
+# Service exists but traffic cannot be routed anywhere
+# Events will show endpoint-related warnings
+# cano-collector should detect service with no backing pods
+---
+# Optional: Create a pod that almost matches but not quite
+apiVersion: v1
+kind: Pod
+metadata:
+  name: almost-matching-pod
+  labels:
+    app: non-existent-app  # Matches service selector
+    version: v1            # Does NOT match service selector (v999)
+    test-type: service
+    scenario: no-endpoints
+spec:
+  containers:
+  - name: test-app
+    image: nginx:alpine
+    ports:
+    - containerPort: 80
+  restartPolicy: Always
+# This pod has app: non-existent-app but version: v1
+# Service requires version: v999, so this pod won't be selected
+# Demonstrates partial label matching that still results in no endpoints

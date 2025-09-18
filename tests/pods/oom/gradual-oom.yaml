@@ -1,0 +1,79 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gradual-oom-script
+  labels:
+    test-type: oom
+    scenario: gradual-oom
+data:
+  leak-memory.py: |
+    #!/usr/bin/env python3
+    import time
+    import sys
+    
+    def leak_memory():
+        print("Starting aggressive memory leak simulation...")
+        print("Memory limit: 32Mi, will quickly consume memory")
+        
+        # List to hold memory chunks
+        memory_chunks = []
+        chunk_size = 2 * 1024 * 1024  # 2MB chunks
+        
+        try:
+            for i in range(50):  # Try to allocate 100MB total
+                print(f"Allocating chunk {i+1} (2MB)... Total: {(i+1)*2}MB")
+                
+                # Allocate 2MB of data
+                chunk = 'x' * chunk_size
+                memory_chunks.append(chunk)
+                
+                # Keep references to prevent garbage collection
+                # Faster allocation - only 0.5 second sleep
+                time.sleep(0.5)
+                
+                # Print memory usage simulation
+                if (i + 1) % 5 == 0:
+                    print(f"Memory usage: ~{(i+1)*2}MB")
+                    
+        except MemoryError:
+            print("Memory allocation failed - out of memory")
+            sys.exit(1)
+        except Exception as e:
+            print(f"Error during memory allocation: {e}")
+            sys.exit(1)
+    
+    if __name__ == "__main__":
+        leak_memory()
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: gradual-oom-test
+  labels:
+    app: test-pod
+    test-type: oom
+    scenario: gradual-oom
+spec:
+  containers:
+  - name: python-leaker
+    image: python:3.9-alpine
+    volumeMounts:
+    - name: leak-script
+      mountPath: /app
+    command: ["python3", "/app/leak-memory.py"]
+    resources:
+      limits:
+        memory: "32Mi"  # 32 MiB limit - much smaller
+        cpu: "200m"
+      requests:
+        memory: "16Mi"
+        cpu: "50m"
+  volumes:
+  - name: leak-script
+    configMap:
+      name: gradual-oom-script
+      defaultMode: 0755
+  restartPolicy: Always
+  # Python script aggressively allocates memory until hitting 32Mi limit
+  # OOM killer will terminate the process when limit is exceeded
+  # Should trigger OOM within 16 chunks (32MB) in about 8 seconds

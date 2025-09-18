@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: service-unreachable-test
+  labels:
+    app: test-pod
+    test-type: network
+    scenario: service-unreachable
+spec:
+  containers:
+  - name: connectivity-test
+    image: busybox:latest
+    command: ["sh", "-c"]
+    args:
+    - |
+      echo "Testing connectivity to non-existent services..."
+      echo "Attempting to connect to non-existent-service:8080..."
+      
+      # Try to connect to a service that doesn't exist
+      # Use nc (netcat) for safer network testing instead of wget
+      timeout 10 nc -zv non-existent-service 8080
+      
+      if [ $? -ne 0 ]; then
+        echo "Service connection failed - timeout or connection refused"
+        echo "Application startup failed due to unreachable dependencies"
+        exit 1
+      fi
+      
+      echo "This should not be reached"
+    resources:
+      limits:
+        memory: "64Mi"
+        cpu: "100m"
+      requests:
+        memory: "32Mi"
+        cpu: "50m"
+  restartPolicy: Always
+  # Container will attempt to connect to non-existent service
+  # nc will timeout or get connection refused
+  # Script exits with code 1, Kubernetes restarts container
+  # Simulates microservices that can't reach their dependencies
+  # Tests network connectivity failure scenarios

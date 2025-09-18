@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: private-registry-test
+  labels:
+    app: test-pod
+    test-type: image-pull
+    scenario: private-registry
+spec:
+  containers:
+  - name: private-app
+    # Using real private registry image without credentials
+    # This will trigger authentication errors
+    image: gcr.io/google-samples/private-image:latest
+    command: ["echo", "This should never run"]
+    resources:
+      limits:
+        memory: "64Mi"
+        cpu: "100m"
+      requests:
+        memory: "32Mi"
+        cpu: "50m"
+  # NOTE: No imagePullSecrets specified intentionally
+  # This will cause authentication failure when trying to pull from private registry
+  restartPolicy: Always
+  # Kubernetes will try to pull from private GCR registry without credentials
+  # Container runtime will return 401/403 Unauthorized
+  # Pod will be stuck in ImagePullBackOff state
+  # Events will show "Error: ErrImagePull" with authentication failure
