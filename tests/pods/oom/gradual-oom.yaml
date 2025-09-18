@@ -12,28 +12,28 @@ data:
     import sys
     
     def leak_memory():
-        print("Starting gradual memory leak simulation...")
-        print("Memory limit: 64Mi, will slowly consume memory")
+        print("Starting aggressive memory leak simulation...")
+        print("Memory limit: 32Mi, will quickly consume memory")
         
         # List to hold memory chunks
         memory_chunks = []
-        chunk_size = 1024 * 1024  # 1MB chunks
+        chunk_size = 2 * 1024 * 1024  # 2MB chunks
         
         try:
-            for i in range(100):  # Try to allocate 100MB total
-                print(f"Allocating chunk {i+1} (1MB)... Total: {(i+1)}MB")
+            for i in range(50):  # Try to allocate 100MB total
+                print(f"Allocating chunk {i+1} (2MB)... Total: {(i+1)*2}MB")
                 
-                # Allocate 1MB of data
+                # Allocate 2MB of data
                 chunk = 'x' * chunk_size
                 memory_chunks.append(chunk)
                 
                 # Keep references to prevent garbage collection
-                # Sleep to make it gradual
-                time.sleep(2)
+                # Faster allocation - only 0.5 second sleep
+                time.sleep(0.5)
                 
                 # Print memory usage simulation
-                if (i + 1) % 10 == 0:
-                    print(f"Memory usage: ~{i+1}MB")
+                if (i + 1) % 5 == 0:
+                    print(f"Memory usage: ~{(i+1)*2}MB")
                     
         except MemoryError:
             print("Memory allocation failed - out of memory")
@@ -63,10 +63,10 @@ spec:
     command: ["python3", "/app/leak-memory.py"]
     resources:
       limits:
-        memory: "64Mi"  # 64 MiB limit
+        memory: "32Mi"  # 32 MiB limit - much smaller
         cpu: "200m"
       requests:
-        memory: "32Mi"
+        memory: "16Mi"
         cpu: "50m"
   volumes:
   - name: leak-script
@@ -74,6 +74,6 @@ spec:
       name: gradual-oom-script
       defaultMode: 0755
   restartPolicy: Always
-  # Python script gradually allocates memory until hitting 64Mi limit
+  # Python script aggressively allocates memory until hitting 32Mi limit
   # OOM killer will terminate the process when limit is exceeded
-  # Provides more realistic memory leak scenario than memory bomb
+  # Should trigger OOM within 16 chunks (32MB) in about 8 seconds

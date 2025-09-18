@@ -8,7 +8,7 @@
 #   ./cleanup.sh --all              # Clean all test namespaces
 #   ./cleanup.sh my-test-ns --force # Force delete without confirmation
 
-set -e
+set -euo pipefail
 
 # Configuration
 NAMESPACE_DEFAULT="test-pods"

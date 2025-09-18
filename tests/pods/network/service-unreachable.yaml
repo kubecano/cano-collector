@@ -17,8 +17,8 @@ spec:
       echo "Attempting to connect to non-existent-service:8080..."
       
       # Try to connect to a service that doesn't exist
-      # wget will timeout after default timeout period
-      timeout 10 wget --tries=1 --timeout=5 -O- http://non-existent-service:8080/health
+      # Use nc (netcat) for safer network testing instead of wget
+      timeout 10 nc -zv non-existent-service 8080
       
       if [ $? -ne 0 ]; then
         echo "Service connection failed - timeout or connection refused"
@@ -36,7 +36,7 @@ spec:
         cpu: "50m"
   restartPolicy: Always
   # Container will attempt to connect to non-existent service
-  # wget will timeout or get connection refused
+  # nc will timeout or get connection refused
   # Script exits with code 1, Kubernetes restarts container
   # Simulates microservices that can't reach their dependencies
   # Tests network connectivity failure scenarios

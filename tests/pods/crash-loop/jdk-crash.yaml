@@ -38,7 +38,7 @@ metadata:
 spec:
   containers:
   - name: java-app
-    image: openjdk:11-jre-slim
+    image: openjdk:11-jdk-slim
     volumeMounts:
     - name: java-code
       mountPath: /app
@@ -46,11 +46,12 @@ spec:
     args:
     - |
       echo "Compiling Java application..."
-      cd /app
+      cd /tmp
+      cp /app/CrashApp.java .
       javac CrashApp.java
       echo "Starting Java application..."
       java CrashApp
-    workingDir: /app
+    workingDir: /tmp
     # Resource limits to prevent excessive resource usage during crash loops
     resources:
       limits:

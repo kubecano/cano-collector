@@ -7,7 +7,7 @@
 #   ./validate-collector.sh --namespace monitoring    # Check specific namespace
 #   ./validate-collector.sh --timeout 30              # Custom timeout
 
-set -e
+set -euo pipefail
 
 # Configuration
 COLLECTOR_NAMESPACE_DEFAULT="monitoring"
@@ -141,7 +141,7 @@ check_health() {
     print_info "Checking health endpoint at http://localhost:$port/health..."
     
     local health_response
-    if health_response=$(curl -s --max-time "$timeout" "http://localhost:$port/health" 2>/dev/null); then
+    if health_response=$(curl -s --max-time "$timeout" --fail --location --max-redirs 3 "http://localhost:$port/health" 2>/dev/null); then
         print_success "Health endpoint responded successfully"
         echo "Response: $health_response"
         return 0
@@ -163,7 +163,7 @@ check_metrics() {
     print_info "Checking metrics endpoint at http://localhost:$port/metrics..."
     
     local metrics_response
-    if metrics_response=$(curl -s --max-time "$timeout" "http://localhost:$port/metrics" 2>/dev/null); then
+    if metrics_response=$(curl -s --max-time "$timeout" --fail --location --max-redirs 3 "http://localhost:$port/metrics" 2>/dev/null); then
         print_success "Metrics endpoint responded successfully"
         
         # Look for cano-collector specific metrics

@@ -7,7 +7,7 @@
 #   ./run-test.sh oom memory-bomb test-env
 #   ./run-test.sh deployments replica-failure
 
-set -e
+set -euo pipefail
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -27,19 +27,51 @@ print_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
+# Function to list scenarios for a category
+list_scenarios() {
+    local category="$1"
+    local test_dir
+    
+    case "$category" in
+        crash-loop|oom|image-pull|resource-limits|network)
+            test_dir="$TESTS_DIR/pods/$category"
+            ;;
+        deployments|jobs|services)
+            test_dir="$TESTS_DIR/$category"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+    
+    if [ -d "$test_dir" ]; then
+        find "$test_dir" -name "*.yaml" -exec basename {} .yaml \; | sort | tr '\n' ', ' | sed 's/,$//' | sed 's/,/, /g'
+    fi
+}
+
 # Function to show usage
 show_usage() {
     echo "Usage: $0 <category> <test-name> [namespace]"
     echo ""
     echo "Available test categories and scenarios:"
-    echo "  pods/crash-loop:     busybox-crash, jdk-crash, nginx-crash"
-    echo "  pods/oom:            memory-bomb, gradual-oom"
-    echo "  pods/image-pull:     nonexistent-image, private-registry"
-    echo "  pods/resource-limits: cpu-starved, impossible-resources"
-    echo "  pods/network:        dns-failure, service-unreachable"
-    echo "  deployments:         replica-failure, rollout-failure, scaling-test"
-    echo "  jobs:                job-failure, job-timeout, cronjob-failure"
-    echo "  services:            no-endpoints, loadbalancer-pending"
+    
+    # Dynamic listing of categories and their scenarios
+    local categories=("crash-loop" "oom" "image-pull" "resource-limits" "network" "deployments" "jobs" "services")
+    
+    for category in "${categories[@]}"; do
+        local scenarios=$(list_scenarios "$category")
+        if [ -n "$scenarios" ]; then
+            case "$category" in
+                crash-loop|oom|image-pull|resource-limits|network)
+                    printf "  %-20s %s\n" "pods/$category:" "$scenarios"
+                    ;;
+                *)
+                    printf "  %-20s %s\n" "$category:" "$scenarios"
+                    ;;
+            esac
+        fi
+    done
+    
     echo ""
     echo "Examples:"
     echo "  $0 crash-loop busybox-crash"

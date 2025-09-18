@@ -198,7 +198,7 @@ kubectl get svc,endpoints -n test-pods
 
 # Check metrics
 kubectl port-forward svc/cano-collector 8080:8080 -n monitoring &
-curl http://localhost:8080/metrics | grep event_processed_total
+curl --fail --max-time 10 http://localhost:8080/metrics | grep event_processed_total
 ```
 
 ## Cleanup
@@ -334,7 +334,7 @@ kubectl get pod -n monitoring -l app=alertmanager
 
 # Check active alerts
 kubectl port-forward svc/alertmanager 9093:9093 -n monitoring &
-curl http://localhost:9093/api/v1/alerts
+curl --fail --max-time 10 http://localhost:9093/api/v1/alerts
 ```
 
 ## Validation Checklist

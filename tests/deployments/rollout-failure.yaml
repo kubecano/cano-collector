@@ -34,13 +34,13 @@ spec:
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      maxUnavailable: 0  # No pods can be unavailable
-      maxSurge: 0        # No extra pods can be created
+      maxUnavailable: 1  # Allow 1 pod to be unavailable
+      maxSurge: 1        # Allow 1 extra pod during rollout
   # Set progress deadline to make failure happen faster  
   progressDeadlineSeconds: 30
-# This configuration creates an impossible rolling update scenario:
-# - maxUnavailable: 0 means no existing pods can be terminated
-# - maxSurge: 0 means no new pods can be created beyond replica count
-# - This makes rolling updates impossible
+# This creates a rollout failure scenario:
+# - Pods crash immediately due to sleep 1 command (exit after 1 second)
+# - Short progressDeadlineSeconds (30s) causes faster failure detection
+# - Rolling update will fail due to pods not becoming ready
 # - Deployment will fail with ProgressDeadlineExceeded condition
-# - Additionally, pods will crash due to sleep 1 command
+# - CrashLoopBackOff prevents successful rollout
