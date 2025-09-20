@@ -320,7 +320,7 @@ func (a *SeverityRouterAction) Validate() error {
 }
 
 // ============================================================================
-// Issue Management Actions  
+// Issue Management Actions
 // ============================================================================
 
 // IssueEnrichmentAction enriches existing issues with additional metadata and context
@@ -445,9 +445,8 @@ func (a *IssueEnrichmentAction) createLabelsEnrichment(alertEvent *core_event.Al
 
 // createTitleEnrichment creates enrichment with custom title
 func (a *IssueEnrichmentAction) createTitleEnrichment(title string) *issue.Enrichment {
-	textBlock := issue.NewMarkdownBlock(fmt.Sprintf("**Custom Title**: %s", title))
+	textBlock := issue.NewMarkdownBlock("**Custom Title**: " + title)
 	enrichment := issue.NewEnrichmentWithType(issue.EnrichmentTypeAlertLabels, "Custom Information")
 	enrichment.AddBlock(textBlock)
 	return enrichment
 }
-

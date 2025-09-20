@@ -205,7 +205,7 @@ func (we *WorkflowEngine) createActionConfigs(wf *workflow.WorkflowDefinition) (
 				}
 			}
 		}
-		
+
 		if actionType == "" {
 			// Try to infer action type from RawData keys deterministically (backward compatibility)
 			var candidateKeys []string
@@ -230,7 +230,7 @@ func (we *WorkflowEngine) createActionConfigs(wf *workflow.WorkflowDefinition) (
 
 		// Create action config with proper parameter extraction
 		var parameters map[string]interface{}
-		
+
 		// Check if we have action_type/data structure
 		if _, hasActionType := actionDef.RawData["action_type"]; hasActionType {
 			if dataField, hasData := actionDef.RawData["data"]; hasData {

@@ -331,4 +331,3 @@ func (f *IssueEnrichmentActionFactory) ValidateConfig(config actions_interfaces.
 	}
 	return nil
 }
-
