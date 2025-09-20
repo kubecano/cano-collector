@@ -292,3 +292,43 @@ func (f *SeverityRouterActionFactory) ValidateConfig(config actions_interfaces.A
 	}
 	return nil
 }
+
+// ============================================================================
+// Issue Management Action Factories
+// ============================================================================
+
+// IssueEnrichmentActionFactory creates IssueEnrichmentAction instances
+type IssueEnrichmentActionFactory struct {
+	logger  logger_interfaces.LoggerInterface
+	metrics metric_interfaces.MetricsInterface
+}
+
+// NewIssueEnrichmentActionFactory creates a new IssueEnrichmentActionFactory
+func NewIssueEnrichmentActionFactory(logger logger_interfaces.LoggerInterface, metrics metric_interfaces.MetricsInterface) *IssueEnrichmentActionFactory {
+	return &IssueEnrichmentActionFactory{
+		logger:  logger,
+		metrics: metrics,
+	}
+}
+
+// Create creates a new IssueEnrichmentAction instance
+func (f *IssueEnrichmentActionFactory) Create(config actions_interfaces.ActionConfig) (actions_interfaces.WorkflowAction, error) {
+	if err := f.ValidateConfig(config); err != nil {
+		return nil, err
+	}
+	return NewIssueEnrichmentAction(config, f.logger, f.metrics), nil
+}
+
+// GetActionType returns the action type this factory creates
+func (f *IssueEnrichmentActionFactory) GetActionType() string {
+	return "issue_enrichment"
+}
+
+// ValidateConfig validates the action configuration
+func (f *IssueEnrichmentActionFactory) ValidateConfig(config actions_interfaces.ActionConfig) error {
+	if config.Type != "issue_enrichment" {
+		return fmt.Errorf("invalid action type for IssueEnrichmentActionFactory: %s", config.Type)
+	}
+	return nil
+}
+

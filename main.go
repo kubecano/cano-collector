@@ -203,6 +203,12 @@ func registerWorkflowActions(actionRegistry *actions.DefaultActionRegistry, log 
 		return err
 	}
 
+	// Register Issue Enrichment Action Factory
+	issueEnrichmentFactory := actions.NewIssueEnrichmentActionFactory(log, metrics)
+	if err := actionRegistry.Register("issue_enrichment", issueEnrichmentFactory); err != nil {
+		return err
+	}
+
 	log.Info("Workflow actions registered successfully")
 	return nil
 }

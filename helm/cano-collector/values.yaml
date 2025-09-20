@@ -62,36 +62,17 @@ workflows:
   # Workflow configuration
   # Each workflow defines triggers and actions for alert processing
   active_workflows:
-    # Default workflow for firing alerts - creates and dispatches issues
+    # Default workflow for firing alerts - enriches issues with metadata
     - name: "default-firing-alerts"
       triggers:
         - on_alertmanager_alert:
             status: "firing"  # React to firing alerts only
       actions:
-        - action_type: "create_issue"
+        - action_type: "issue_enrichment"
           data:
-            title: "{{.alert_name}}"
-            aggregation_key: "{{.alert_name}}"
-            description: "{{.annotations.summary}}"
-            severity: "{{.severity}}"
-        - action_type: "dispatch_issue"
-          data: {}
-      stop: false
-
-    # Default workflow for resolved alerts - resolves and dispatches issues
-    - name: "default-resolved-alerts"
-      triggers:
-        - on_alertmanager_alert:
-            status: "resolved"  # React to resolved alerts only
-      actions:
-        - action_type: "resolve_issue"
-          data:
-            title: "[RESOLVED] {{.alert_name}}"
-            aggregation_key: "{{.alert_name}}"
-            description: "{{.annotations.summary}}"
-            severity: "{{.severity}}"
-        - action_type: "dispatch_issue"
-          data: {}
+            include_metadata: true
+            include_labels: true
+            custom_title: "{{.alert_name}}"
       stop: false
 
     # Pod Logs Examples (disabled by default - enable with --set workflows.examples.podLogs.enabled=true)
