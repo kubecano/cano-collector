@@ -323,6 +323,11 @@ func (a *SeverityRouterAction) Validate() error {
 // Issue Management Actions
 // ============================================================================
 
+const (
+	// AlertLabelsTitle is the title used for alert labels enrichments
+	AlertLabelsTitle = "Alert Labels"
+)
+
 // IssueEnrichmentAction enriches existing issues with additional metadata and context
 // This action focuses on adding enrichments, metadata, and custom processing to existing Issues
 type IssueEnrichmentAction struct {
@@ -355,6 +360,12 @@ func (a *IssueEnrichmentAction) Execute(ctx context.Context, event core_event.Wo
 
 	// Extract alert from event using common helper
 	alertEvent, err := a.ExtractAlertEvent(event, "issue enrichment")
+	if err != nil {
+		return a.CreateErrorResult(err, nil), err
+	}
+
+	// Validate that we have alerts to process
+	_, err = a.GetFirstAlert(alertEvent, "issue enrichment")
 	if err != nil {
 		return a.CreateErrorResult(err, nil), err
 	}
@@ -427,7 +438,7 @@ func (a *IssueEnrichmentAction) createMetadataEnrichment(alertEvent *core_event.
 // createLabelsEnrichment creates enrichment with alert labels
 func (a *IssueEnrichmentAction) createLabelsEnrichment(alertEvent *core_event.AlertManagerEvent) *issue.Enrichment {
 	if len(alertEvent.Alerts) == 0 {
-		return issue.NewEnrichmentWithType(issue.EnrichmentTypeAlertLabels, "Alert Labels")
+		return issue.NewEnrichmentWithType(issue.EnrichmentTypeAlertLabels, AlertLabelsTitle)
 	}
 
 	// Get labels from first alert
@@ -437,8 +448,8 @@ func (a *IssueEnrichmentAction) createLabelsEnrichment(alertEvent *core_event.Al
 		rows = append(rows, []string{key, value})
 	}
 
-	tableBlock := issue.NewTableBlock([]string{"Label", "Value"}, rows, "Alert Labels", issue.TableBlockFormatHorizontal)
-	enrichment := issue.NewEnrichmentWithType(issue.EnrichmentTypeAlertLabels, "Alert Labels")
+	tableBlock := issue.NewTableBlock([]string{"Label", "Value"}, rows, AlertLabelsTitle, issue.TableBlockFormatHorizontal)
+	enrichment := issue.NewEnrichmentWithType(issue.EnrichmentTypeAlertLabels, AlertLabelsTitle)
 	enrichment.AddBlock(tableBlock)
 	return enrichment
 }
