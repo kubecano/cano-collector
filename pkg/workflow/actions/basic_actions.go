@@ -318,3 +318,146 @@ func (a *SeverityRouterAction) Validate() error {
 
 	return nil
 }
+
+// ============================================================================
+// Issue Management Actions
+// ============================================================================
+
+const (
+	// AlertLabelsTitle is the title used for alert labels enrichments
+	AlertLabelsTitle = "Alert Labels"
+)
+
+// IssueEnrichmentAction enriches existing issues with additional metadata and context
+// This action focuses on adding enrichments, metadata, and custom processing to existing Issues
+type IssueEnrichmentAction struct {
+	*BaseAction
+}
+
+// NewIssueEnrichmentAction creates a new IssueEnrichmentAction
+func NewIssueEnrichmentAction(
+	config actions_interfaces.ActionConfig,
+	logger logger_interfaces.LoggerInterface,
+	metrics metric_interfaces.MetricsInterface,
+) *IssueEnrichmentAction {
+	baseAction := NewBaseAction(config, logger, metrics)
+	return &IssueEnrichmentAction{
+		BaseAction: baseAction,
+	}
+}
+
+// Validate performs validation for IssueEnrichmentAction
+func (a *IssueEnrichmentAction) Validate() error {
+	return a.ValidateBasicConfig()
+}
+
+// Execute enriches the issue with additional metadata and context
+func (a *IssueEnrichmentAction) Execute(ctx context.Context, event core_event.WorkflowEvent) (*actions_interfaces.ActionResult, error) {
+	a.logger.Info("Starting issue enrichment action execution",
+		zap.String("action_name", a.GetName()),
+		zap.String("event_type", string(event.GetType())),
+	)
+
+	// Extract alert from event using common helper
+	alertEvent, err := a.ExtractAlertEvent(event, "issue enrichment")
+	if err != nil {
+		return a.CreateErrorResult(err, nil), err
+	}
+
+	// Validate that we have alerts to process
+	_, err = a.GetFirstAlert(alertEvent, "issue enrichment")
+	if err != nil {
+		return a.CreateErrorResult(err, nil), err
+	}
+
+	// Create enrichments based on configuration
+	enrichments := a.createIssueEnrichments(alertEvent.AlertManagerEvent)
+
+	result := &actions_interfaces.ActionResult{
+		Success: true,
+		Data: map[string]interface{}{
+			"enrichments_added": len(enrichments),
+			"alert_name":        event.GetAlertName(),
+			"namespace":         event.GetNamespace(),
+		},
+		Enrichments: enrichments,
+		Metadata: map[string]interface{}{
+			"action_type":     "issue_enrichment",
+			"enrichment_type": "metadata",
+		},
+	}
+
+	a.logger.Info("Issue enrichment action completed",
+		zap.String("action_name", a.GetName()),
+		zap.Int("enrichments_added", len(enrichments)),
+	)
+
+	return result, nil
+}
+
+// createIssueEnrichments creates enrichments based on alert data and configuration
+func (a *IssueEnrichmentAction) createIssueEnrichments(alertEvent *core_event.AlertManagerEvent) []issue.Enrichment {
+	var enrichments []issue.Enrichment
+
+	// Add alert metadata enrichment if enabled
+	if a.GetBoolParameter("include_metadata", true) {
+		metadataEnrichment := a.createMetadataEnrichment(alertEvent)
+		enrichments = append(enrichments, *metadataEnrichment)
+	}
+
+	// Add alert labels enrichment if enabled
+	if a.GetBoolParameter("include_labels", true) {
+		labelsEnrichment := a.createLabelsEnrichment(alertEvent)
+		enrichments = append(enrichments, *labelsEnrichment)
+	}
+
+	// Add custom title/description if configured
+	if customTitle := a.GetStringParameter("custom_title", ""); customTitle != "" {
+		titleEnrichment := a.createTitleEnrichment(customTitle)
+		enrichments = append(enrichments, *titleEnrichment)
+	}
+
+	return enrichments
+}
+
+// createMetadataEnrichment creates enrichment with alert metadata
+func (a *IssueEnrichmentAction) createMetadataEnrichment(alertEvent *core_event.AlertManagerEvent) *issue.Enrichment {
+	text := fmt.Sprintf("**Alert Metadata**\n\n"+
+		"• Receiver: %s\n"+
+		"• Status: %s\n"+
+		"• Alert Count: %d\n"+
+		"• Severity: %s\n",
+		alertEvent.Receiver, alertEvent.Status, len(alertEvent.Alerts), alertEvent.GetSeverity())
+
+	textBlock := issue.NewMarkdownBlock(text)
+	enrichment := issue.NewEnrichmentWithType(issue.EnrichmentTypeAlertLabels, "Alert Metadata")
+	enrichment.AddBlock(textBlock)
+	return enrichment
+}
+
+// createLabelsEnrichment creates enrichment with alert labels
+func (a *IssueEnrichmentAction) createLabelsEnrichment(alertEvent *core_event.AlertManagerEvent) *issue.Enrichment {
+	if len(alertEvent.Alerts) == 0 {
+		return issue.NewEnrichmentWithType(issue.EnrichmentTypeAlertLabels, AlertLabelsTitle)
+	}
+
+	// Get labels from first alert
+	labels := alertEvent.Alerts[0].Labels
+	var rows [][]string
+	for key, value := range labels {
+		rows = append(rows, []string{key, value})
+	}
+
+	tableBlock := issue.NewTableBlock([]string{"Label", "Value"}, rows, AlertLabelsTitle, issue.TableBlockFormatHorizontal)
+	enrichment := issue.NewEnrichmentWithType(issue.EnrichmentTypeAlertLabels, AlertLabelsTitle)
+	enrichment.AddBlock(tableBlock)
+	return enrichment
+}
+
+// createTitleEnrichment creates enrichment with custom title
+func (a *IssueEnrichmentAction) createTitleEnrichment(title string) *issue.Enrichment {
+	textBlock := issue.NewMarkdownBlock("**Custom Title**: " + title)
+	enrichment := issue.NewEnrichmentWithType(issue.EnrichmentTypeAlertLabels, "Custom Information")
+	enrichment.AddBlock(textBlock)
+	return enrichment
+}
