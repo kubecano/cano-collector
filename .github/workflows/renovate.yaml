@@ -14,7 +14,7 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Renovate
-        uses: renovatebot/github-action@f8af9272cd94a4637c29f60dea8731afd3134473 # v43.0.12
+        uses: renovatebot/github-action@2d941ef4e268e53affdc1f11365c69a73e544f50 # v43.0.14
         with:
           configurationFile: .github/renovate-global.json
           token: ${{ secrets.PAT }}
