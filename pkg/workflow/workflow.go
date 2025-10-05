@@ -198,10 +198,19 @@ func (we *WorkflowEngine) createActionConfigs(wf *workflow.WorkflowDefinition) (
 		// Extract action type from RawData
 		actionType := actionDef.ActionType
 		if actionType == "" {
-			// Try to infer action type from RawData keys deterministically
+			// First, check for explicit action_type field in RawData
+			if explicitActionType, exists := actionDef.RawData["action_type"]; exists {
+				if actionTypeStr, ok := explicitActionType.(string); ok {
+					actionType = actionTypeStr
+				}
+			}
+		}
+
+		if actionType == "" {
+			// Try to infer action type from RawData keys deterministically (backward compatibility)
 			var candidateKeys []string
 			for key := range actionDef.RawData {
-				if key != "action_type" {
+				if key != "action_type" && key != "data" {
 					candidateKeys = append(candidateKeys, key)
 				}
 			}
@@ -219,16 +228,45 @@ func (we *WorkflowEngine) createActionConfigs(wf *workflow.WorkflowDefinition) (
 			return nil, fmt.Errorf("action %d in workflow '%s' has no action type", i, wf.Name)
 		}
 
-		// Create action config
+		// Create action config with proper parameter extraction
+		var parameters map[string]interface{}
+
+		// Check if we have action_type/data structure
+		if _, hasActionType := actionDef.RawData["action_type"]; hasActionType {
+			if dataField, hasData := actionDef.RawData["data"]; hasData {
+				if dataMap, ok := dataField.(map[string]interface{}); ok {
+					// Use data field as parameters for action_type/data structure
+					parameters = make(map[string]interface{})
+					for key, value := range dataMap {
+						parameters[key] = value
+					}
+				} else {
+					// Fallback to full RawData if data field is not a map
+					parameters = actionDef.RawData
+				}
+			} else {
+				// No data field, use RawData but exclude action_type
+				parameters = make(map[string]interface{})
+				for key, value := range actionDef.RawData {
+					if key != "action_type" {
+						parameters[key] = value
+					}
+				}
+			}
+		} else {
+			// Backward compatibility: use all RawData as parameters
+			parameters = actionDef.RawData
+		}
+
 		actionConfig := actions_interfaces.ActionConfig{
 			Name:       fmt.Sprintf("%s-action-%d", wf.Name, i),
 			Type:       actionType,
 			Enabled:    true,
 			Timeout:    30, // Default timeout
-			Parameters: actionDef.RawData,
+			Parameters: parameters,
 		}
 
-		// Extract specific parameters if they exist in RawData
+		// For backward compatibility: extract specific parameters if they exist in RawData
 		if actionData, exists := actionDef.RawData[actionType]; exists {
 			if actionDataMap, ok := actionData.(map[string]interface{}); ok {
 				// Merge action-specific data into parameters

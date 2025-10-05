@@ -516,3 +516,214 @@ func TestSeverityRouterActionFactory_GetActionType(t *testing.T) {
 	factory := NewSeverityRouterActionFactory(mockLogger, mockMetrics)
 	assert.Equal(t, "severity_router", factory.GetActionType())
 }
+
+// ============================================================================
+// IssueEnrichmentAction Tests
+// ============================================================================
+
+func TestIssueEnrichmentAction_Execute_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+	mockMetrics := mocks.NewMockMetricsInterface(ctrl)
+
+	config := actions_interfaces.ActionConfig{
+		Name:    "test-issue-enrichment",
+		Type:    "issue_enrichment",
+		Enabled: true,
+		Parameters: map[string]interface{}{
+			"include_metadata": true,
+			"include_labels":   true,
+			"custom_title":     "Test Custom Title",
+		},
+	}
+
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any()).AnyTimes()
+
+	action := NewIssueEnrichmentAction(config, mockLogger, mockMetrics)
+
+	// Create test event
+	alertEvent := createTestAlertManagerEvent("firing", "TestAlert", "critical", "default", map[string]string{
+		"pod":     "test-pod",
+		"service": "test-service",
+	})
+
+	result, err := action.Execute(context.Background(), alertEvent)
+
+	require.NoError(t, err)
+	assert.True(t, result.Success)
+	assert.Equal(t, 3, result.Data.(map[string]interface{})["enrichments_added"])
+	assert.Equal(t, "TestAlert", result.Data.(map[string]interface{})["alert_name"])
+	assert.Equal(t, "default", result.Data.(map[string]interface{})["namespace"])
+	assert.Equal(t, "issue_enrichment", result.Metadata["action_type"])
+	assert.Equal(t, "metadata", result.Metadata["enrichment_type"])
+	assert.Len(t, result.Enrichments, 3)
+}
+
+func TestIssueEnrichmentAction_Execute_MinimalConfig(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+	mockMetrics := mocks.NewMockMetricsInterface(ctrl)
+
+	config := actions_interfaces.ActionConfig{
+		Name:       "test-issue-enrichment",
+		Type:       "issue_enrichment",
+		Enabled:    true,
+		Parameters: map[string]interface{}{},
+	}
+
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any()).AnyTimes()
+
+	action := NewIssueEnrichmentAction(config, mockLogger, mockMetrics)
+
+	// Create test event
+	alertEvent := createTestAlertManagerEvent("firing", "TestAlert", "critical", "default", nil)
+
+	result, err := action.Execute(context.Background(), alertEvent)
+
+	require.NoError(t, err)
+	assert.True(t, result.Success)
+	// Should have 2 enrichments (metadata and labels) since include_metadata and include_labels default to true
+	assert.Equal(t, 2, result.Data.(map[string]interface{})["enrichments_added"])
+	assert.Len(t, result.Enrichments, 2)
+}
+
+func TestIssueEnrichmentAction_Execute_NoAlertsInEvent(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+	mockMetrics := mocks.NewMockMetricsInterface(ctrl)
+
+	config := actions_interfaces.ActionConfig{
+		Name:    "test-issue-enrichment",
+		Type:    "issue_enrichment",
+		Enabled: true,
+		Parameters: map[string]interface{}{
+			"include_metadata": true,
+		},
+	}
+
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any()).AnyTimes()
+
+	action := NewIssueEnrichmentAction(config, mockLogger, mockMetrics)
+
+	// Create test event with no alerts
+	alertEvent := createTestAlertManagerEventNoAlerts()
+
+	result, err := action.Execute(context.Background(), alertEvent)
+
+	require.Error(t, err)
+	assert.NotNil(t, result)
+	assert.False(t, result.Success)
+	assert.Contains(t, err.Error(), "no alerts found in event")
+}
+
+func TestIssueEnrichmentAction_Execute_OnlyCustomTitle(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+	mockMetrics := mocks.NewMockMetricsInterface(ctrl)
+
+	config := actions_interfaces.ActionConfig{
+		Name:    "test-issue-enrichment",
+		Type:    "issue_enrichment",
+		Enabled: true,
+		Parameters: map[string]interface{}{
+			"include_metadata": false,
+			"include_labels":   false,
+			"custom_title":     "Custom Alert Title",
+		},
+	}
+
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any()).AnyTimes()
+
+	action := NewIssueEnrichmentAction(config, mockLogger, mockMetrics)
+
+	// Create test event
+	alertEvent := createTestAlertManagerEvent("firing", "TestAlert", "critical", "default", nil)
+
+	result, err := action.Execute(context.Background(), alertEvent)
+
+	require.NoError(t, err)
+	assert.True(t, result.Success)
+	assert.Equal(t, 1, result.Data.(map[string]interface{})["enrichments_added"])
+	assert.Len(t, result.Enrichments, 1)
+}
+
+func TestIssueEnrichmentAction_Validate_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+	mockMetrics := mocks.NewMockMetricsInterface(ctrl)
+
+	config := actions_interfaces.ActionConfig{
+		Name:    "test-issue-enrichment",
+		Type:    "issue_enrichment",
+		Enabled: true,
+		Parameters: map[string]interface{}{
+			"include_metadata": true,
+		},
+	}
+
+	action := NewIssueEnrichmentAction(config, mockLogger, mockMetrics)
+	err := action.Validate()
+	assert.NoError(t, err)
+}
+
+func TestIssueEnrichmentActionFactory_Create_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+	mockMetrics := mocks.NewMockMetricsInterface(ctrl)
+
+	factory := NewIssueEnrichmentActionFactory(mockLogger, mockMetrics)
+
+	config := actions_interfaces.ActionConfig{
+		Name:    "test-issue-enrichment",
+		Type:    "issue_enrichment",
+		Enabled: true,
+		Parameters: map[string]interface{}{
+			"include_metadata": true,
+		},
+	}
+
+	action, err := factory.Create(config)
+	require.NoError(t, err)
+	assert.NotNil(t, action)
+	assert.Equal(t, "test-issue-enrichment", action.GetName())
+}
+
+func TestIssueEnrichmentActionFactory_GetActionType(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+	mockMetrics := mocks.NewMockMetricsInterface(ctrl)
+
+	factory := NewIssueEnrichmentActionFactory(mockLogger, mockMetrics)
+	assert.Equal(t, "issue_enrichment", factory.GetActionType())
+}
+
+func TestIssueEnrichmentActionFactory_ValidateConfig_InvalidType(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+	mockMetrics := mocks.NewMockMetricsInterface(ctrl)
+
+	factory := NewIssueEnrichmentActionFactory(mockLogger, mockMetrics)
+
+	config := actions_interfaces.ActionConfig{
+		Name:       "test-action",
+		Type:       "invalid_type",
+		Enabled:    true,
+		Parameters: map[string]interface{}{},
+	}
+
+	err := factory.ValidateConfig(config)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid action type for IssueEnrichmentActionFactory: invalid_type")
+}
