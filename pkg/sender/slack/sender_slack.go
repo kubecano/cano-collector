@@ -42,11 +42,13 @@ func NewSenderSlack(apiKey, channel string, unfurlLinks bool, logger logger_inte
 	}
 
 	return &SenderSlack{
-		apiKey:      apiKey,
-		channel:     channel,
-		logger:      logger,
-		unfurlLinks: unfurlLinks,
-		slackClient: slackClient,
+		apiKey:       apiKey,
+		channel:      channel,
+		logger:       logger,
+		unfurlLinks:  unfurlLinks,
+		slackClient:  slackClient,
+		tableFormat:  "enhanced", // Default table format
+		maxTableRows: 20,         // Default max rows before converting to file
 	}
 }
 
@@ -547,7 +549,7 @@ func (s *SenderSlack) convertLargeTableToFileBlock(table *issuepkg.TableBlock) s
 
 	// Convert table to CSV format
 	csvContent := s.tableToCSV(table)
-	
+
 	// Generate filename with timestamp
 	sanitizedName := strings.ReplaceAll(tableName, " ", "_")
 	timestamp := time.Now().Format("20060102-150405")
@@ -568,7 +570,7 @@ func (s *SenderSlack) convertLargeTableToFileBlock(table *issuepkg.TableBlock) s
 	// Create block with successful file upload
 	text := fmt.Sprintf("📊 *%s* (%d rows)\n", tableName, rowCount)
 	text += fmt.Sprintf("Table converted to CSV file (limit: %d rows)\n", s.maxTableRows)
-	// Generate Slack file URL based on file ID  
+	// Generate Slack file URL based on file ID
 	fileURL := fmt.Sprintf("https://files.slack.com/files-pri/%s/%s", s.channel, fileSummary.ID)
 	text += fmt.Sprintf("<%s|Download CSV file>", fileURL)
 
@@ -595,7 +597,7 @@ func (s *SenderSlack) createTableErrorBlock(table *issuepkg.TableBlock, err erro
 	if len(table.Headers) > 0 {
 		text += "*Headers:* " + strings.Join(table.Headers, " | ") + "\n"
 	}
-	
+
 	rowsShown := 0
 	for _, row := range table.Rows {
 		if rowsShown >= maxRowsToShow {
@@ -760,9 +762,9 @@ func (s *SenderSlack) convertFileBlockToSlack(file *issuepkg.FileBlock) slackapi
 	}
 
 	text := fmt.Sprintf("📎 *File uploaded: %s*\n", file.Filename)
-	text += fmt.Sprintf("Size: %s", sizeText)
+	text += "Size: " + sizeText
 	if file.MimeType != "" {
-		text += fmt.Sprintf("\nType: %s", file.MimeType)
+		text += "\nType: " + file.MimeType
 	}
 	// Generate Slack file URL based on file ID
 	fileURL := fmt.Sprintf("https://files.slack.com/files-pri/%s/%s", s.channel, fileSummary.ID)
@@ -784,11 +786,11 @@ func (s *SenderSlack) createFileErrorBlock(file *issuepkg.FileBlock, err error) 
 	}
 
 	text := fmt.Sprintf("📎 *File: %s* (upload failed)\n", file.Filename)
-	text += fmt.Sprintf("Size: %s", sizeText)
+	text += "Size: " + sizeText
 	if file.MimeType != "" {
-		text += fmt.Sprintf("\nType: %s", file.MimeType)
+		text += "\nType: " + file.MimeType
 	}
-	text += fmt.Sprintf("\nError: %s", err.Error())
+	text += "\nError: " + err.Error()
 
 	// Show preview of content if it's text and not too large
 	if strings.HasPrefix(file.MimeType, "text/") && len(file.Contents) < 2000 {
