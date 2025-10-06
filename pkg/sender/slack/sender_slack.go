@@ -568,14 +568,15 @@ func (s *SenderSlack) convertLargeTableToFileBlock(table *issuepkg.TableBlock) s
 	}
 
 	// Create block with successful file upload
-	text := fmt.Sprintf("📊 *%s* (%d rows)\n", tableName, rowCount)
-	text += fmt.Sprintf("Table converted to CSV file (limit: %d rows)\n", s.maxTableRows)
+	var textBuilder strings.Builder
+	textBuilder.WriteString(fmt.Sprintf("📊 *%s* (%d rows)\n", tableName, rowCount))
+	textBuilder.WriteString(fmt.Sprintf("Table converted to CSV file (limit: %d rows)\n", s.maxTableRows))
 	// Generate Slack file URL based on file ID
 	fileURL := fmt.Sprintf("https://files.slack.com/files-pri/%s/%s", s.channel, fileSummary.ID)
-	text += fmt.Sprintf("<%s|Download CSV file>", fileURL)
+	textBuilder.WriteString(fmt.Sprintf("<%s|Download CSV file>", fileURL))
 
 	return slackapi.NewSectionBlock(
-		slackapi.NewTextBlockObject("mrkdwn", text, false, false),
+		slackapi.NewTextBlockObject("mrkdwn", textBuilder.String(), false, false),
 		nil, nil,
 	)
 }
@@ -588,28 +589,29 @@ func (s *SenderSlack) createTableErrorBlock(table *issuepkg.TableBlock, err erro
 		tableName = "Large Table"
 	}
 
-	text := fmt.Sprintf("📊 *%s* (%d rows) - upload failed\n", tableName, rowCount)
-	text += fmt.Sprintf("Error: %s\n", err.Error())
-	text += "Showing simplified table view:\n\n"
+	var textBuilder strings.Builder
+	textBuilder.WriteString(fmt.Sprintf("📊 *%s* (%d rows) - upload failed\n", tableName, rowCount))
+	textBuilder.WriteString(fmt.Sprintf("Error: %s\n", err.Error()))
+	textBuilder.WriteString("Showing simplified table view:\n\n")
 
 	// Show first few rows as fallback
 	maxRowsToShow := 5
 	if len(table.Headers) > 0 {
-		text += "*Headers:* " + strings.Join(table.Headers, " | ") + "\n"
+		textBuilder.WriteString("*Headers:* " + strings.Join(table.Headers, " | ") + "\n")
 	}
 
 	rowsShown := 0
 	for _, row := range table.Rows {
 		if rowsShown >= maxRowsToShow {
-			text += fmt.Sprintf("... and %d more rows", len(table.Rows)-rowsShown)
+			textBuilder.WriteString(fmt.Sprintf("... and %d more rows", len(table.Rows)-rowsShown))
 			break
 		}
-		text += fmt.Sprintf("• %s\n", strings.Join(row, " | "))
+		textBuilder.WriteString(fmt.Sprintf("• %s\n", strings.Join(row, " | ")))
 		rowsShown++
 	}
 
 	return slackapi.NewSectionBlock(
-		slackapi.NewTextBlockObject("mrkdwn", text, false, false),
+		slackapi.NewTextBlockObject("mrkdwn", textBuilder.String(), false, false),
 		nil, nil,
 	)
 }
@@ -785,12 +787,13 @@ func (s *SenderSlack) createFileErrorBlock(file *issuepkg.FileBlock, err error) 
 		sizeText = fmt.Sprintf("%.1f MB", sizeMB)
 	}
 
-	text := fmt.Sprintf("📎 *File: %s* (upload failed)\n", file.Filename)
-	text += "Size: " + sizeText
+	var textBuilder strings.Builder
+	textBuilder.WriteString(fmt.Sprintf("📎 *File: %s* (upload failed)\n", file.Filename))
+	textBuilder.WriteString("Size: " + sizeText)
 	if file.MimeType != "" {
-		text += "\nType: " + file.MimeType
+		textBuilder.WriteString("\nType: " + file.MimeType)
 	}
-	text += "\nError: " + err.Error()
+	textBuilder.WriteString("\nError: " + err.Error())
 
 	// Show preview of content if it's text and not too large
 	if strings.HasPrefix(file.MimeType, "text/") && len(file.Contents) < 2000 {
@@ -798,11 +801,11 @@ func (s *SenderSlack) createFileErrorBlock(file *issuepkg.FileBlock, err error) 
 		if len(preview) > 500 {
 			preview = preview[:500] + "..."
 		}
-		text += fmt.Sprintf("\n\n*Content preview:*\n```\n%s\n```", preview)
+		textBuilder.WriteString(fmt.Sprintf("\n\n*Content preview:*\n```\n%s\n```", preview))
 	}
 
 	return slackapi.NewSectionBlock(
-		slackapi.NewTextBlockObject("mrkdwn", text, false, false),
+		slackapi.NewTextBlockObject("mrkdwn", textBuilder.String(), false, false),
 		nil, nil,
 	)
 }
