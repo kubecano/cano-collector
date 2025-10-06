@@ -35,10 +35,15 @@ func setupSenderSlackTest(t *testing.T) (*SenderSlack, *mocks.MockSlackClientInt
 	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Warn(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Warn(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Warn(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Error(gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
 
 	sender := &SenderSlack{
@@ -804,6 +809,33 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 	})
 
 	t.Run("formats file blocks correctly", func(t *testing.T) {
+		// Setup a separate mock environment for this test since it needs upload mock
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		
+		mockLogger := mocks.NewMockLoggerInterface(ctrl)
+		mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
+		mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
+		mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+		mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+		mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+		mockLogger.EXPECT().Warn(gomock.Any()).AnyTimes()
+		mockLogger.EXPECT().Warn(gomock.Any(), gomock.Any()).AnyTimes()
+		mockLogger.EXPECT().Warn(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+		mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
+		
+		// Mock upload failure for this test to avoid complexity
+		uploadError := fmt.Errorf("test upload error")
+		mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(nil, uploadError)
+		
+		testSender := &SenderSlack{
+			apiKey:      "xoxb-test-token",
+			channel:     "#test-channel",
+			logger:      mockLogger,
+			unfurlLinks: true,
+			slackClient: mockSlackClient,
+		}
+
 		fileContent := []byte("test file content")
 		fileBlock := &issuepkg.FileBlock{
 			Filename: "test.txt",
@@ -812,16 +844,16 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 			Size:     int64(len(fileContent)),
 		}
 
-		slackBlock := slackSender.convertFileBlockToSlack(fileBlock)
+		slackBlock := testSender.convertFileBlockToSlack(fileBlock)
 
 		sectionBlock, ok := slackBlock.(*slack.SectionBlock)
 		assert.True(t, ok, "Expected section block")
 
 		text := sectionBlock.Text.Text
-		assert.Contains(t, text, "📎 *File: test.txt*")
+		assert.Contains(t, text, "📎 *File: test.txt* (upload failed)")
 		assert.Contains(t, text, "Size:")
 		assert.Contains(t, text, "Type: text/plain")
-		assert.Contains(t, text, "upload functionality to be implemented")
+		assert.Contains(t, text, "Content preview:")
 	})
 
 	t.Run("formats divider blocks correctly", func(t *testing.T) {
@@ -1209,4 +1241,169 @@ func TestSenderSlack_EnrichmentBlocks_WithMarkdown(t *testing.T) {
 	// Verify divider block
 	_, ok = enrichmentBlocks[2].(*slack.DividerBlock)
 	assert.True(t, ok, "Third block should be divider")
+}
+
+func TestSenderSlack_UploadFileToSlack_Success(t *testing.T) {
+	slackSender, mockClient, mockLogger := setupSenderSlackTest(t)
+
+	// Mock successful file upload
+	expectedFileSummary := &slack.FileSummary{
+		ID:    "F123456789",
+		Title: "test-file.log",
+	}
+	
+	mockClient.EXPECT().UploadFileV2(gomock.Any()).Return(expectedFileSummary, nil)
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
+
+	// Test file upload
+	filename := "test-file.log"
+	content := []byte("test log content\nline 2\nline 3")
+	channel := "#test-channel"
+
+	fileSummary, err := slackSender.uploadFileToSlack(filename, content, channel)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, fileSummary)
+	assert.Equal(t, expectedFileSummary.ID, fileSummary.ID)
+	assert.Equal(t, expectedFileSummary.Title, fileSummary.Title)
+}
+
+func TestSenderSlack_UploadFileToSlack_Error(t *testing.T) {
+	slackSender, mockClient, mockLogger := setupSenderSlackTest(t)
+
+	// Mock file upload error
+	uploadError := fmt.Errorf("slack api error: file too large")
+	mockClient.EXPECT().UploadFileV2(gomock.Any()).Return(nil, uploadError)
+	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
+
+	// Test file upload failure
+	filename := "large-file.log"
+	content := []byte("very large file content")
+	channel := "#test-channel"
+
+	fileSummary, err := slackSender.uploadFileToSlack(filename, content, channel)
+
+	assert.Error(t, err)
+	assert.Nil(t, fileSummary)
+	assert.Contains(t, err.Error(), "slack file upload failed")
+}
+
+func TestSenderSlack_ConvertFileBlockToSlack_Success(t *testing.T) {
+	slackSender, mockClient, mockLogger := setupSenderSlackTest(t)
+
+	// Mock successful file upload
+	expectedFileSummary := &slack.FileSummary{
+		ID:    "F123456789",
+		Title: "pod-logs.log",
+	}
+	
+	mockClient.EXPECT().UploadFileV2(gomock.Any()).Return(expectedFileSummary, nil)
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
+
+	// Create file block
+	fileBlock := issuepkg.NewFileBlock("pod-logs.log", []byte("pod log content"), "text/plain")
+
+	// Convert to Slack block
+	slackBlock := slackSender.convertFileBlockToSlack(fileBlock)
+
+	// Verify result
+	assert.NotNil(t, slackBlock)
+	sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+	assert.True(t, ok)
+	assert.Contains(t, sectionBlock.Text.Text, "📎 *File uploaded: pod-logs.log*")
+	assert.Contains(t, sectionBlock.Text.Text, "https://files.slack.com/files-pri/")
+	assert.Contains(t, sectionBlock.Text.Text, "Download file")
+}
+
+func TestSenderSlack_ConvertFileBlockToSlack_UploadFailed(t *testing.T) {
+	slackSender, mockClient, mockLogger := setupSenderSlackTest(t)
+
+	// Mock file upload failure
+	uploadError := fmt.Errorf("upload failed")
+	mockClient.EXPECT().UploadFileV2(gomock.Any()).Return(nil, uploadError)
+	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
+	mockLogger.EXPECT().Warn(gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
+
+	// Create file block
+	fileBlock := issuepkg.NewFileBlock("test-file.log", []byte("test content"), "text/plain")
+
+	// Convert to Slack block (should fallback to error display)
+	slackBlock := slackSender.convertFileBlockToSlack(fileBlock)
+
+	// Verify fallback behavior
+	assert.NotNil(t, slackBlock)
+	sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+	assert.True(t, ok)
+	assert.Contains(t, sectionBlock.Text.Text, "📎 *File: test-file.log* (upload failed)")
+	assert.Contains(t, sectionBlock.Text.Text, "upload failed")
+	assert.Contains(t, sectionBlock.Text.Text, "Content preview:")
+}
+
+func TestSenderSlack_TableToCSV(t *testing.T) {
+	slackSender, _, _ := setupSenderSlackTest(t)
+
+	// Create table with headers and data
+	table := &issuepkg.TableBlock{
+		TableName: "Test Table",
+		Headers:   []string{"Name", "Value", "Description"},
+		Rows: [][]string{
+			{"pod1", "ready", "Pod is running"},
+			{"pod2", "pending", "Pod with, comma"},
+			{"pod3", "failed", "Pod with \"quotes\""},
+		},
+	}
+
+	// Convert to CSV
+	csvContent := slackSender.tableToCSV(table)
+
+	// Verify CSV format
+	lines := strings.Split(csvContent, "\n")
+	assert.GreaterOrEqual(t, len(lines), 4) // headers + 3 rows + empty line
+
+	// Verify headers
+	assert.Equal(t, "Name,Value,Description", lines[0])
+
+	// Verify data rows
+	assert.Equal(t, "pod1,ready,Pod is running", lines[1])
+	assert.Equal(t, "pod2,pending,\"Pod with, comma\"", lines[2]) // CSV escaping
+	assert.Equal(t, "pod3,failed,\"Pod with \"\"quotes\"\"\"", lines[3]) // Quote escaping
+}
+
+func TestSenderSlack_ConvertLargeTableToFileBlock_Success(t *testing.T) {
+	slackSender, mockClient, mockLogger := setupSenderSlackTest(t)
+
+	// Set table row limit for testing
+	slackSender.maxTableRows = 2
+
+	// Mock successful file upload
+	expectedFileSummary := &slack.FileSummary{
+		ID:    "F123456789", 
+		Title: "Large_Table.csv",
+	}
+	
+	mockClient.EXPECT().UploadFileV2(gomock.Any()).Return(expectedFileSummary, nil)
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
+
+	// Create large table (exceeds maxTableRows)
+	table := &issuepkg.TableBlock{
+		TableName: "Large Table",
+		Headers:   []string{"Name", "Status"},
+		Rows: [][]string{
+			{"pod1", "ready"},
+			{"pod2", "pending"},
+			{"pod3", "failed"}, // This exceeds the limit of 2
+		},
+	}
+
+	// Convert to Slack block
+	slackBlock := slackSender.convertLargeTableToFileBlock(table)
+
+	// Verify result
+	assert.NotNil(t, slackBlock)
+	sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+	assert.True(t, ok)
+	assert.Contains(t, sectionBlock.Text.Text, "📊 *Large Table* (3 rows)")
+	assert.Contains(t, sectionBlock.Text.Text, "Table converted to CSV file")
+	assert.Contains(t, sectionBlock.Text.Text, "https://files.slack.com/files-pri/")
+	assert.Contains(t, sectionBlock.Text.Text, "Download CSV file")
 }

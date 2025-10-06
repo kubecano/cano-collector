@@ -496,21 +496,115 @@ func (s *SenderSlack) convertTableToAttachmentStyleBlock(table *issuepkg.TableBl
 	)
 }
 
-// convertLargeTableToFileBlock converts large tables to file placeholder
-// TODO: Implement actual file upload with Slack files_upload_v2 API
+// tableToCSV converts a table block to CSV format
+func (s *SenderSlack) tableToCSV(table *issuepkg.TableBlock) string {
+	var csvContent strings.Builder
+
+	// Add headers if they exist
+	if len(table.Headers) > 0 {
+		for i, header := range table.Headers {
+			if i > 0 {
+				csvContent.WriteString(",")
+			}
+			// Escape quotes and wrap in quotes if contains comma or quote
+			escapedHeader := strings.ReplaceAll(header, "\"", "\"\"")
+			if strings.Contains(header, ",") || strings.Contains(header, "\"") || strings.Contains(header, "\n") {
+				csvContent.WriteString(fmt.Sprintf("\"%s\"", escapedHeader))
+			} else {
+				csvContent.WriteString(escapedHeader)
+			}
+		}
+		csvContent.WriteString("\n")
+	}
+
+	// Add rows
+	for _, row := range table.Rows {
+		for i, cell := range row {
+			if i > 0 {
+				csvContent.WriteString(",")
+			}
+			// Escape quotes and wrap in quotes if contains comma or quote
+			escapedCell := strings.ReplaceAll(cell, "\"", "\"\"")
+			if strings.Contains(cell, ",") || strings.Contains(cell, "\"") || strings.Contains(cell, "\n") {
+				csvContent.WriteString(fmt.Sprintf("\"%s\"", escapedCell))
+			} else {
+				csvContent.WriteString(escapedCell)
+			}
+		}
+		csvContent.WriteString("\n")
+	}
+
+	return csvContent.String()
+}
+
+// convertLargeTableToFileBlock converts large tables to file attachment
 func (s *SenderSlack) convertLargeTableToFileBlock(table *issuepkg.TableBlock) slackapi.Block {
+	rowCount := len(table.Rows)
+	tableName := table.TableName
+	if tableName == "" {
+		tableName = "Large_Table"
+	}
+
+	// Convert table to CSV format
+	csvContent := s.tableToCSV(table)
+	
+	// Generate filename with timestamp
+	sanitizedName := strings.ReplaceAll(tableName, " ", "_")
+	timestamp := time.Now().Format("20060102-150405")
+	filename := fmt.Sprintf("%s-%s.csv", sanitizedName, timestamp)
+
+	// Create FileBlock and attempt upload
+	csvBytes := []byte(csvContent)
+	fileSummary, err := s.uploadFileToSlack(filename, csvBytes, s.channel)
+	if err != nil {
+		s.logger.Warn("Table file upload failed, falling back to inline display",
+			zap.Error(err),
+			zap.String("table_name", tableName),
+			zap.Int("rows", rowCount),
+		)
+		return s.createTableErrorBlock(table, err)
+	}
+
+	// Create block with successful file upload
+	text := fmt.Sprintf("📊 *%s* (%d rows)\n", tableName, rowCount)
+	text += fmt.Sprintf("Table converted to CSV file (limit: %d rows)\n", s.maxTableRows)
+	// Generate Slack file URL based on file ID  
+	fileURL := fmt.Sprintf("https://files.slack.com/files-pri/%s/%s", s.channel, fileSummary.ID)
+	text += fmt.Sprintf("<%s|Download CSV file>", fileURL)
+
+	return slackapi.NewSectionBlock(
+		slackapi.NewTextBlockObject("mrkdwn", text, false, false),
+		nil, nil,
+	)
+}
+
+// createTableErrorBlock creates a fallback block when table file upload fails
+func (s *SenderSlack) createTableErrorBlock(table *issuepkg.TableBlock, err error) slackapi.Block {
 	rowCount := len(table.Rows)
 	tableName := table.TableName
 	if tableName == "" {
 		tableName = "Large Table"
 	}
 
-	text := fmt.Sprintf("📊 *%s* (%d rows)\n", tableName, rowCount)
-	text += fmt.Sprintf("Table too large for inline display (limit: %d rows)\n", s.maxTableRows)
-	text += "_Would be converted to file attachment in full implementation_"
+	text := fmt.Sprintf("📊 *%s* (%d rows) - upload failed\n", tableName, rowCount)
+	text += fmt.Sprintf("Error: %s\n", err.Error())
+	text += "Showing simplified table view:\n\n"
 
-	// TODO: Convert table to CSV/text format and upload using Slack files_upload_v2 API
-	// For now, show placeholder
+	// Show first few rows as fallback
+	maxRowsToShow := 5
+	if len(table.Headers) > 0 {
+		text += "*Headers:* " + strings.Join(table.Headers, " | ") + "\n"
+	}
+	
+	rowsShown := 0
+	for _, row := range table.Rows {
+		if rowsShown >= maxRowsToShow {
+			text += fmt.Sprintf("... and %d more rows", len(table.Rows)-rowsShown)
+			break
+		}
+		text += fmt.Sprintf("• %s\n", strings.Join(row, " | "))
+		rowsShown++
+	}
 
 	return slackapi.NewSectionBlock(
 		slackapi.NewTextBlockObject("mrkdwn", text, false, false),
@@ -615,9 +709,49 @@ func (s *SenderSlack) convertLinksBlockToSlack(links *issuepkg.LinksBlock) slack
 	return slackapi.NewActionBlock(blockID, buttons...)
 }
 
-// convertFileBlockToSlack converts a file block to Slack section block
-// For now, we'll display file info as text. File upload implementation would require files_upload_v2 API
+// uploadFileToSlack uploads a file to Slack using files_upload_v2 API
+func (s *SenderSlack) uploadFileToSlack(filename string, content []byte, channel string) (*slackapi.FileSummary, error) {
+	params := slackapi.UploadFileV2Parameters{
+		Channel:  channel,
+		Filename: filename,
+		FileSize: len(content),
+		Reader:   strings.NewReader(string(content)),
+	}
+
+	fileSummary, err := s.slackClient.UploadFileV2(params)
+	if err != nil {
+		s.logger.Error("Failed to upload file to Slack",
+			zap.Error(err),
+			zap.String("filename", filename),
+			zap.String("channel", channel),
+			zap.Int("size", len(content)),
+		)
+		return nil, fmt.Errorf("slack file upload failed: %w", err)
+	}
+
+	s.logger.Info("File uploaded successfully to Slack",
+		zap.String("filename", filename),
+		zap.String("file_id", fileSummary.ID),
+		zap.String("channel", channel),
+		zap.Int("size", len(content)),
+	)
+
+	return fileSummary, nil
+}
+
+// convertFileBlockToSlack converts a file block to Slack section block with actual file upload
 func (s *SenderSlack) convertFileBlockToSlack(file *issuepkg.FileBlock) slackapi.Block {
+	// Attempt to upload file to Slack
+	fileSummary, err := s.uploadFileToSlack(file.Filename, file.Contents, s.channel)
+	if err != nil {
+		s.logger.Warn("File upload failed, falling back to text display",
+			zap.Error(err),
+			zap.String("filename", file.Filename),
+		)
+		return s.createFileErrorBlock(file, err)
+	}
+
+	// Create block with successful file upload
 	sizeKB := file.GetSizeKB()
 	sizeText := fmt.Sprintf("%.1f KB", sizeKB)
 	if sizeKB > 1024 {
@@ -625,15 +759,45 @@ func (s *SenderSlack) convertFileBlockToSlack(file *issuepkg.FileBlock) slackapi
 		sizeText = fmt.Sprintf("%.1f MB", sizeMB)
 	}
 
-	text := fmt.Sprintf("📎 *File: %s*\n", file.Filename)
-	text += "Size: " + sizeText
+	text := fmt.Sprintf("📎 *File uploaded: %s*\n", file.Filename)
+	text += fmt.Sprintf("Size: %s", sizeText)
 	if file.MimeType != "" {
-		text += "\nType: " + file.MimeType
+		text += fmt.Sprintf("\nType: %s", file.MimeType)
+	}
+	// Generate Slack file URL based on file ID
+	fileURL := fmt.Sprintf("https://files.slack.com/files-pri/%s/%s", s.channel, fileSummary.ID)
+	text += fmt.Sprintf("\n<%s|Download file>", fileURL)
+
+	return slackapi.NewSectionBlock(
+		slackapi.NewTextBlockObject("mrkdwn", text, false, false),
+		nil, nil,
+	)
+}
+
+// createFileErrorBlock creates a fallback block when file upload fails
+func (s *SenderSlack) createFileErrorBlock(file *issuepkg.FileBlock, err error) slackapi.Block {
+	sizeKB := file.GetSizeKB()
+	sizeText := fmt.Sprintf("%.1f KB", sizeKB)
+	if sizeKB > 1024 {
+		sizeMB := sizeKB / 1024
+		sizeText = fmt.Sprintf("%.1f MB", sizeMB)
 	}
 
-	// TODO: Implement actual file upload using Slack files_upload_v2 API
-	// For now, display as attachment info
-	text += "\n_File content not uploaded - upload functionality to be implemented_"
+	text := fmt.Sprintf("📎 *File: %s* (upload failed)\n", file.Filename)
+	text += fmt.Sprintf("Size: %s", sizeText)
+	if file.MimeType != "" {
+		text += fmt.Sprintf("\nType: %s", file.MimeType)
+	}
+	text += fmt.Sprintf("\nError: %s", err.Error())
+
+	// Show preview of content if it's text and not too large
+	if strings.HasPrefix(file.MimeType, "text/") && len(file.Contents) < 2000 {
+		preview := string(file.Contents)
+		if len(preview) > 500 {
+			preview = preview[:500] + "..."
+		}
+		text += fmt.Sprintf("\n\n*Content preview:*\n```\n%s\n```", preview)
+	}
 
 	return slackapi.NewSectionBlock(
 		slackapi.NewTextBlockObject("mrkdwn", text, false, false),
