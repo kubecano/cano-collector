@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.0.18](https://github.com/kubecano/cano-collector/compare/cano-collector-helm-v0.0.17...cano-collector-helm-v0.0.18) (2025-10-06)
+
+
+### Features
+
+* CU-8699hu9md - Production Deployment and Testing ([#221](https://github.com/kubecano/cano-collector/issues/221)) ([d980b44](https://github.com/kubecano/cano-collector/commit/d980b440affb7ab2aec2e1971a3d1476bcf7ee04))
+* **helm:** bump chart for app release cano-collector-v0.0.16 ([716004b](https://github.com/kubecano/cano-collector/commit/716004bf77452b1a420984dd8a090776ed07b9bc))
+
+
+### Bug Fixes
+
+* Fixed Workflow alert name ([#188](https://github.com/kubecano/cano-collector/issues/188)) ([da80599](https://github.com/kubecano/cano-collector/commit/da8059910149f76cd39b62d15185cd6842b17b64))
+* Helm template syntax error ([#187](https://github.com/kubecano/cano-collector/issues/187)) ([59605c6](https://github.com/kubecano/cano-collector/commit/59605c641ff3a20d042b1c3b4543aae7bfad7d1b))
+
 ## [0.0.17](https://github.com/kubecano/cano-collector/compare/cano-collector-helm-v0.0.16...cano-collector-helm-v0.0.17) (2025-08-17)
 
 

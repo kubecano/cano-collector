@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.0.17](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.16...cano-collector-v0.0.17) (2025-10-06)
+
+
+### Features
+
+* 8699hu48u -Simple Workflow Actions ([#206](https://github.com/kubecano/cano-collector/issues/206)) ([2b5e5f7](https://github.com/kubecano/cano-collector/commit/2b5e5f75b35c7dba856fd22d049c3507d24a161b))
+* CU-8699hu4hz - Workflow Integration with Alert Pipeline ([#209](https://github.com/kubecano/cano-collector/issues/209)) ([a4313f1](https://github.com/kubecano/cano-collector/commit/a4313f16643214e730a5571133f4913ce587e2ea))
+* CU-8699hu9md - Production Deployment and Testing ([#221](https://github.com/kubecano/cano-collector/issues/221)) ([d980b44](https://github.com/kubecano/cano-collector/commit/d980b440affb7ab2aec2e1971a3d1476bcf7ee04))
+* CU-869a60a2n - Add shorter Slack message for resolved alerts ([#197](https://github.com/kubecano/cano-collector/issues/197)) ([4c5ae07](https://github.com/kubecano/cano-collector/commit/4c5ae075f60c7c11eb6c9f703ea2a9be1220b0df))
+* CU-869ag4w5v - Test Pod Setup for Cano-Collector Validation ([#212](https://github.com/kubecano/cano-collector/issues/212)) ([02dcc0a](https://github.com/kubecano/cano-collector/commit/02dcc0a3946a54cbb9118e88dc2558ada33102f3))
+* CU-869aj0nqy - Implement Slack File Upload and Enhanced Enrichments ([#229](https://github.com/kubecano/cano-collector/issues/229)) ([b5a615b](https://github.com/kubecano/cano-collector/commit/b5a615b1e98bf98db3f411b3cce8e36daf74ebab))
+
+
+### Bug Fixes
+
+* **deps:** update kubernetes packages to v0.34.0 ([#201](https://github.com/kubecano/cano-collector/issues/201)) ([510e0f8](https://github.com/kubecano/cano-collector/commit/510e0f8ee28b3e3aea00d4694659d259372200b2))
+* **deps:** update kubernetes packages to v0.34.1 ([#214](https://github.com/kubecano/cano-collector/issues/214)) ([76c6c17](https://github.com/kubecano/cano-collector/commit/76c6c17ca899d6e769cda0fcbb0573dfa0b89953))
+* **deps:** update module github.com/getsentry/sentry-go to v0.35.3 ([#215](https://github.com/kubecano/cano-collector/issues/215)) ([86ec02a](https://github.com/kubecano/cano-collector/commit/86ec02a4a3b2237815daf89706f53be23aeccde3))
+* **deps:** update module github.com/getsentry/sentry-go/gin to v0.35.3 ([#216](https://github.com/kubecano/cano-collector/issues/216)) ([ec4131e](https://github.com/kubecano/cano-collector/commit/ec4131ec592f34de4ec3d7f68faf3ab375d5ea16))
+* **deps:** update module github.com/gin-gonic/gin to v1.11.0 ([#231](https://github.com/kubecano/cano-collector/issues/231)) ([bda0f61](https://github.com/kubecano/cano-collector/commit/bda0f61aca18ae66bb1dba237094414551cbd7b3))
+* **deps:** update module github.com/prometheus/client_golang to v1.23.2 ([#217](https://github.com/kubecano/cano-collector/issues/217)) ([e248e4d](https://github.com/kubecano/cano-collector/commit/e248e4dcf5b4f86fa764fe86b274df9835d24cba))
+* **deps:** update module go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin to v0.63.0 ([#203](https://github.com/kubecano/cano-collector/issues/203)) ([4823f72](https://github.com/kubecano/cano-collector/commit/4823f726883e88993478651b387c5d6291a0b0d3))
+* **deps:** update opentelemetry-go monorepo to v1.38.0 ([#204](https://github.com/kubecano/cano-collector/issues/204)) ([d16b021](https://github.com/kubecano/cano-collector/commit/d16b02131d5f985c17bab79ce53381500dc23d6c))
+
 ## [0.0.16](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.15...cano-collector-v0.0.16) (2025-08-17)
 
 
