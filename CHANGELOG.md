@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.18](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.17...cano-collector-v0.0.18) (2025-10-07)
+
+
+### Bug Fixes
+
+* CU-869aj0nqy - Implement Slack File Upload and Enhanced Enrichments ([#233](https://github.com/kubecano/cano-collector/issues/233)) ([683744c](https://github.com/kubecano/cano-collector/commit/683744c7aa323928c60d5a1baf825eb60f953fde))
+
 ## [0.0.17](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.16...cano-collector-v0.0.17) (2025-10-06)
 
 
