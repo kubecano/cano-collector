@@ -1,6 +1,7 @@
 package slack
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -719,7 +720,7 @@ func (s *SenderSlack) uploadFileToSlack(filename string, content []byte, channel
 		Channel:  channel,
 		Filename: filename,
 		FileSize: len(content),
-		Reader:   strings.NewReader(string(content)),
+		Reader:   bytes.NewReader(content),
 	}
 
 	fileSummary, err := s.slackClient.UploadFileV2(params)
