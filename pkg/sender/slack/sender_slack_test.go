@@ -44,7 +44,20 @@ func setupSenderSlackTest(t *testing.T) (*SenderSlack, *mocks.MockSlackClientInt
 	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
+
+	// Mock channel resolution for #test-channel (used by many tests)
+	testChannel := slack.Channel{}
+	testChannel.ID = "C123TEST"
+	testChannel.Name = "test-channel"
+	mockSlackClient.EXPECT().GetConversations(gomock.Any()).Return(
+		[]slack.Channel{testChannel},
+		"",
+		nil,
+	).AnyTimes()
 
 	sender := &SenderSlack{
 		apiKey:       "xoxb-test-token",
@@ -835,8 +848,20 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 		mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 		mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 		mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+		mockLogger.EXPECT().Debug(gomock.Any()).AnyTimes()
+		mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any()).AnyTimes()
+		mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 		mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
 
+		// Mock channel resolution
+		testChannel := slack.Channel{}
+		testChannel.ID = "C123TEST"
+		testChannel.Name = "test-channel"
+		mockSlackClient.EXPECT().GetConversations(gomock.Any()).Return(
+			[]slack.Channel{testChannel},
+			"",
+			nil,
+		).AnyTimes()
 		// Mock upload failure for this test to avoid complexity
 		uploadError := fmt.Errorf("test upload error")
 		mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(nil, uploadError)
@@ -1383,8 +1408,20 @@ func TestSenderSlack_ConvertFileBlockToSlack_ErrorPath(t *testing.T) {
 	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 	mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
+	// Mock channel resolution
+	testChannel := slack.Channel{}
+	testChannel.ID = "C123TEST"
+	testChannel.Name = "test-channel"
+	mockSlackClient.EXPECT().GetConversations(gomock.Any()).Return(
+		[]slack.Channel{testChannel},
+		"",
+		nil,
+	).AnyTimes()
 	// Mock file upload failure
 	uploadError := fmt.Errorf("file too large")
 	mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(nil, uploadError)
@@ -1435,8 +1472,20 @@ func TestSenderSlack_ConvertFileBlockToSlack_ErrorPath_BinaryFile(t *testing.T) 
 	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 	mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
+	// Mock channel resolution
+	testChannel := slack.Channel{}
+	testChannel.ID = "C123TEST"
+	testChannel.Name = "test-channel"
+	mockSlackClient.EXPECT().GetConversations(gomock.Any()).Return(
+		[]slack.Channel{testChannel},
+		"",
+		nil,
+	).AnyTimes()
 	// Mock file upload failure
 	uploadError := fmt.Errorf("binary file not supported")
 	mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(nil, uploadError)

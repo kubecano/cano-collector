@@ -21,6 +21,7 @@ import (
 type SenderSlack struct {
 	apiKey      string
 	channel     string
+	channelID   string // Cached channel ID after resolution
 	logger      logger_interfaces.LoggerInterface
 	unfurlLinks bool
 	slackClient sender_interfaces.SlackClientInterface
@@ -149,6 +150,56 @@ func (s *SenderSlack) Send(ctx context.Context, issue *issuepkg.Issue) error {
 	return nil
 }
 
+// deduplicateEnrichments removes duplicate enrichments based on composite key
+func (s *SenderSlack) deduplicateEnrichments(enrichments []issuepkg.Enrichment) []issuepkg.Enrichment {
+	seen := make(map[string]bool)
+	unique := []issuepkg.Enrichment{}
+
+	for _, e := range enrichments {
+		// Generate unique key: type + title + first block identifier
+		var key string
+		if e.EnrichmentType != nil {
+			key = e.EnrichmentType.String()
+		}
+		if e.Title != nil {
+			key += ":" + *e.Title
+		}
+
+		// Add first block identifier for better uniqueness
+		if len(e.Blocks) > 0 {
+			switch block := e.Blocks[0].(type) {
+			case *issuepkg.FileBlock:
+				key += ":" + block.Filename
+			case *issuepkg.TableBlock:
+				key += ":" + block.TableName
+			case *issuepkg.MarkdownBlock:
+				// Use first 50 chars of markdown as identifier
+				if len(block.Text) > 50 {
+					key += ":" + block.Text[:50]
+				} else {
+					key += ":" + block.Text
+				}
+			}
+		}
+
+		if !seen[key] {
+			seen[key] = true
+			unique = append(unique, e)
+		} else {
+			typeStr := ""
+			if e.EnrichmentType != nil {
+				typeStr = e.EnrichmentType.String()
+			}
+			s.logger.Debug("Skipping duplicate enrichment",
+				zap.String("key", key),
+				zap.String("type", typeStr),
+			)
+		}
+	}
+
+	return unique
+}
+
 // buildSlackBlocks creates the main message blocks
 func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slackapi.Block {
 	var blocks []slackapi.Block
@@ -229,8 +280,9 @@ func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slackapi.Block {
 		blocks = append(blocks, runbookBlock)
 	}
 
-	// Add enrichments directly
-	enrichmentBlocks := s.buildEnrichmentBlocks(issue.Enrichments)
+	// Deduplicate and add enrichments
+	uniqueEnrichments := s.deduplicateEnrichments(issue.Enrichments)
+	enrichmentBlocks := s.buildEnrichmentBlocks(uniqueEnrichments)
 	blocks = append(blocks, enrichmentBlocks...)
 
 	// Add final divider if we have enrichments
@@ -714,10 +766,58 @@ func (s *SenderSlack) convertLinksBlockToSlack(links *issuepkg.LinksBlock) slack
 	return slackapi.NewActionBlock(blockID, buttons...)
 }
 
+// resolveChannelID resolves channel name to channel ID if needed
+// Returns cached channelID if available, otherwise resolves from Slack API
+func (s *SenderSlack) resolveChannelID() (string, error) {
+	// If we already have the channel ID cached, return it
+	if s.channelID != "" {
+		return s.channelID, nil
+	}
+
+	// If channel is already an ID (doesn't start with #), use it directly
+	if !strings.HasPrefix(s.channel, "#") {
+		s.channelID = s.channel
+		return s.channelID, nil
+	}
+
+	// Channel is a name (#channel-name), need to resolve to ID
+	channelName := strings.TrimPrefix(s.channel, "#")
+	s.logger.Debug("Resolving channel name to ID",
+		zap.String("channel_name", channelName),
+	)
+
+	channels, _, err := s.slackClient.GetConversations(&slackapi.GetConversationsParameters{
+		Types: []string{"public_channel", "private_channel"},
+		Limit: 1000,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to list conversations: %w", err)
+	}
+
+	for _, ch := range channels {
+		if ch.Name == channelName {
+			s.channelID = ch.ID
+			s.logger.Info("Channel resolved successfully",
+				zap.String("channel_name", channelName),
+				zap.String("channel_id", ch.ID),
+			)
+			return s.channelID, nil
+		}
+	}
+
+	return "", fmt.Errorf("channel not found: %s", s.channel)
+}
+
 // uploadFileToSlack uploads a file to Slack using files_upload_v2 API
 func (s *SenderSlack) uploadFileToSlack(filename string, content []byte, channel string) (*slackapi.FileSummary, error) {
+	// Resolve channel name to ID if needed
+	channelID, err := s.resolveChannelID()
+	if err != nil {
+		return nil, fmt.Errorf("channel resolution failed: %w", err)
+	}
+
 	params := slackapi.UploadFileV2Parameters{
-		Channel:  channel,
+		Channel:  channelID,
 		Filename: filename,
 		FileSize: len(content),
 		Reader:   bytes.NewReader(content),
