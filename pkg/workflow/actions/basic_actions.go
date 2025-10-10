@@ -1,9 +1,11 @@
 package actions
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strings"
+	"text/template"
 
 	"go.uber.org/zap"
 
@@ -413,7 +415,7 @@ func (a *IssueEnrichmentAction) createIssueEnrichments(alertEvent *core_event.Al
 
 	// Add custom title/description if configured
 	if customTitle := a.GetStringParameter("custom_title", ""); customTitle != "" {
-		titleEnrichment := a.createTitleEnrichment(customTitle)
+		titleEnrichment := a.createTitleEnrichment(customTitle, alertEvent)
 		enrichments = append(enrichments, *titleEnrichment)
 	}
 
@@ -422,11 +424,12 @@ func (a *IssueEnrichmentAction) createIssueEnrichments(alertEvent *core_event.Al
 
 // createMetadataEnrichment creates enrichment with alert metadata
 func (a *IssueEnrichmentAction) createMetadataEnrichment(alertEvent *core_event.AlertManagerEvent) *issue.Enrichment {
-	text := fmt.Sprintf("**Alert Metadata**\n\n"+
-		"• Receiver: %s\n"+
-		"• Status: %s\n"+
-		"• Alert Count: %d\n"+
-		"• Severity: %s\n",
+	// Use proper Slack markdown (single asterisk for bold) and emojis
+	text := fmt.Sprintf("*Alert Metadata*\n\n"+
+		"📥 *Receiver:* %s\n"+
+		"📊 *Status:* %s\n"+
+		"🔢 *Alert Count:* %d\n"+
+		"⚠️ *Severity:* %s\n",
 		alertEvent.Receiver, alertEvent.Status, len(alertEvent.Alerts), alertEvent.GetSeverity())
 
 	textBlock := issue.NewMarkdownBlock(text)
@@ -454,10 +457,74 @@ func (a *IssueEnrichmentAction) createLabelsEnrichment(alertEvent *core_event.Al
 	return enrichment
 }
 
-// createTitleEnrichment creates enrichment with custom title
-func (a *IssueEnrichmentAction) createTitleEnrichment(title string) *issue.Enrichment {
-	textBlock := issue.NewMarkdownBlock("**Custom Title**: " + title)
+// createTitleEnrichment creates enrichment with custom title (supports template parsing)
+func (a *IssueEnrichmentAction) createTitleEnrichment(title string, alertEvent *core_event.AlertManagerEvent) *issue.Enrichment {
+	// Parse template if it contains template variables
+	parsedTitle := a.parseTemplate(title, alertEvent)
+
+	// Use proper Slack markdown
+	textBlock := issue.NewMarkdownBlock("*Custom Title:* " + parsedTitle)
 	enrichment := issue.NewEnrichmentWithType(issue.EnrichmentTypeAlertLabels, "Custom Information")
 	enrichment.AddBlock(textBlock)
 	return enrichment
+}
+
+// parseTemplate parses Go template strings like {{.alert_name}} with alert data
+func (a *IssueEnrichmentAction) parseTemplate(tmpl string, alertEvent *core_event.AlertManagerEvent) string {
+	// If no template markers, return as-is
+	if !strings.Contains(tmpl, "{{") {
+		return tmpl
+	}
+
+	// Build template data from alert event
+	templateData := make(map[string]interface{})
+
+	// Add common fields
+	templateData["alert_name"] = alertEvent.GetAlertName()
+	templateData["namespace"] = alertEvent.GetNamespace()
+	templateData["receiver"] = alertEvent.Receiver
+	templateData["status"] = alertEvent.Status
+	templateData["severity"] = alertEvent.GetSeverity()
+
+	// Add labels from first alert if available
+	if len(alertEvent.Alerts) > 0 {
+		firstAlert := alertEvent.Alerts[0]
+
+		// Add individual label fields
+		for key, value := range firstAlert.Labels {
+			templateData[key] = value
+		}
+
+		// Add common Kubernetes fields
+		if pod, ok := firstAlert.Labels["pod"]; ok {
+			templateData["pod"] = pod
+		}
+		if container, ok := firstAlert.Labels["container"]; ok {
+			templateData["container"] = container
+		}
+		if node, ok := firstAlert.Labels["node"]; ok {
+			templateData["node"] = node
+		}
+	}
+
+	// Parse and execute template
+	t, err := template.New("enrichment").Parse(tmpl)
+	if err != nil {
+		a.logger.Warn("Failed to parse template, using raw value",
+			zap.String("template", tmpl),
+			zap.Error(err),
+		)
+		return tmpl
+	}
+
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, templateData); err != nil {
+		a.logger.Warn("Failed to execute template, using raw value",
+			zap.String("template", tmpl),
+			zap.Error(err),
+		)
+		return tmpl
+	}
+
+	return buf.String()
 }

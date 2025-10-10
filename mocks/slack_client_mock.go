@@ -64,6 +64,22 @@ func (mr *MockSlackClientInterfaceMockRecorder) GetConversationHistory(params in
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConversationHistory", reflect.TypeOf((*MockSlackClientInterface)(nil).GetConversationHistory), params)
 }
 
+// GetConversations mocks base method.
+func (m *MockSlackClientInterface) GetConversations(params *slack.GetConversationsParameters) ([]slack.Channel, string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetConversations", params)
+	ret0, _ := ret[0].([]slack.Channel)
+	ret1, _ := ret[1].(string)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetConversations indicates an expected call of GetConversations.
+func (mr *MockSlackClientInterfaceMockRecorder) GetConversations(params interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConversations", reflect.TypeOf((*MockSlackClientInterface)(nil).GetConversations), params)
+}
+
 // PostMessage mocks base method.
 func (m *MockSlackClientInterface) PostMessage(channelID string, options ...slack.MsgOption) (string, string, error) {
 	m.ctrl.T.Helper()
