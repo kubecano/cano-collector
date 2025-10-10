@@ -828,10 +828,10 @@ func TestIssueEnrichmentAction_ParseTemplate(t *testing.T) {
 			Alerts: []event.PrometheusAlert{
 				{
 					Labels: map[string]string{
-						"alertname":  "KubePodCrashLooping",
-						"namespace":  "production",
-						"pod":        "nginx-app-123",
-						"container":  "nginx",
+						"alertname": "KubePodCrashLooping",
+						"namespace": "production",
+						"pod":       "nginx-app-123",
+						"container": "nginx",
 					},
 				},
 			},
@@ -949,7 +949,7 @@ func TestIssueEnrichmentAction_CreateTitleEnrichment(t *testing.T) {
 		enrichment := action.createTitleEnrichment("Alert {{.alert_name}} in {{.namespace}}", alertEvent)
 
 		require.NotNil(t, enrichment)
-		require.Equal(t, 1, len(enrichment.Blocks))
+		require.Len(t, enrichment.Blocks, 1)
 
 		// Check that template was parsed correctly in the markdown block
 		markdownBlock := enrichment.Blocks[0]
@@ -976,6 +976,6 @@ func TestIssueEnrichmentAction_CreateTitleEnrichment(t *testing.T) {
 		enrichment := action.createTitleEnrichment("Static Title", alertEvent)
 
 		require.NotNil(t, enrichment)
-		require.Equal(t, 1, len(enrichment.Blocks))
+		require.Len(t, enrichment.Blocks, 1)
 	})
 }
