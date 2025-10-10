@@ -1513,3 +1513,520 @@ func TestSenderSlack_ConvertFileBlockToSlack_ErrorPath_BinaryFile(t *testing.T) 
 	assert.Contains(t, text, "Type: image/png")
 	assert.NotContains(t, text, "Content preview:") // No preview for non-text files
 }
+
+// ============================================================================
+// Deduplication Tests
+// ============================================================================
+
+func TestSenderSlack_DeduplicateEnrichments(t *testing.T) {
+	slackSender, _, _ := setupSenderSlackTest(t)
+
+	t.Run("removes duplicate enrichments with same type and title", func(t *testing.T) {
+		enrichments := []issuepkg.Enrichment{
+			*issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertLabels, "Alert Labels"),
+			*issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertLabels, "Alert Labels"),
+			*issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertAnnotations, "Annotations"),
+		}
+
+		unique := slackSender.deduplicateEnrichments(enrichments)
+
+		// Should have 2 unique items (first Alert Labels + Annotations)
+		assert.Len(t, unique, 2)
+		assert.Equal(t, issuepkg.EnrichmentTypeAlertLabels, *unique[0].EnrichmentType)
+		assert.Equal(t, issuepkg.EnrichmentTypeAlertAnnotations, *unique[1].EnrichmentType)
+	})
+
+	t.Run("keeps enrichments with same type but different titles", func(t *testing.T) {
+		enrichments := []issuepkg.Enrichment{
+			*issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeTextFile, "Container Logs - app"),
+			*issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeTextFile, "Container Logs - sidecar"),
+		}
+
+		unique := slackSender.deduplicateEnrichments(enrichments)
+
+		// Should keep both (different titles)
+		assert.Len(t, unique, 2)
+		assert.Equal(t, "Container Logs - app", *unique[0].Title)
+		assert.Equal(t, "Container Logs - sidecar", *unique[1].Title)
+	})
+
+	t.Run("uses first block identifier for uniqueness - file blocks", func(t *testing.T) {
+		enrichment1 := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeTextFile, "Pod Logs")
+		enrichment1.AddBlock(issuepkg.NewFileBlock("pod-logs-app.log", []byte("log content"), "text/plain"))
+
+		enrichment2 := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeTextFile, "Pod Logs")
+		enrichment2.AddBlock(issuepkg.NewFileBlock("pod-logs-app.log", []byte("log content"), "text/plain"))
+
+		enrichment3 := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeTextFile, "Pod Logs")
+		enrichment3.AddBlock(issuepkg.NewFileBlock("pod-logs-sidecar.log", []byte("different logs"), "text/plain"))
+
+		enrichments := []issuepkg.Enrichment{*enrichment1, *enrichment2, *enrichment3}
+		unique := slackSender.deduplicateEnrichments(enrichments)
+
+		// Should have 2 unique items (duplicate files removed)
+		assert.Len(t, unique, 2)
+
+		// Verify filenames are different
+		file1, ok1 := unique[0].Blocks[0].(*issuepkg.FileBlock)
+		file2, ok2 := unique[1].Blocks[0].(*issuepkg.FileBlock)
+		assert.True(t, ok1 && ok2)
+		assert.NotEqual(t, file1.Filename, file2.Filename)
+	})
+
+	t.Run("uses first block identifier for uniqueness - table blocks", func(t *testing.T) {
+		enrichment1 := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertLabels, "Labels")
+		enrichment1.AddBlock(&issuepkg.TableBlock{
+			TableName: "Alert Labels",
+			Headers:   []string{"Key", "Value"},
+			Rows:      [][]string{{"severity", "high"}},
+		})
+
+		enrichment2 := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertLabels, "Labels")
+		enrichment2.AddBlock(&issuepkg.TableBlock{
+			TableName: "Alert Labels",
+			Headers:   []string{"Key", "Value"},
+			Rows:      [][]string{{"severity", "high"}},
+		})
+
+		enrichment3 := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertLabels, "Labels")
+		enrichment3.AddBlock(&issuepkg.TableBlock{
+			TableName: "Alert Annotations",
+			Headers:   []string{"Key", "Value"},
+			Rows:      [][]string{{"summary", "test"}},
+		})
+
+		enrichments := []issuepkg.Enrichment{*enrichment1, *enrichment2, *enrichment3}
+		unique := slackSender.deduplicateEnrichments(enrichments)
+
+		// Should have 2 unique items (duplicate table names removed)
+		assert.Len(t, unique, 2)
+
+		// Verify table names are different
+		table1, ok1 := unique[0].Blocks[0].(*issuepkg.TableBlock)
+		table2, ok2 := unique[1].Blocks[0].(*issuepkg.TableBlock)
+		assert.True(t, ok1 && ok2)
+		assert.NotEqual(t, table1.TableName, table2.TableName)
+	})
+
+	t.Run("uses first block identifier for uniqueness - markdown blocks", func(t *testing.T) {
+		enrichment1 := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAIAnalysis, "Analysis")
+		enrichment1.AddBlock(&issuepkg.MarkdownBlock{
+			Text: "This is a very long markdown text that will be used for deduplication based on first 50 characters",
+		})
+
+		enrichment2 := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAIAnalysis, "Analysis")
+		enrichment2.AddBlock(&issuepkg.MarkdownBlock{
+			Text: "This is a very long markdown text that will be used for deduplication based on first 50 characters",
+		})
+
+		enrichment3 := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAIAnalysis, "Analysis")
+		enrichment3.AddBlock(&issuepkg.MarkdownBlock{
+			Text: "Different markdown text with different content",
+		})
+
+		enrichments := []issuepkg.Enrichment{*enrichment1, *enrichment2, *enrichment3}
+		unique := slackSender.deduplicateEnrichments(enrichments)
+
+		// Should have 2 unique items (duplicate markdown removed)
+		assert.Len(t, unique, 2)
+
+		// Verify markdown text is different
+		md1, ok1 := unique[0].Blocks[0].(*issuepkg.MarkdownBlock)
+		md2, ok2 := unique[1].Blocks[0].(*issuepkg.MarkdownBlock)
+		assert.True(t, ok1 && ok2)
+		assert.NotEqual(t, md1.Text, md2.Text)
+	})
+
+	t.Run("handles enrichments with no blocks", func(t *testing.T) {
+		enrichments := []issuepkg.Enrichment{
+			*issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertLabels, "Empty 1"),
+			*issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertLabels, "Empty 1"),
+			*issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertAnnotations, "Empty 2"),
+		}
+
+		unique := slackSender.deduplicateEnrichments(enrichments)
+
+		// Should have 2 unique items based on type+title
+		assert.Len(t, unique, 2)
+	})
+
+	t.Run("handles enrichments without type", func(t *testing.T) {
+		enrichment1 := issuepkg.NewEnrichment()
+		enrichment1.Title = stringPtr("Custom Enrichment 1")
+
+		enrichment2 := issuepkg.NewEnrichment()
+		enrichment2.Title = stringPtr("Custom Enrichment 1")
+
+		enrichment3 := issuepkg.NewEnrichment()
+		enrichment3.Title = stringPtr("Custom Enrichment 2")
+
+		enrichments := []issuepkg.Enrichment{*enrichment1, *enrichment2, *enrichment3}
+		unique := slackSender.deduplicateEnrichments(enrichments)
+
+		// Should have 2 unique items (duplicate title removed)
+		assert.Len(t, unique, 2)
+		assert.Equal(t, "Custom Enrichment 1", *unique[0].Title)
+		assert.Equal(t, "Custom Enrichment 2", *unique[1].Title)
+	})
+
+	t.Run("handles enrichments without title", func(t *testing.T) {
+		enrichment1 := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertLabels, "")
+		enrichment1.Title = nil
+
+		enrichment2 := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertLabels, "")
+		enrichment2.Title = nil
+
+		enrichment3 := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertAnnotations, "")
+		enrichment3.Title = nil
+
+		enrichments := []issuepkg.Enrichment{*enrichment1, *enrichment2, *enrichment3}
+		unique := slackSender.deduplicateEnrichments(enrichments)
+
+		// Should have 2 unique items (based on type only)
+		assert.Len(t, unique, 2)
+	})
+
+	t.Run("handles empty enrichments list", func(t *testing.T) {
+		enrichments := []issuepkg.Enrichment{}
+		unique := slackSender.deduplicateEnrichments(enrichments)
+
+		assert.Empty(t, unique)
+	})
+
+	t.Run("preserves order of first occurrence", func(t *testing.T) {
+		enrichments := []issuepkg.Enrichment{
+			*issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertAnnotations, "Annotations"),
+			*issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertLabels, "Labels"),
+			*issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertAnnotations, "Annotations"),
+			*issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeTextFile, "Logs"),
+		}
+
+		unique := slackSender.deduplicateEnrichments(enrichments)
+
+		// Should preserve order: Annotations, Labels, Logs
+		assert.Len(t, unique, 3)
+		assert.Equal(t, issuepkg.EnrichmentTypeAlertAnnotations, *unique[0].EnrichmentType)
+		assert.Equal(t, issuepkg.EnrichmentTypeAlertLabels, *unique[1].EnrichmentType)
+		assert.Equal(t, issuepkg.EnrichmentTypeTextFile, *unique[2].EnrichmentType)
+	})
+
+	t.Run("handles markdown blocks shorter than 50 chars", func(t *testing.T) {
+		enrichment1 := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAIAnalysis, "Short")
+		enrichment1.AddBlock(&issuepkg.MarkdownBlock{Text: "Short text"})
+
+		enrichment2 := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAIAnalysis, "Short")
+		enrichment2.AddBlock(&issuepkg.MarkdownBlock{Text: "Short text"})
+
+		enrichment3 := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAIAnalysis, "Short")
+		enrichment3.AddBlock(&issuepkg.MarkdownBlock{Text: "Different"})
+
+		enrichments := []issuepkg.Enrichment{*enrichment1, *enrichment2, *enrichment3}
+		unique := slackSender.deduplicateEnrichments(enrichments)
+
+		// Should have 2 unique items
+		assert.Len(t, unique, 2)
+	})
+}
+
+// ============================================================================
+// Channel Resolution Tests
+// ============================================================================
+
+func TestSenderSlack_ResolveChannelID(t *testing.T) {
+	t.Run("returns cached channel ID when available", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		mockLogger := mocks.NewMockLoggerInterface(ctrl)
+		mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
+		// No API calls expected since channelID is cached
+
+		slackSender := &SenderSlack{
+			apiKey:      "xoxb-test-token",
+			channel:     "#test-channel",
+			channelID:   "C123CACHED", // Cached ID
+			logger:      mockLogger,
+			slackClient: mockSlackClient,
+		}
+
+		channelID, err := slackSender.resolveChannelID()
+
+		require.NoError(t, err)
+		assert.Equal(t, "C123CACHED", channelID)
+	})
+
+	t.Run("uses channel directly when it's already an ID", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		mockLogger := mocks.NewMockLoggerInterface(ctrl)
+		mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
+		// No API calls expected since channel is already an ID
+
+		slackSender := &SenderSlack{
+			apiKey:      "xoxb-test-token",
+			channel:     "C12345678", // Already an ID (no # prefix)
+			logger:      mockLogger,
+			slackClient: mockSlackClient,
+		}
+
+		channelID, err := slackSender.resolveChannelID()
+
+		require.NoError(t, err)
+		assert.Equal(t, "C12345678", channelID)
+		assert.Equal(t, "C12345678", slackSender.channelID) // Should cache it
+	})
+
+	t.Run("resolves channel name to ID successfully", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		mockLogger := mocks.NewMockLoggerInterface(ctrl)
+		mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any()).AnyTimes()
+		mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
+
+		mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
+
+		// Mock API response with matching channel
+		testChannel1 := slack.Channel{}
+		testChannel1.ID = "C111111"
+		testChannel1.Name = "general"
+
+		testChannel2 := slack.Channel{}
+		testChannel2.ID = "C222222"
+		testChannel2.Name = "alerts"
+
+		testChannel3 := slack.Channel{}
+		testChannel3.ID = "C333333"
+		testChannel3.Name = "monitoring"
+
+		mockSlackClient.EXPECT().GetConversations(gomock.Any()).Return(
+			[]slack.Channel{testChannel1, testChannel2, testChannel3},
+			"",
+			nil,
+		)
+
+		slackSender := &SenderSlack{
+			apiKey:      "xoxb-test-token",
+			channel:     "#alerts", // Channel name with # prefix
+			logger:      mockLogger,
+			slackClient: mockSlackClient,
+		}
+
+		channelID, err := slackSender.resolveChannelID()
+
+		require.NoError(t, err)
+		assert.Equal(t, "C222222", channelID)
+		assert.Equal(t, "C222222", slackSender.channelID) // Should cache it
+	})
+
+	t.Run("returns error when channel name not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		mockLogger := mocks.NewMockLoggerInterface(ctrl)
+		mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any()).AnyTimes()
+
+		mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
+
+		// Mock API response without matching channel
+		testChannel1 := slack.Channel{}
+		testChannel1.ID = "C111111"
+		testChannel1.Name = "general"
+
+		mockSlackClient.EXPECT().GetConversations(gomock.Any()).Return(
+			[]slack.Channel{testChannel1},
+			"",
+			nil,
+		)
+
+		slackSender := &SenderSlack{
+			apiKey:      "xoxb-test-token",
+			channel:     "#nonexistent", // Channel that doesn't exist
+			logger:      mockLogger,
+			slackClient: mockSlackClient,
+		}
+
+		channelID, err := slackSender.resolveChannelID()
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "channel not found: #nonexistent")
+		assert.Empty(t, channelID)
+		assert.Empty(t, slackSender.channelID) // Should not cache error
+	})
+
+	t.Run("returns error when API call fails", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		mockLogger := mocks.NewMockLoggerInterface(ctrl)
+		mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any()).AnyTimes()
+
+		mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
+
+		// Mock API error
+		apiError := fmt.Errorf("slack API error: rate limited")
+		mockSlackClient.EXPECT().GetConversations(gomock.Any()).Return(
+			nil,
+			"",
+			apiError,
+		)
+
+		slackSender := &SenderSlack{
+			apiKey:      "xoxb-test-token",
+			channel:     "#alerts",
+			logger:      mockLogger,
+			slackClient: mockSlackClient,
+		}
+
+		channelID, err := slackSender.resolveChannelID()
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to list conversations")
+		assert.Empty(t, channelID)
+		assert.Empty(t, slackSender.channelID)
+	})
+
+	t.Run("strips # prefix when resolving channel name", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		mockLogger := mocks.NewMockLoggerInterface(ctrl)
+		mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any()).AnyTimes()
+		mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
+
+		mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
+
+		testChannel := slack.Channel{}
+		testChannel.ID = "C999999"
+		testChannel.Name = "team-alerts" // Name without # in API
+
+		mockSlackClient.EXPECT().GetConversations(gomock.Any()).Return(
+			[]slack.Channel{testChannel},
+			"",
+			nil,
+		)
+
+		slackSender := &SenderSlack{
+			apiKey:      "xoxb-test-token",
+			channel:     "#team-alerts", // With # prefix
+			logger:      mockLogger,
+			slackClient: mockSlackClient,
+		}
+
+		channelID, err := slackSender.resolveChannelID()
+
+		require.NoError(t, err)
+		assert.Equal(t, "C999999", channelID)
+	})
+
+	t.Run("handles empty channel list from API", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		mockLogger := mocks.NewMockLoggerInterface(ctrl)
+		mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any()).AnyTimes()
+
+		mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
+
+		// Empty channel list
+		mockSlackClient.EXPECT().GetConversations(gomock.Any()).Return(
+			[]slack.Channel{},
+			"",
+			nil,
+		)
+
+		slackSender := &SenderSlack{
+			apiKey:      "xoxb-test-token",
+			channel:     "#alerts",
+			logger:      mockLogger,
+			slackClient: mockSlackClient,
+		}
+
+		channelID, err := slackSender.resolveChannelID()
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "channel not found: #alerts")
+		assert.Empty(t, channelID)
+	})
+
+	t.Run("case-sensitive channel name matching", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		mockLogger := mocks.NewMockLoggerInterface(ctrl)
+		mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any()).AnyTimes()
+
+		mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
+
+		testChannel := slack.Channel{}
+		testChannel.ID = "C123456"
+		testChannel.Name = "Alerts" // Capital A
+
+		mockSlackClient.EXPECT().GetConversations(gomock.Any()).Return(
+			[]slack.Channel{testChannel},
+			"",
+			nil,
+		)
+
+		slackSender := &SenderSlack{
+			apiKey:      "xoxb-test-token",
+			channel:     "#alerts", // Lowercase
+			logger:      mockLogger,
+			slackClient: mockSlackClient,
+		}
+
+		_, err := slackSender.resolveChannelID()
+
+		// Should not match due to case sensitivity
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "channel not found: #alerts")
+	})
+
+	t.Run("finds correct channel among many results", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		mockLogger := mocks.NewMockLoggerInterface(ctrl)
+		mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any()).AnyTimes()
+		mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
+
+		mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
+
+		// Create many channels
+		channels := make([]slack.Channel, 100)
+		for i := 0; i < 100; i++ {
+			channels[i] = slack.Channel{
+				GroupConversation: slack.GroupConversation{
+					Conversation: slack.Conversation{
+						ID: fmt.Sprintf("C%d", i),
+					},
+					Name: fmt.Sprintf("channel-%d", i),
+				},
+			}
+		}
+		// Add target channel in the middle
+		targetChannel := slack.Channel{}
+		targetChannel.ID = "CTARGET"
+		targetChannel.Name = "target-channel"
+		channels[50] = targetChannel
+
+		mockSlackClient.EXPECT().GetConversations(gomock.Any()).Return(
+			channels,
+			"",
+			nil,
+		)
+
+		slackSender := &SenderSlack{
+			apiKey:      "xoxb-test-token",
+			channel:     "#target-channel",
+			logger:      mockLogger,
+			slackClient: mockSlackClient,
+		}
+
+		channelID, err := slackSender.resolveChannelID()
+
+		require.NoError(t, err)
+		assert.Equal(t, "CTARGET", channelID)
+	})
+}

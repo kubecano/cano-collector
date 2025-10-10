@@ -727,3 +727,255 @@ func TestIssueEnrichmentActionFactory_ValidateConfig_InvalidType(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid action type for IssueEnrichmentActionFactory: invalid_type")
 }
+
+// ============================================================================
+// Template Parsing Tests
+// ============================================================================
+
+func TestIssueEnrichmentAction_ParseTemplate(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+	mockLogger.EXPECT().Warn(gomock.Any(), gomock.Any()).AnyTimes()
+	mockMetrics := mocks.NewMockMetricsInterface(ctrl)
+
+	action := &IssueEnrichmentAction{
+		BaseAction: NewBaseAction(
+			actions_interfaces.ActionConfig{
+				Name:    "test-enrichment",
+				Type:    "issue_enrichment",
+				Enabled: true,
+			},
+			mockLogger,
+			mockMetrics,
+		),
+	}
+
+	t.Run("parses alert_name template variable", func(t *testing.T) {
+		alertEvent := &event.AlertManagerEvent{
+			BaseEvent: event.BaseEvent{
+				ID:        uuid.New(),
+				Timestamp: time.Now(),
+				Source:    "alertmanager",
+				Type:      event.EventTypeAlertManager,
+			},
+			Alerts: []event.PrometheusAlert{
+				{
+					Labels: map[string]string{
+						"alertname": "KubePodCrashLooping",
+					},
+				},
+			},
+		}
+
+		result := action.parseTemplate("Alert: {{.alert_name}}", alertEvent)
+		assert.Equal(t, "Alert: KubePodCrashLooping", result)
+	})
+
+	t.Run("parses namespace template variable", func(t *testing.T) {
+		alertEvent := &event.AlertManagerEvent{
+			BaseEvent: event.BaseEvent{
+				ID:        uuid.New(),
+				Timestamp: time.Now(),
+				Source:    "alertmanager",
+				Type:      event.EventTypeAlertManager,
+			},
+			Alerts: []event.PrometheusAlert{
+				{
+					Labels: map[string]string{
+						"alertname": "PodIssue",
+						"namespace": "production",
+					},
+				},
+			},
+		}
+
+		result := action.parseTemplate("Namespace: {{.namespace}}", alertEvent)
+		assert.Equal(t, "Namespace: production", result)
+	})
+
+	t.Run("parses pod label template variable", func(t *testing.T) {
+		alertEvent := &event.AlertManagerEvent{
+			BaseEvent: event.BaseEvent{
+				ID:        uuid.New(),
+				Timestamp: time.Now(),
+				Source:    "alertmanager",
+				Type:      event.EventTypeAlertManager,
+			},
+			Alerts: []event.PrometheusAlert{
+				{
+					Labels: map[string]string{
+						"alertname": "PodIssue",
+						"pod":       "nginx-app-123",
+					},
+				},
+			},
+		}
+
+		result := action.parseTemplate("Pod: {{.pod}}", alertEvent)
+		assert.Equal(t, "Pod: nginx-app-123", result)
+	})
+
+	t.Run("parses multiple template variables", func(t *testing.T) {
+		alertEvent := &event.AlertManagerEvent{
+			BaseEvent: event.BaseEvent{
+				ID:        uuid.New(),
+				Timestamp: time.Now(),
+				Source:    "alertmanager",
+				Type:      event.EventTypeAlertManager,
+			},
+			Alerts: []event.PrometheusAlert{
+				{
+					Labels: map[string]string{
+						"alertname":  "KubePodCrashLooping",
+						"namespace":  "production",
+						"pod":        "nginx-app-123",
+						"container":  "nginx",
+					},
+				},
+			},
+		}
+
+		result := action.parseTemplate("{{.alert_name}} in {{.namespace}}/{{.pod}}/{{.container}}", alertEvent)
+		assert.Equal(t, "KubePodCrashLooping in production/nginx-app-123/nginx", result)
+	})
+
+	t.Run("returns raw template on parsing error", func(t *testing.T) {
+		alertEvent := &event.AlertManagerEvent{
+			BaseEvent: event.BaseEvent{
+				ID:        uuid.New(),
+				Timestamp: time.Now(),
+				Source:    "alertmanager",
+				Type:      event.EventTypeAlertManager,
+			},
+			Alerts: []event.PrometheusAlert{
+				{
+					Labels: map[string]string{
+						"alertname": "TestAlert",
+					},
+				},
+			},
+		}
+
+		// Invalid template syntax
+		result := action.parseTemplate("{{.invalid syntax", alertEvent)
+		assert.Equal(t, "{{.invalid syntax", result)
+	})
+
+	t.Run("returns string without template markers unchanged", func(t *testing.T) {
+		alertEvent := &event.AlertManagerEvent{
+			BaseEvent: event.BaseEvent{
+				ID:        uuid.New(),
+				Timestamp: time.Now(),
+				Source:    "alertmanager",
+				Type:      event.EventTypeAlertManager,
+			},
+			Alerts: []event.PrometheusAlert{
+				{
+					Labels: map[string]string{
+						"alertname": "TestAlert",
+					},
+				},
+			},
+		}
+
+		result := action.parseTemplate("Plain text without templates", alertEvent)
+		assert.Equal(t, "Plain text without templates", result)
+	})
+
+	t.Run("handles missing label gracefully", func(t *testing.T) {
+		alertEvent := &event.AlertManagerEvent{
+			BaseEvent: event.BaseEvent{
+				ID:        uuid.New(),
+				Timestamp: time.Now(),
+				Source:    "alertmanager",
+				Type:      event.EventTypeAlertManager,
+			},
+			Alerts: []event.PrometheusAlert{
+				{
+					Labels: map[string]string{
+						"alertname": "TestAlert",
+						// pod label is missing
+					},
+				},
+			},
+		}
+
+		// Go's text/template renders missing fields as "<no value>"
+		result := action.parseTemplate("Pod: {{.pod}}", alertEvent)
+		assert.Equal(t, "Pod: <no value>", result)
+	})
+}
+
+func TestIssueEnrichmentAction_CreateTitleEnrichment(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+	mockLogger.EXPECT().Warn(gomock.Any(), gomock.Any()).AnyTimes()
+	mockMetrics := mocks.NewMockMetricsInterface(ctrl)
+
+	action := &IssueEnrichmentAction{
+		BaseAction: NewBaseAction(
+			actions_interfaces.ActionConfig{
+				Name:    "test-enrichment",
+				Type:    "issue_enrichment",
+				Enabled: true,
+			},
+			mockLogger,
+			mockMetrics,
+		),
+	}
+
+	t.Run("creates enrichment with parsed template", func(t *testing.T) {
+		alertEvent := &event.AlertManagerEvent{
+			BaseEvent: event.BaseEvent{
+				ID:        uuid.New(),
+				Timestamp: time.Now(),
+				Source:    "alertmanager",
+				Type:      event.EventTypeAlertManager,
+			},
+			Alerts: []event.PrometheusAlert{
+				{
+					Labels: map[string]string{
+						"alertname": "KubePodCrashLooping",
+						"namespace": "production",
+					},
+				},
+			},
+		}
+
+		enrichment := action.createTitleEnrichment("Alert {{.alert_name}} in {{.namespace}}", alertEvent)
+
+		require.NotNil(t, enrichment)
+		require.Equal(t, 1, len(enrichment.Blocks))
+
+		// Check that template was parsed correctly in the markdown block
+		markdownBlock := enrichment.Blocks[0]
+		assert.Contains(t, markdownBlock.BlockType(), "markdown")
+	})
+
+	t.Run("creates enrichment with plain text", func(t *testing.T) {
+		alertEvent := &event.AlertManagerEvent{
+			BaseEvent: event.BaseEvent{
+				ID:        uuid.New(),
+				Timestamp: time.Now(),
+				Source:    "alertmanager",
+				Type:      event.EventTypeAlertManager,
+			},
+			Alerts: []event.PrometheusAlert{
+				{
+					Labels: map[string]string{
+						"alertname": "TestAlert",
+					},
+				},
+			},
+		}
+
+		enrichment := action.createTitleEnrichment("Static Title", alertEvent)
+
+		require.NotNil(t, enrichment)
+		require.Equal(t, 1, len(enrichment.Blocks))
+	})
+}
