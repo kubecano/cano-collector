@@ -600,6 +600,13 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 		Title: "test-file.csv",
 	}, nil).AnyTimes()
 
+	// Add mock for GetFileInfo to support permalink retrieval
+	mockSlackClient.EXPECT().GetFileInfo("F123456789", 0, 0).Return(&slack.File{
+		ID:        "F123456789",
+		Name:      "test-file.csv",
+		Permalink: "https://files.slack.com/files-pri/T123/F123456789/test-file.csv",
+	}, nil, nil, nil).AnyTimes()
+
 	t.Run("builds enrichment blocks for table blocks", func(t *testing.T) {
 		issue := &issuepkg.Issue{
 			Title:    "Test Alert with Table Enrichments",
@@ -1015,7 +1022,7 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 		text := sectionBlock.Text.Text
 		assert.Contains(t, text, "📊 *Large Table* (3 rows)")
 		assert.Contains(t, text, "Table converted to CSV file (limit: 2 rows)")
-		assert.Contains(t, text, "Download CSV file")
+		assert.Contains(t, text, "View CSV File")
 	})
 
 	t.Run("adaptive formatting - enhanced multi-column table", func(t *testing.T) {
@@ -1413,16 +1420,7 @@ func TestSenderSlack_ConvertFileBlockToSlack_ErrorPath(t *testing.T) {
 	mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 	mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
-	// Mock channel resolution
-	testChannel := slack.Channel{}
-	testChannel.ID = "C123TEST"
-	testChannel.Name = "test-channel"
-	mockSlackClient.EXPECT().GetConversations(gomock.Any()).Return(
-		[]slack.Channel{testChannel},
-		"",
-		nil,
-	).AnyTimes()
-	// Mock file upload failure
+	// Mock file upload failure (no channel resolution needed)
 	uploadError := fmt.Errorf("file too large")
 	mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(nil, uploadError)
 
@@ -1477,16 +1475,7 @@ func TestSenderSlack_ConvertFileBlockToSlack_ErrorPath_BinaryFile(t *testing.T) 
 	mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 	mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
-	// Mock channel resolution
-	testChannel := slack.Channel{}
-	testChannel.ID = "C123TEST"
-	testChannel.Name = "test-channel"
-	mockSlackClient.EXPECT().GetConversations(gomock.Any()).Return(
-		[]slack.Channel{testChannel},
-		"",
-		nil,
-	).AnyTimes()
-	// Mock file upload failure
+	// Mock file upload failure (no channel resolution needed)
 	uploadError := fmt.Errorf("binary file not supported")
 	mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(nil, uploadError)
 
@@ -1512,6 +1501,227 @@ func TestSenderSlack_ConvertFileBlockToSlack_ErrorPath_BinaryFile(t *testing.T) 
 	assert.Contains(t, text, "📎 *File: image.png* (upload failed)")
 	assert.Contains(t, text, "Type: image/png")
 	assert.NotContains(t, text, "Content preview:") // No preview for non-text files
+}
+
+func TestSenderSlack_ConvertFileBlockToSlack_SuccessPath(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any()).AnyTimes()
+
+	mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
+
+	// Mock successful file upload
+	mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(&slack.FileSummary{
+		ID:    "F123TEST",
+		Title: "test.log",
+	}, nil)
+
+	// Mock GetFileInfo to return permalink
+	mockSlackClient.EXPECT().GetFileInfo("F123TEST", 0, 0).Return(&slack.File{
+		ID:        "F123TEST",
+		Name:      "test.log",
+		Permalink: "https://files.slack.com/files-pri/T123/F123TEST/test.log",
+	}, nil, nil, nil)
+
+	slackSender := &SenderSlack{
+		apiKey:      "xoxb-test-token",
+		channel:     "#test-channel",
+		logger:      mockLogger,
+		slackClient: mockSlackClient,
+	}
+
+	// Create file block
+	fileBlock := issuepkg.NewFileBlock("test.log", []byte("log content here"), "text/plain")
+
+	slackBlock := slackSender.convertFileBlockToSlack(fileBlock)
+
+	sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+	assert.True(t, ok)
+
+	text := sectionBlock.Text.Text
+	assert.Contains(t, text, "📎 *test.log*")
+	assert.Contains(t, text, "KB")
+	assert.Contains(t, text, "text/plain")
+	assert.Contains(t, text, "https://files.slack.com/files-pri/T123/F123TEST/test.log")
+	assert.Contains(t, text, "View File")
+}
+
+func TestSenderSlack_ConvertFileBlockToSlack_SuccessPath_LargeFile(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any()).AnyTimes()
+
+	mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
+
+	mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(&slack.FileSummary{
+		ID:    "F456TEST",
+		Title: "large.csv",
+	}, nil)
+
+	mockSlackClient.EXPECT().GetFileInfo("F456TEST", 0, 0).Return(&slack.File{
+		ID:        "F456TEST",
+		Name:      "large.csv",
+		Permalink: "https://files.slack.com/files-pri/T123/F456TEST/large.csv",
+	}, nil, nil, nil)
+
+	slackSender := &SenderSlack{
+		apiKey:      "xoxb-test-token",
+		channel:     "#test-channel",
+		logger:      mockLogger,
+		slackClient: mockSlackClient,
+	}
+
+	// Create large file block (>1MB)
+	largeContent := make([]byte, 2*1024*1024) // 2MB
+	fileBlock := issuepkg.NewFileBlock("large.csv", largeContent, "text/csv")
+
+	slackBlock := slackSender.convertFileBlockToSlack(fileBlock)
+
+	sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+	assert.True(t, ok)
+
+	text := sectionBlock.Text.Text
+	assert.Contains(t, text, "📎 *large.csv*")
+	assert.Contains(t, text, "MB") // Should display in MB, not KB
+	assert.Contains(t, text, "text/csv")
+	assert.Contains(t, text, "View File")
+}
+
+func TestSenderSlack_ConvertFileBlockToSlack_GetFileInfoError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Warn(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Warn(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Warn(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any()).AnyTimes()
+
+	mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
+
+	// Mock successful upload but GetFileInfo fails
+	mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(&slack.FileSummary{
+		ID:    "F789TEST",
+		Title: "test.log",
+	}, nil)
+
+	mockSlackClient.EXPECT().GetFileInfo("F789TEST", 0, 0).Return(
+		nil, nil, nil, fmt.Errorf("file not found"),
+	)
+
+	slackSender := &SenderSlack{
+		apiKey:      "xoxb-test-token",
+		channel:     "#test-channel",
+		logger:      mockLogger,
+		slackClient: mockSlackClient,
+	}
+
+	fileBlock := issuepkg.NewFileBlock("test.log", []byte("content"), "text/plain")
+
+	slackBlock := slackSender.convertFileBlockToSlack(fileBlock)
+
+	// Should fall back to error display
+	sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+	assert.True(t, ok)
+
+	text := sectionBlock.Text.Text
+	assert.Contains(t, text, "📎 *File: test.log* (upload failed)")
+	assert.Contains(t, text, "Error: failed to get file permalink: file not found")
+}
+
+// ============================================================================
+// Helper Function Tests
+// ============================================================================
+
+func TestSenderSlack_GetLinkEmoji(t *testing.T) {
+	slackSender, _, _ := setupSenderSlackTest(t)
+
+	tests := []struct {
+		name     string
+		linkType issuepkg.LinkType
+		expected string
+	}{
+		{"Investigate link", issuepkg.LinkTypeInvestigate, "🔍"},
+		{"Silence link", issuepkg.LinkTypeSilence, "🔕"},
+		{"Prometheus link", issuepkg.LinkTypePrometheusGenerator, "📊"},
+		{"General link", issuepkg.LinkTypeGeneral, "🔗"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := slackSender.getLinkEmoji(tt.linkType)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestSenderSlack_GetLinkButtonStyle(t *testing.T) {
+	slackSender, _, _ := setupSenderSlackTest(t)
+
+	tests := []struct {
+		name     string
+		linkType issuepkg.LinkType
+		expected string
+	}{
+		{"Investigate button", issuepkg.LinkTypeInvestigate, "primary"},
+		{"Silence button", issuepkg.LinkTypeSilence, "danger"},
+		{"General button", issuepkg.LinkTypeGeneral, ""},
+		{"Prometheus button", issuepkg.LinkTypePrometheusGenerator, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := slackSender.getLinkButtonStyle(tt.linkType)
+			assert.Equal(t, tt.expected, string(result))
+		})
+	}
+}
+
+func TestSenderSlack_GetSeverityText(t *testing.T) {
+	slackSender, _, _ := setupSenderSlackTest(t)
+
+	tests := []struct {
+		name     string
+		severity issuepkg.Severity
+		expected string
+	}{
+		{"High severity", issuepkg.SeverityHigh, "🔴 High"},
+		{"Low severity", issuepkg.SeverityLow, "🟡 Low"},
+		{"Info severity", issuepkg.SeverityInfo, "🟢 Info"},
+		{"Debug severity", issuepkg.SeverityDebug, "🔵 Debug"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := slackSender.getSeverityText(tt.severity)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
 }
 
 // ============================================================================

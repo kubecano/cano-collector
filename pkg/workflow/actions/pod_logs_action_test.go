@@ -296,8 +296,15 @@ func TestPodLogsAction_Execute_KubernetesError(t *testing.T) {
 	result, err := action.Execute(context.Background(), workflowEvent)
 
 	require.NoError(t, err)
-	assert.False(t, result.Success)
-	assert.Error(t, result.Error)
+	// After fix: graceful fallback instead of error - creates enrichment with explanation
+	assert.True(t, result.Success)
+	require.NoError(t, result.Error)
+	assert.NotEmpty(t, result.Enrichments, "Should have enrichment with error explanation")
+
+	// Check result data
+	data := result.Data.(map[string]interface{})
+	assert.Equal(t, true, data["logs_empty"], "Should indicate logs are empty")
+	assert.Contains(t, data["error_message"], "assert.AnError", "Should contain error message")
 }
 
 func TestPodLogsAction_GenerateLogFilename(t *testing.T) {
@@ -421,7 +428,14 @@ func TestPodLogsAction_Execute_SinceTimeValidation(t *testing.T) {
 	result, err := action.Execute(context.Background(), workflowEvent)
 
 	require.NoError(t, err)
-	assert.False(t, result.Success) // Should fail due to invalid time format
+	// After fix: graceful fallback - creates enrichment with error explanation
+	assert.True(t, result.Success)
+	assert.NotEmpty(t, result.Enrichments, "Should have enrichment with error explanation")
+
+	// Check that error message mentions invalid time format
+	data := result.Data.(map[string]interface{})
+	assert.Equal(t, true, data["logs_empty"], "Should indicate logs are empty")
+	assert.Contains(t, data["error_message"], "invalid since_time format", "Should contain time format error")
 }
 
 func TestPodLogsAction_ExtractPodInfo_AlertManagerEvent(t *testing.T) {

@@ -85,13 +85,49 @@ func (a *PodLogsAction) Execute(ctx context.Context, event event.WorkflowEvent) 
 	// Get pod logs
 	logs, err := a.getPodLogs(ctx, podName, namespace, containerName)
 	if err != nil {
-		a.logger.Error("Failed to retrieve pod logs",
+		// Instead of failing, create an enrichment with error explanation
+		// This follows Robusta's pattern of EmptyFileBlock with remarks
+		a.logger.Warn("Failed to retrieve pod logs, creating empty log enrichment with explanation",
 			zap.Error(err),
 			zap.String("action_name", a.GetName()),
 			zap.String("pod_name", podName),
 			zap.String("namespace", namespace),
+			zap.String("container", containerName),
 		)
-		return a.CreateErrorResult(err, nil), nil
+
+		// Create helpful error message for users
+		errorMessage := fmt.Sprintf("⚠️ Logs unavailable for pod %s/%s", namespace, podName)
+		if containerName != "" {
+			errorMessage = fmt.Sprintf("⚠️ Logs unavailable for container '%s' in pod %s/%s", containerName, namespace, podName)
+		}
+		errorMessage += fmt.Sprintf("\n\nReason: %v", err)
+		errorMessage += "\n\nPossible causes:"
+		errorMessage += "\n- Pod hasn't fully started yet"
+		errorMessage += "\n- Container has no output"
+		errorMessage += "\n- Previous logs requested but pod hasn't restarted"
+		errorMessage += "\n- Container failed before producing logs"
+
+		// Create enrichment with error explanation
+		enrichment := a.createLogsEnrichment(podName, namespace, containerName, errorMessage)
+
+		result := &actions_interfaces.ActionResult{
+			Success: true, // Still successful - we provided explanation
+			Data: map[string]interface{}{
+				"pod_name":      podName,
+				"namespace":     namespace,
+				"container":     containerName,
+				"log_lines":     0,
+				"logs_empty":    true,
+				"error_message": err.Error(),
+			},
+			Enrichments: []issue.Enrichment{*enrichment},
+			Metadata: map[string]interface{}{
+				"action_type": "pod_logs",
+				"timestamp":   time.Now(),
+			},
+		}
+
+		return result, nil
 	}
 
 	// Create enrichment with logs
@@ -165,12 +201,25 @@ func (a *PodLogsAction) extractPodInfo(workflowEvent event.WorkflowEvent) (strin
 	if alertEvent, ok := workflowEvent.(*event.AlertManagerWorkflowEvent); ok {
 		labels := alertEvent.GetAlertManagerEvent().GetLabels()
 
+		// Debug: Log all available labels for troubleshooting
+		a.logger.Debug("Extracting pod info from alert labels",
+			zap.Any("labels", labels),
+			zap.String("namespace", namespace),
+		)
+
 		// Check for pod label
 		if podName, exists := labels["pod"]; exists && podName != "" {
 			// Also check for container label
 			if container, exists := labels["container"]; exists {
 				containerName = container
 			}
+
+			a.logger.Info("Pod info extracted from 'pod' label",
+				zap.String("pod", podName),
+				zap.String("container", containerName),
+				zap.String("namespace", namespace),
+			)
+
 			return podName, namespace, containerName
 		}
 
@@ -179,9 +228,20 @@ func (a *PodLogsAction) extractPodInfo(workflowEvent event.WorkflowEvent) (strin
 			// Instance might be in format "pod-name:port" or just "pod-name"
 			parts := strings.Split(instance, ":")
 			if len(parts) > 0 && parts[0] != "" {
+				a.logger.Info("Pod info extracted from 'instance' label",
+					zap.String("instance", instance),
+					zap.String("pod", parts[0]),
+					zap.String("namespace", namespace),
+				)
 				return parts[0], namespace, containerName
 			}
 		}
+
+		// Debug: Log that no pod info was found in labels
+		a.logger.Warn("No pod information found in alert labels",
+			zap.Any("available_labels", labels),
+			zap.String("namespace", namespace),
+		)
 	}
 
 	// Fallback: try to extract from alert name (simplified approach)
@@ -223,11 +283,34 @@ func (a *PodLogsAction) getPodLogs(ctx context.Context, podName, namespace, cont
 		logOptions["sinceTime"] = a.config.SinceTime
 	}
 
+	// Debug: Log the exact options being sent to Kubernetes API
+	a.logger.Info("Calling Kubernetes API for pod logs",
+		zap.String("pod", podName),
+		zap.String("namespace", namespace),
+		zap.String("container", containerName),
+		zap.Any("options", logOptions),
+	)
+
 	// Use the simplified kubernetes client interface
 	logs, err := a.kubeClient.GetPodLogs(ctx, namespace, podName, logOptions)
 	if err != nil {
+		a.logger.Error("Kubernetes API returned error for pod logs",
+			zap.Error(err),
+			zap.String("pod", podName),
+			zap.String("namespace", namespace),
+			zap.Any("options", logOptions),
+		)
 		return "", fmt.Errorf("failed to get pod logs: %w", err)
 	}
+
+	// Debug: Log the response from Kubernetes API
+	a.logger.Info("Kubernetes API response received",
+		zap.String("pod", podName),
+		zap.String("namespace", namespace),
+		zap.Int("log_length", len(logs)),
+		zap.Int("log_lines", len(strings.Split(logs, "\n"))),
+		zap.Bool("is_empty", logs == ""),
+	)
 
 	// Apply MaxLines limit if specified
 	if a.config.MaxLines > 0 {
