@@ -1655,6 +1655,76 @@ func TestSenderSlack_ConvertFileBlockToSlack_GetFileInfoError(t *testing.T) {
 }
 
 // ============================================================================
+// Helper Function Tests
+// ============================================================================
+
+func TestSenderSlack_GetLinkEmoji(t *testing.T) {
+	slackSender, _, _ := setupSenderSlackTest(t)
+
+	tests := []struct {
+		name     string
+		linkType issuepkg.LinkType
+		expected string
+	}{
+		{"Investigate link", issuepkg.LinkTypeInvestigate, "🔍"},
+		{"Silence link", issuepkg.LinkTypeSilence, "🔕"},
+		{"Prometheus link", issuepkg.LinkTypePrometheusGenerator, "📊"},
+		{"General link", issuepkg.LinkTypeGeneral, "🔗"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := slackSender.getLinkEmoji(tt.linkType)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestSenderSlack_GetLinkButtonStyle(t *testing.T) {
+	slackSender, _, _ := setupSenderSlackTest(t)
+
+	tests := []struct {
+		name     string
+		linkType issuepkg.LinkType
+		expected string
+	}{
+		{"Investigate button", issuepkg.LinkTypeInvestigate, "primary"},
+		{"Silence button", issuepkg.LinkTypeSilence, "danger"},
+		{"General button", issuepkg.LinkTypeGeneral, ""},
+		{"Prometheus button", issuepkg.LinkTypePrometheusGenerator, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := slackSender.getLinkButtonStyle(tt.linkType)
+			assert.Equal(t, tt.expected, string(result))
+		})
+	}
+}
+
+func TestSenderSlack_GetSeverityText(t *testing.T) {
+	slackSender, _, _ := setupSenderSlackTest(t)
+
+	tests := []struct {
+		name     string
+		severity issuepkg.Severity
+		expected string
+	}{
+		{"High severity", issuepkg.SeverityHigh, "🔴 High"},
+		{"Low severity", issuepkg.SeverityLow, "🟡 Low"},
+		{"Info severity", issuepkg.SeverityInfo, "🟢 Info"},
+		{"Debug severity", issuepkg.SeverityDebug, "🔵 Debug"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := slackSender.getSeverityText(tt.severity)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+// ============================================================================
 // Deduplication Tests
 // ============================================================================
 
