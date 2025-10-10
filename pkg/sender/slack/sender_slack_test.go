@@ -1503,6 +1503,157 @@ func TestSenderSlack_ConvertFileBlockToSlack_ErrorPath_BinaryFile(t *testing.T) 
 	assert.NotContains(t, text, "Content preview:") // No preview for non-text files
 }
 
+func TestSenderSlack_ConvertFileBlockToSlack_SuccessPath(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any()).AnyTimes()
+
+	mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
+
+	// Mock successful file upload
+	mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(&slack.FileSummary{
+		ID:    "F123TEST",
+		Title: "test.log",
+	}, nil)
+
+	// Mock GetFileInfo to return permalink
+	mockSlackClient.EXPECT().GetFileInfo("F123TEST", 0, 0).Return(&slack.File{
+		ID:        "F123TEST",
+		Name:      "test.log",
+		Permalink: "https://files.slack.com/files-pri/T123/F123TEST/test.log",
+	}, nil, nil, nil)
+
+	slackSender := &SenderSlack{
+		apiKey:      "xoxb-test-token",
+		channel:     "#test-channel",
+		logger:      mockLogger,
+		slackClient: mockSlackClient,
+	}
+
+	// Create file block
+	fileBlock := issuepkg.NewFileBlock("test.log", []byte("log content here"), "text/plain")
+
+	slackBlock := slackSender.convertFileBlockToSlack(fileBlock)
+
+	sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+	assert.True(t, ok)
+
+	text := sectionBlock.Text.Text
+	assert.Contains(t, text, "📎 *test.log*")
+	assert.Contains(t, text, "KB")
+	assert.Contains(t, text, "text/plain")
+	assert.Contains(t, text, "https://files.slack.com/files-pri/T123/F123TEST/test.log")
+	assert.Contains(t, text, "View File")
+}
+
+func TestSenderSlack_ConvertFileBlockToSlack_SuccessPath_LargeFile(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any()).AnyTimes()
+
+	mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
+
+	mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(&slack.FileSummary{
+		ID:    "F456TEST",
+		Title: "large.csv",
+	}, nil)
+
+	mockSlackClient.EXPECT().GetFileInfo("F456TEST", 0, 0).Return(&slack.File{
+		ID:        "F456TEST",
+		Name:      "large.csv",
+		Permalink: "https://files.slack.com/files-pri/T123/F456TEST/large.csv",
+	}, nil, nil, nil)
+
+	slackSender := &SenderSlack{
+		apiKey:      "xoxb-test-token",
+		channel:     "#test-channel",
+		logger:      mockLogger,
+		slackClient: mockSlackClient,
+	}
+
+	// Create large file block (>1MB)
+	largeContent := make([]byte, 2*1024*1024) // 2MB
+	fileBlock := issuepkg.NewFileBlock("large.csv", largeContent, "text/csv")
+
+	slackBlock := slackSender.convertFileBlockToSlack(fileBlock)
+
+	sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+	assert.True(t, ok)
+
+	text := sectionBlock.Text.Text
+	assert.Contains(t, text, "📎 *large.csv*")
+	assert.Contains(t, text, "MB") // Should display in MB, not KB
+	assert.Contains(t, text, "text/csv")
+	assert.Contains(t, text, "View File")
+}
+
+func TestSenderSlack_ConvertFileBlockToSlack_GetFileInfoError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockLogger := mocks.NewMockLoggerInterface(ctrl)
+	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Warn(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Warn(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Warn(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any()).AnyTimes()
+
+	mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
+
+	// Mock successful upload but GetFileInfo fails
+	mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(&slack.FileSummary{
+		ID:    "F789TEST",
+		Title: "test.log",
+	}, nil)
+
+	mockSlackClient.EXPECT().GetFileInfo("F789TEST", 0, 0).Return(
+		nil, nil, nil, fmt.Errorf("file not found"),
+	)
+
+	slackSender := &SenderSlack{
+		apiKey:      "xoxb-test-token",
+		channel:     "#test-channel",
+		logger:      mockLogger,
+		slackClient: mockSlackClient,
+	}
+
+	fileBlock := issuepkg.NewFileBlock("test.log", []byte("content"), "text/plain")
+
+	slackBlock := slackSender.convertFileBlockToSlack(fileBlock)
+
+	// Should fall back to error display
+	sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+	assert.True(t, ok)
+
+	text := sectionBlock.Text.Text
+	assert.Contains(t, text, "📎 *File: test.log* (upload failed)")
+	assert.Contains(t, text, "Error: failed to get file permalink: file not found")
+}
+
 // ============================================================================
 // Deduplication Tests
 // ============================================================================
