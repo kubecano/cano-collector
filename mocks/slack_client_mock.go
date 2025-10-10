@@ -80,6 +80,23 @@ func (mr *MockSlackClientInterfaceMockRecorder) GetConversations(params interfac
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConversations", reflect.TypeOf((*MockSlackClientInterface)(nil).GetConversations), params)
 }
 
+// GetFileInfo mocks base method.
+func (m *MockSlackClientInterface) GetFileInfo(fileID string, count, page int) (*slack.File, []slack.Comment, *slack.Paging, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetFileInfo", fileID, count, page)
+	ret0, _ := ret[0].(*slack.File)
+	ret1, _ := ret[1].([]slack.Comment)
+	ret2, _ := ret[2].(*slack.Paging)
+	ret3, _ := ret[3].(error)
+	return ret0, ret1, ret2, ret3
+}
+
+// GetFileInfo indicates an expected call of GetFileInfo.
+func (mr *MockSlackClientInterfaceMockRecorder) GetFileInfo(fileID, count, page interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFileInfo", reflect.TypeOf((*MockSlackClientInterface)(nil).GetFileInfo), fileID, count, page)
+}
+
 // PostMessage mocks base method.
 func (m *MockSlackClientInterface) PostMessage(channelID string, options ...slack.MsgOption) (string, string, error) {
 	m.ctrl.T.Helper()

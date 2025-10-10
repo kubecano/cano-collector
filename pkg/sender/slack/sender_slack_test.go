@@ -600,6 +600,13 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 		Title: "test-file.csv",
 	}, nil).AnyTimes()
 
+	// Add mock for GetFileInfo to support permalink retrieval
+	mockSlackClient.EXPECT().GetFileInfo("F123456789", 0, 0).Return(&slack.File{
+		ID:        "F123456789",
+		Name:      "test-file.csv",
+		Permalink: "https://files.slack.com/files-pri/T123/F123456789/test-file.csv",
+	}, nil, nil, nil).AnyTimes()
+
 	t.Run("builds enrichment blocks for table blocks", func(t *testing.T) {
 		issue := &issuepkg.Issue{
 			Title:    "Test Alert with Table Enrichments",
@@ -1015,7 +1022,7 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 		text := sectionBlock.Text.Text
 		assert.Contains(t, text, "📊 *Large Table* (3 rows)")
 		assert.Contains(t, text, "Table converted to CSV file (limit: 2 rows)")
-		assert.Contains(t, text, "Download CSV file")
+		assert.Contains(t, text, "View CSV File")
 	})
 
 	t.Run("adaptive formatting - enhanced multi-column table", func(t *testing.T) {
@@ -1413,16 +1420,7 @@ func TestSenderSlack_ConvertFileBlockToSlack_ErrorPath(t *testing.T) {
 	mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 	mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
-	// Mock channel resolution
-	testChannel := slack.Channel{}
-	testChannel.ID = "C123TEST"
-	testChannel.Name = "test-channel"
-	mockSlackClient.EXPECT().GetConversations(gomock.Any()).Return(
-		[]slack.Channel{testChannel},
-		"",
-		nil,
-	).AnyTimes()
-	// Mock file upload failure
+	// Mock file upload failure (no channel resolution needed)
 	uploadError := fmt.Errorf("file too large")
 	mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(nil, uploadError)
 
@@ -1477,16 +1475,7 @@ func TestSenderSlack_ConvertFileBlockToSlack_ErrorPath_BinaryFile(t *testing.T) 
 	mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 	mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
-	// Mock channel resolution
-	testChannel := slack.Channel{}
-	testChannel.ID = "C123TEST"
-	testChannel.Name = "test-channel"
-	mockSlackClient.EXPECT().GetConversations(gomock.Any()).Return(
-		[]slack.Channel{testChannel},
-		"",
-		nil,
-	).AnyTimes()
-	// Mock file upload failure
+	// Mock file upload failure (no channel resolution needed)
 	uploadError := fmt.Errorf("binary file not supported")
 	mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(nil, uploadError)
 

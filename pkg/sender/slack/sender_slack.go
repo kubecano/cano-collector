@@ -608,9 +608,9 @@ func (s *SenderSlack) convertLargeTableToFileBlock(table *issuepkg.TableBlock) s
 	timestamp := time.Now().Format("20060102-150405")
 	filename := fmt.Sprintf("%s-%s.csv", sanitizedName, timestamp)
 
-	// Create FileBlock and attempt upload
+	// Upload CSV file to Slack workspace storage
 	csvBytes := []byte(csvContent)
-	fileSummary, err := s.uploadFileToSlack(filename, csvBytes, s.channel)
+	permalink, err := s.uploadFileToSlack(filename, csvBytes)
 	if err != nil {
 		s.logger.Warn("Table file upload failed, falling back to inline display",
 			zap.Error(err),
@@ -620,13 +620,11 @@ func (s *SenderSlack) convertLargeTableToFileBlock(table *issuepkg.TableBlock) s
 		return s.createTableErrorBlock(table, err)
 	}
 
-	// Create block with successful file upload
+	// Create block with successful file upload using permalink
 	var textBuilder strings.Builder
 	textBuilder.WriteString(fmt.Sprintf("📊 *%s* (%d rows)\n", tableName, rowCount))
 	textBuilder.WriteString(fmt.Sprintf("Table converted to CSV file (limit: %d rows)\n", s.maxTableRows))
-	// Generate Slack file URL based on file ID
-	fileURL := fmt.Sprintf("https://files.slack.com/files-pri/%s/%s", s.channel, fileSummary.ID)
-	textBuilder.WriteString(fmt.Sprintf("<%s|Download CSV file>", fileURL))
+	textBuilder.WriteString(fmt.Sprintf("<%s|View CSV File>", permalink))
 
 	return slackapi.NewSectionBlock(
 		slackapi.NewTextBlockObject("mrkdwn", textBuilder.String(), false, false),
@@ -808,16 +806,12 @@ func (s *SenderSlack) resolveChannelID() (string, error) {
 	return "", fmt.Errorf("channel not found: %s", s.channel)
 }
 
-// uploadFileToSlack uploads a file to Slack using files_upload_v2 API
-func (s *SenderSlack) uploadFileToSlack(filename string, content []byte, channel string) (*slackapi.FileSummary, error) {
-	// Resolve channel name to ID if needed
-	channelID, err := s.resolveChannelID()
-	if err != nil {
-		return nil, fmt.Errorf("channel resolution failed: %w", err)
-	}
-
+// uploadFileToSlack uploads a file to Slack workspace storage using files_upload_v2 API
+// Returns the permalink to the uploaded file, which can be included in any message
+func (s *SenderSlack) uploadFileToSlack(filename string, content []byte) (string, error) {
+	// Upload file to workspace storage without channel parameter
+	// This avoids needing conversations.list permission and follows Slack API best practices
 	params := slackapi.UploadFileV2Parameters{
-		Channel:  channelID,
 		Filename: filename,
 		FileSize: len(content),
 		Reader:   bytes.NewReader(content),
@@ -828,26 +822,35 @@ func (s *SenderSlack) uploadFileToSlack(filename string, content []byte, channel
 		s.logger.Error("Failed to upload file to Slack",
 			zap.Error(err),
 			zap.String("filename", filename),
-			zap.String("channel", channel),
 			zap.Int("size", len(content)),
 		)
-		return nil, fmt.Errorf("slack file upload failed: %w", err)
+		return "", fmt.Errorf("slack file upload failed: %w", err)
 	}
 
-	s.logger.Info("File uploaded successfully to Slack",
+	// FileSummary only contains ID and Title, need to get full File info for permalink
+	fileInfo, _, _, err := s.slackClient.GetFileInfo(fileSummary.ID, 0, 0)
+	if err != nil {
+		s.logger.Error("Failed to get file info after upload",
+			zap.Error(err),
+			zap.String("file_id", fileSummary.ID),
+		)
+		return "", fmt.Errorf("failed to get file permalink: %w", err)
+	}
+
+	s.logger.Info("File uploaded successfully to Slack workspace",
 		zap.String("filename", filename),
 		zap.String("file_id", fileSummary.ID),
-		zap.String("channel", channel),
+		zap.String("permalink", fileInfo.Permalink),
 		zap.Int("size", len(content)),
 	)
 
-	return fileSummary, nil
+	return fileInfo.Permalink, nil
 }
 
 // convertFileBlockToSlack converts a file block to Slack section block with actual file upload
 func (s *SenderSlack) convertFileBlockToSlack(file *issuepkg.FileBlock) slackapi.Block {
-	// Attempt to upload file to Slack
-	fileSummary, err := s.uploadFileToSlack(file.Filename, file.Contents, s.channel)
+	// Attempt to upload file to Slack workspace storage
+	permalink, err := s.uploadFileToSlack(file.Filename, file.Contents)
 	if err != nil {
 		s.logger.Warn("File upload failed, falling back to text display",
 			zap.Error(err),
@@ -856,7 +859,7 @@ func (s *SenderSlack) convertFileBlockToSlack(file *issuepkg.FileBlock) slackapi
 		return s.createFileErrorBlock(file, err)
 	}
 
-	// Create block with successful file upload
+	// Create block with successful file upload using permalink
 	sizeKB := file.GetSizeKB()
 	sizeText := fmt.Sprintf("%.1f KB", sizeKB)
 	if sizeKB > 1024 {
@@ -864,14 +867,11 @@ func (s *SenderSlack) convertFileBlockToSlack(file *issuepkg.FileBlock) slackapi
 		sizeText = fmt.Sprintf("%.1f MB", sizeMB)
 	}
 
-	text := fmt.Sprintf("📎 *File uploaded: %s*\n", file.Filename)
-	text += "Size: " + sizeText
+	text := fmt.Sprintf("📎 *%s* (%s)", file.Filename, sizeText)
 	if file.MimeType != "" {
-		text += "\nType: " + file.MimeType
+		text += " - " + file.MimeType
 	}
-	// Generate Slack file URL based on file ID
-	fileURL := fmt.Sprintf("https://files.slack.com/files-pri/%s/%s", s.channel, fileSummary.ID)
-	text += fmt.Sprintf("\n<%s|Download file>", fileURL)
+	text += fmt.Sprintf("\n<%s|View File>", permalink)
 
 	return slackapi.NewSectionBlock(
 		slackapi.NewTextBlockObject("mrkdwn", text, false, false),
