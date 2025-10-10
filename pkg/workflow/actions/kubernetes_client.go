@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -115,10 +116,26 @@ func (r *RealKubernetesClient) GetPodLogs(ctx context.Context, namespace, podNam
 	}
 
 	logs := string(buf)
+
+	// Check if logs are empty - this can happen when:
+	// 1. Pod hasn't started yet
+	// 2. previous=true but pod hasn't restarted
+	// 3. Container has no output
+	if len(logs) == 0 {
+		r.logger.Warn("Retrieved empty pod logs",
+			zap.String("namespace", namespace),
+			zap.String("pod_name", podName),
+			zap.Bool("previous", podLogOpts.Previous),
+			zap.String("container", podLogOpts.Container),
+		)
+		return "", fmt.Errorf("pod logs are empty (pod may not have started, or previous logs don't exist for container %s)", podLogOpts.Container)
+	}
+
 	r.logger.Debug("Successfully retrieved pod logs",
 		zap.String("namespace", namespace),
 		zap.String("pod_name", podName),
 		zap.Int("log_size", len(logs)),
+		zap.Int("log_lines", len(strings.Split(logs, "\n"))),
 	)
 
 	return logs, nil
