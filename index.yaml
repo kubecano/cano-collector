@@ -2,6 +2,21 @@ apiVersion: v1
 entries:
   cano-collector:
   - apiVersion: v2
+    appVersion: 0.0.19
+    created: "2025-10-10T11:55:22.384203166Z"
+    dependencies:
+    - condition: enablePrometheusStack
+      name: kube-prometheus-stack
+      repository: https://prometheus-community.github.io/helm-charts
+      version: 77.13.0
+    description: Cano-collector Helm chart for Kubernetes
+    digest: aec7bfaca7d5ed922dca5b1d69c0448eefaa848194c9bc2213674a9197d07cb4
+    name: cano-collector
+    type: application
+    urls:
+    - cano-collector-0.0.20.tgz
+    version: 0.0.20
+  - apiVersion: v2
     appVersion: 0.0.18
     created: "2025-10-07T23:38:49.886238545Z"
     dependencies:
@@ -261,4 +276,4 @@ entries:
     urls:
     - cano-collector-0.0.1.tgz
     version: 0.0.1
-generated: "2025-10-07T23:38:49.886343661Z"
+generated: "2025-10-10T11:55:22.384310426Z"
