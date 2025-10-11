@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	slackapi "github.com/slack-go/slack"
 	"go.uber.org/zap"
 
@@ -30,6 +32,12 @@ type SenderSlack struct {
 	// Table formatting parameters (instead of full config dependency)
 	tableFormat  string
 	maxTableRows int
+
+	// Prometheus metrics
+	fileUploadsTotal          *prometheus.CounterVec
+	fileUploadSizeBytes       *prometheus.HistogramVec
+	tableConversionsTotal     *prometheus.CounterVec
+	channelResolutionDuration prometheus.Histogram
 }
 
 func NewSenderSlack(apiKey, channel string, unfurlLinks bool, logger logger_interfaces.LoggerInterface, client util.HTTPClient) *SenderSlack {
@@ -51,6 +59,40 @@ func NewSenderSlack(apiKey, channel string, unfurlLinks bool, logger logger_inte
 		slackClient:  slackClient,
 		tableFormat:  "enhanced", // Default table format
 		maxTableRows: 20,         // Default max rows before converting to file
+
+		// Initialize Prometheus metrics
+		fileUploadsTotal: promauto.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "cano_slack_file_uploads_total",
+				Help: "Total number of Slack file uploads",
+			},
+			[]string{"status", "channel"},
+		),
+
+		fileUploadSizeBytes: promauto.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Name:    "cano_slack_file_upload_size_bytes",
+				Help:    "Size of uploaded files in bytes",
+				Buckets: prometheus.ExponentialBuckets(1024, 2, 10), // 1KB to 512KB
+			},
+			[]string{"channel", "type"},
+		),
+
+		tableConversionsTotal: promauto.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "cano_slack_table_conversions_total",
+				Help: "Total number of table to CSV conversions",
+			},
+			[]string{"format"},
+		),
+
+		channelResolutionDuration: promauto.NewHistogram(
+			prometheus.HistogramOpts{
+				Name:    "cano_slack_channel_resolution_duration_seconds",
+				Help:    "Time taken to resolve channel ID",
+				Buckets: prometheus.DefBuckets,
+			},
+		),
 	}
 }
 
@@ -594,6 +636,11 @@ func (s *SenderSlack) tableToCSV(table *issuepkg.TableBlock) string {
 
 // convertLargeTableToFileBlock converts large tables to file attachment
 func (s *SenderSlack) convertLargeTableToFileBlock(table *issuepkg.TableBlock) slackapi.Block {
+	// Record table conversion metric (if metrics are initialized)
+	if s.tableConversionsTotal != nil {
+		s.tableConversionsTotal.WithLabelValues("csv").Inc()
+	}
+
 	rowCount := len(table.Rows)
 	tableName := table.TableName
 	if tableName == "" {
@@ -778,6 +825,13 @@ func (s *SenderSlack) resolveChannelID() (string, error) {
 		return s.channelID, nil
 	}
 
+	// Measure channel resolution duration (if metrics are initialized)
+	var timer *prometheus.Timer
+	if s.channelResolutionDuration != nil {
+		timer = prometheus.NewTimer(s.channelResolutionDuration)
+		defer timer.ObserveDuration()
+	}
+
 	// Channel is a name (#channel-name), need to resolve to ID
 	channelName := strings.TrimPrefix(s.channel, "#")
 	s.logger.Debug("Resolving channel name to ID",
@@ -809,6 +863,17 @@ func (s *SenderSlack) resolveChannelID() (string, error) {
 // uploadFileToSlack uploads a file to Slack workspace storage using files_upload_v2 API
 // Returns the permalink to the uploaded file, which can be included in any message
 func (s *SenderSlack) uploadFileToSlack(filename string, content []byte) (string, error) {
+	// Determine file type for metrics
+	fileType := "log"
+	if strings.HasSuffix(filename, ".csv") {
+		fileType = "csv"
+	}
+
+	// Observe file size (if metrics are initialized)
+	if s.fileUploadSizeBytes != nil {
+		s.fileUploadSizeBytes.WithLabelValues(s.channel, fileType).Observe(float64(len(content)))
+	}
+
 	// Upload file to workspace storage without channel parameter
 	// This avoids needing conversations.list permission and follows Slack API best practices
 	params := slackapi.UploadFileV2Parameters{
@@ -819,6 +884,11 @@ func (s *SenderSlack) uploadFileToSlack(filename string, content []byte) (string
 
 	fileSummary, err := s.slackClient.UploadFileV2(params)
 	if err != nil {
+		// Record failure metric (if metrics are initialized)
+		if s.fileUploadsTotal != nil {
+			s.fileUploadsTotal.WithLabelValues("failure", s.channel).Inc()
+		}
+
 		s.logger.Error("Failed to upload file to Slack",
 			zap.Error(err),
 			zap.String("filename", filename),
@@ -830,11 +900,21 @@ func (s *SenderSlack) uploadFileToSlack(filename string, content []byte) (string
 	// FileSummary only contains ID and Title, need to get full File info for permalink
 	fileInfo, _, _, err := s.slackClient.GetFileInfo(fileSummary.ID, 0, 0)
 	if err != nil {
+		// Record failure metric (GetFileInfo failed after upload) (if metrics are initialized)
+		if s.fileUploadsTotal != nil {
+			s.fileUploadsTotal.WithLabelValues("failure", s.channel).Inc()
+		}
+
 		s.logger.Error("Failed to get file info after upload",
 			zap.Error(err),
 			zap.String("file_id", fileSummary.ID),
 		)
 		return "", fmt.Errorf("failed to get file permalink: %w", err)
+	}
+
+	// Record success metric (if metrics are initialized)
+	if s.fileUploadsTotal != nil {
+		s.fileUploadsTotal.WithLabelValues("success", s.channel).Inc()
 	}
 
 	s.logger.Info("File uploaded successfully to Slack workspace",

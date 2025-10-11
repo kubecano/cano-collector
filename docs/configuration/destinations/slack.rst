@@ -188,6 +188,46 @@ Parameters
 -   **`unfurl_links`** (boolean, optional)
     Default: `true`. If `true`, links in the notification will be unfurled by Slack to show a preview. Set to `false` to disable this.
 
+File Upload Configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Configure file upload behavior for enrichments:
+
+.. code-block:: yaml
+
+   destinations:
+     - name: "default-slack"
+       type: "slack"
+       channel: "alerts"
+       api_key: "${SLACK_BOT_TOKEN}"
+
+       enrichments:
+         max_table_rows: 20      # Tables larger than this → CSV files
+
+**Required Bot Permissions**:
+
+The Slack app must have these OAuth scopes:
+
+- ``chat:write`` - Send messages to channels (required)
+- ``files:write`` - Upload files to Slack workspace (required for logs/CSV files)
+- ``files:read`` - Read file info for permalinks (required for file links)
+
+.. note::
+   Files are uploaded to workspace storage (not channel-specific). This avoids requiring
+   the ``conversations:list`` permission. Permalinks work across all channels.
+
+**File Upload Behavior**:
+
+- **Pod Logs**: Uploaded as ``.log`` files with timestamps in filename
+- **Large Tables**: Tables with >``max_table_rows`` rows are converted to CSV files
+- **Deduplication**: Identical enrichments are automatically removed (always enabled)
+- **Error Fallback**: Upload failures result in text display with error explanation
+- **Empty Logs**: Graceful handling with helpful diagnostic message
+
+**Default Values**:
+
+- ``max_table_rows``: 20 rows
+
 Security Best Practices
 -----------------------
 

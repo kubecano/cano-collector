@@ -225,6 +225,88 @@ Common Log Messages
 - `"Invalid webhook URL"`
 - `"Authentication failed"`
 
+Slack File Upload Issues
+-------------------------
+
+Files not appearing in Slack
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+1. Verify bot permissions:
+
+   .. code-block:: bash
+
+      curl -H "Authorization: Bearer ${SLACK_BOT_TOKEN}" \
+           https://slack.com/api/auth.test
+
+   Ensure response includes ``files:write`` and ``files:read`` in scopes.
+
+2. Check cano-collector logs for upload errors:
+
+   .. code-block:: bash
+
+      kubectl logs -n kubecano -l app=cano-collector | grep "file upload"
+
+3. Check for Slack API errors:
+
+   .. code-block:: bash
+
+      kubectl logs -n kubecano -l app=cano-collector | grep -i "slack.*error"
+
+Empty pod logs (0.0 KB files)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This issue was fixed in v0.0.19. If you see empty log files:
+
+1. Upgrade to latest version
+2. Check logs for explanation:
+
+   .. code-block:: bash
+
+      kubectl logs -n kubecano -l app=cano-collector | grep "Logs unavailable"
+
+Expected behavior: Helpful error message explaining why logs are empty instead of 0.0 KB file.
+
+Permission errors (missing_scope)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Error:** ``missing_scope: files:write``
+
+**Solution:** Update your Slack app OAuth scopes:
+
+1. Go to https://api.slack.com/apps → Your App → OAuth & Permissions
+2. Add ``files:write`` and ``files:read`` to Bot Token Scopes
+3. Reinstall the app to your workspace
+4. Update the bot token in cano-collector configuration
+
+Channel not found errors
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Error:** ``Channel 'alerts' not found``
+
+This error no longer occurs with workspace-level uploads (v0.0.19+).
+
+If you see this error:
+
+1. Upgrade to latest version
+2. Verify bot is invited to channel: ``/invite @cano-collector``
+
+Metrics not visible
+~~~~~~~~~~~~~~~~~~~
+
+Check metrics endpoint:
+
+.. code-block:: bash
+
+   kubectl port-forward -n kubecano svc/cano-collector 8080:8080
+   curl http://localhost:8080/metrics | grep cano_slack
+
+Expected metrics:
+
+- ``cano_slack_file_uploads_total``
+- ``cano_slack_file_upload_size_bytes``
+- ``cano_slack_table_conversions_total``
+- ``cano_slack_channel_resolution_duration_seconds``
+
 Getting Help
 ------------
 
