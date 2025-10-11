@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.0.20](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.19...cano-collector-v0.0.20) (2025-10-11)
+
+
+### Bug Fixes
+
+* CU-869a607bk - Fix workflow action type parsing from YAML ([#242](https://github.com/kubecano/cano-collector/issues/242)) ([e196f4c](https://github.com/kubecano/cano-collector/commit/e196f4c1f4ae02b829a6616314a89f31a366a30d))
+* CU-869aj0nqy - Implement Slack File Upload and Enhanced Enrichments - file permalink ([#239](https://github.com/kubecano/cano-collector/issues/239)) ([85b66a2](https://github.com/kubecano/cano-collector/commit/85b66a2de02eeb156808a5398945d007d491ea59))
+* CU-869aj0nqy - Implement Slack File Upload and Enhanced Enrichments ([#240](https://github.com/kubecano/cano-collector/issues/240)) ([15ea385](https://github.com/kubecano/cano-collector/commit/15ea38591ff58f5953d56708ef44b3b53c4f41fd))
+* CU-869atu6pv - Add explicit permissions to renovate workflow ([#241](https://github.com/kubecano/cano-collector/issues/241)) ([bdf37e8](https://github.com/kubecano/cano-collector/commit/bdf37e8eaa6fefc74c922762783687d864946678))
+
 ## [0.0.19](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.18...cano-collector-v0.0.19) (2025-10-10)
 
 
