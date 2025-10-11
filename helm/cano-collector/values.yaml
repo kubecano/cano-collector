@@ -47,14 +47,11 @@ destinations:
     #     search_limit: 100             # Max messages to search in history
     #     search_window: "24h"          # Time window for history search
     #     fingerprint_in_metadata: true # Include fingerprint in message metadata
-    #   
-    #   # Enrichment Display Settings
-    #   enrichments:
-    #     format_as_blocks: true        # Use Slack blocks instead of plain text
-    #     color_coding: true            # Color-code enrichments by type
-    #     table_formatting: "enhanced"  # "simple", "enhanced", or "attachment"
-    #     max_table_rows: 20           # Convert large tables to files
-    #     attachment_threshold: 1000    # Characters threshold for file conversion
+
+    # Enrichment Display Settings
+    enrichments:
+      max_table_rows: 20           # Convert large tables to files
+      # Note: Deduplication is always enabled, no config needed
 
 teams: [ ]
 
