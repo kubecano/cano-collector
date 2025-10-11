@@ -196,14 +196,19 @@ func (we *WorkflowEngine) createActionConfigs(wf *workflow.WorkflowDefinition) (
 
 	for i, actionDef := range wf.Actions {
 		// Extract action type from RawData
-		actionType := actionDef.ActionType
-		if actionType == "" {
-			// First, check for explicit action_type field in RawData
-			if explicitActionType, exists := actionDef.RawData["action_type"]; exists {
-				if actionTypeStr, ok := explicitActionType.(string); ok {
-					actionType = actionTypeStr
-				}
+		// Priority: RawData["action_type"] value > ActionType field > inferred from keys (backward compat)
+		var actionType string
+
+		// First, check for explicit action_type field VALUE in RawData
+		if explicitActionType, exists := actionDef.RawData["action_type"]; exists {
+			if actionTypeStr, ok := explicitActionType.(string); ok {
+				actionType = actionTypeStr
 			}
+		}
+
+		// Fallback to ActionType field if no value found
+		if actionType == "" {
+			actionType = actionDef.ActionType
 		}
 
 		if actionType == "" {
