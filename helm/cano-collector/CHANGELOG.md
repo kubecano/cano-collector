@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.0.21](https://github.com/kubecano/cano-collector/compare/cano-collector-helm-v0.0.20...cano-collector-helm-v0.0.21) (2025-10-11)
+
+
+### Features
+
+* **helm:** bump chart for app release cano-collector-v0.0.19 ([5931db2](https://github.com/kubecano/cano-collector/commit/5931db2b7f0c852655279b3e332af56e4a824961))
+
+
+### Bug Fixes
+
+* CU-869aj0nqy - Implement Slack File Upload and Enhanced Enrichments ([#240](https://github.com/kubecano/cano-collector/issues/240)) ([15ea385](https://github.com/kubecano/cano-collector/commit/15ea38591ff58f5953d56708ef44b3b53c4f41fd))
+
 ## [0.0.20](https://github.com/kubecano/cano-collector/compare/cano-collector-helm-v0.0.19...cano-collector-helm-v0.0.20) (2025-10-10)
 
 
