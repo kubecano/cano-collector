@@ -41,7 +41,8 @@ To use Slack integration, you need to create a Slack App and obtain an API key. 
                       "bot": [
                           "chat:write",
                           "chat:write.public",
-                          "files:write"
+                          "files:write",
+                          "files:read"
                       ]
                   }
               },
