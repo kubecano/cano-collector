@@ -5,12 +5,12 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	slackapi "github.com/slack-go/slack"
 	"go.uber.org/zap"
 
@@ -51,7 +51,7 @@ func NewSenderSlack(apiKey, channel string, unfurlLinks bool, logger logger_inte
 		slackClient = slackapi.New(apiKey)
 	}
 
-	return &SenderSlack{
+	s := &SenderSlack{
 		apiKey:       apiKey,
 		channel:      channel,
 		logger:       logger,
@@ -59,41 +59,68 @@ func NewSenderSlack(apiKey, channel string, unfurlLinks bool, logger logger_inte
 		slackClient:  slackClient,
 		tableFormat:  "enhanced", // Default table format
 		maxTableRows: 20,         // Default max rows before converting to file
-
-		// Initialize Prometheus metrics
-		fileUploadsTotal: promauto.NewCounterVec(
-			prometheus.CounterOpts{
-				Name: "cano_slack_file_uploads_total",
-				Help: "Total number of Slack file uploads",
-			},
-			[]string{"status", "channel"},
-		),
-
-		fileUploadSizeBytes: promauto.NewHistogramVec(
-			prometheus.HistogramOpts{
-				Name:    "cano_slack_file_upload_size_bytes",
-				Help:    "Size of uploaded files in bytes",
-				Buckets: prometheus.ExponentialBuckets(1024, 2, 10), // 1KB to 512KB
-			},
-			[]string{"channel", "type"},
-		),
-
-		tableConversionsTotal: promauto.NewCounterVec(
-			prometheus.CounterOpts{
-				Name: "cano_slack_table_conversions_total",
-				Help: "Total number of table to CSV conversions",
-			},
-			[]string{"format"},
-		),
-
-		channelResolutionDuration: promauto.NewHistogram(
-			prometheus.HistogramOpts{
-				Name:    "cano_slack_channel_resolution_duration_seconds",
-				Help:    "Time taken to resolve channel ID",
-				Buckets: prometheus.DefBuckets,
-			},
-		),
 	}
+
+	// Initialize Prometheus metrics with error handling to avoid test panics
+	s.fileUploadsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "cano_slack_file_uploads_total",
+			Help: "Total number of Slack file uploads",
+		},
+		[]string{"status", "channel"},
+	)
+	if err := prometheus.Register(s.fileUploadsTotal); err != nil {
+		// Metric already registered, try to get existing one
+		var are prometheus.AlreadyRegisteredError
+		if errors.As(err, &are) {
+			s.fileUploadsTotal = are.ExistingCollector.(*prometheus.CounterVec)
+		}
+	}
+
+	s.fileUploadSizeBytes = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "cano_slack_file_upload_size_bytes",
+			Help:    "Size of uploaded files in bytes",
+			Buckets: prometheus.ExponentialBuckets(1024, 2, 10), // 1KB to 512KB
+		},
+		[]string{"channel", "type"},
+	)
+	if err := prometheus.Register(s.fileUploadSizeBytes); err != nil {
+		var are prometheus.AlreadyRegisteredError
+		if errors.As(err, &are) {
+			s.fileUploadSizeBytes = are.ExistingCollector.(*prometheus.HistogramVec)
+		}
+	}
+
+	s.tableConversionsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "cano_slack_table_conversions_total",
+			Help: "Total number of table to CSV conversions",
+		},
+		[]string{"format"},
+	)
+	if err := prometheus.Register(s.tableConversionsTotal); err != nil {
+		var are prometheus.AlreadyRegisteredError
+		if errors.As(err, &are) {
+			s.tableConversionsTotal = are.ExistingCollector.(*prometheus.CounterVec)
+		}
+	}
+
+	s.channelResolutionDuration = prometheus.NewHistogram(
+		prometheus.HistogramOpts{
+			Name:    "cano_slack_channel_resolution_duration_seconds",
+			Help:    "Time taken to resolve channel ID",
+			Buckets: prometheus.DefBuckets,
+		},
+	)
+	if err := prometheus.Register(s.channelResolutionDuration); err != nil {
+		var are prometheus.AlreadyRegisteredError
+		if errors.As(err, &are) {
+			s.channelResolutionDuration = are.ExistingCollector.(prometheus.Histogram)
+		}
+	}
+
+	return s
 }
 
 func (s *SenderSlack) Send(ctx context.Context, issue *issuepkg.Issue) error {
