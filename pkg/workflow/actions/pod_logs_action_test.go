@@ -165,8 +165,8 @@ func TestPodLogsAction_Execute_Success(t *testing.T) {
 
 	// Check enrichment
 	enrichment := result.Enrichments[0]
-	assert.Equal(t, issue.EnrichmentTypeTextFile, *enrichment.EnrichmentType)
-	assert.Contains(t, *enrichment.Title, "Pod Logs: test-namespace/test-pod")
+	assert.Equal(t, issue.EnrichmentTypeLogs, enrichment.Type)
+	assert.Contains(t, enrichment.Title, "Pod Logs: test-namespace/test-pod")
 }
 
 func TestPodLogsAction_Execute_JavaContainer(t *testing.T) {
@@ -229,7 +229,7 @@ func TestPodLogsAction_Execute_JavaContainer(t *testing.T) {
 
 	// Check that Java-specific title is used
 	enrichment := result.Enrichments[0]
-	assert.Contains(t, *enrichment.Title, "Java Pod Logs")
+	assert.Contains(t, enrichment.Title, "Java Pod Logs")
 }
 
 func TestPodLogsAction_Execute_NoPodFound(t *testing.T) {

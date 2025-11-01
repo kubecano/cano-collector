@@ -651,8 +651,8 @@ func TestConverter_LabelEnrichmentIntegration(t *testing.T) {
 
 		// Verify labels enrichment
 		labelsEnrichment := iss.Enrichments[0]
-		assert.Equal(t, "Alert Labels", *labelsEnrichment.Title)
-		assert.Equal(t, issue.EnrichmentTypeAlertLabels, *labelsEnrichment.EnrichmentType)
+		assert.Equal(t, "Alert Labels", labelsEnrichment.Title)
+		assert.Equal(t, issue.EnrichmentTypeAlertLabels, labelsEnrichment.Type)
 		assert.Len(t, labelsEnrichment.Blocks, 1)
 
 		// Verify that the labels block is a table
@@ -672,8 +672,8 @@ func TestConverter_LabelEnrichmentIntegration(t *testing.T) {
 
 		// Verify annotations enrichment
 		annotationsEnrichment := iss.Enrichments[1]
-		assert.Equal(t, "Alert Annotations", *annotationsEnrichment.Title)
-		assert.Equal(t, issue.EnrichmentTypeAlertAnnotations, *annotationsEnrichment.EnrichmentType)
+		assert.Equal(t, "Alert Annotations", annotationsEnrichment.Title)
+		assert.Equal(t, issue.EnrichmentTypeAlertAnnotations, annotationsEnrichment.Type)
 		assert.Len(t, annotationsEnrichment.Blocks, 1)
 
 		// Verify that the annotations block is a table
@@ -794,7 +794,7 @@ func TestNewConverterWithConfig(t *testing.T) {
 
 		// Should only have annotations enrichment (labels disabled)
 		assert.Len(t, iss.Enrichments, 1)
-		assert.Equal(t, issue.EnrichmentTypeAlertAnnotations, *iss.Enrichments[0].EnrichmentType)
+		assert.Equal(t, issue.EnrichmentTypeAlertAnnotations, iss.Enrichments[0].Type)
 	})
 
 	t.Run("creates converter with annotations disabled", func(t *testing.T) {
@@ -832,7 +832,7 @@ func TestNewConverterWithConfig(t *testing.T) {
 
 		// Should only have labels enrichment (annotations disabled)
 		assert.Len(t, iss.Enrichments, 1)
-		assert.Equal(t, issue.EnrichmentTypeAlertLabels, *iss.Enrichments[0].EnrichmentType)
+		assert.Equal(t, issue.EnrichmentTypeAlertLabels, iss.Enrichments[0].Type)
 	})
 
 	t.Run("creates converter with both disabled", func(t *testing.T) {
@@ -953,7 +953,7 @@ func TestNewConverterWithConfig(t *testing.T) {
 		var labelsEnrichment *issue.Enrichment
 		var annotationsEnrichment *issue.Enrichment
 		for i := range iss.Enrichments {
-			switch *iss.Enrichments[i].EnrichmentType {
+			switch iss.Enrichments[i].Type {
 			case issue.EnrichmentTypeAlertLabels:
 				labelsEnrichment = &iss.Enrichments[i]
 			case issue.EnrichmentTypeAlertAnnotations:

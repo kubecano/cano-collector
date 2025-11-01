@@ -86,13 +86,13 @@ func TestLabelEnrichment_EnrichIssue(t *testing.T) {
 		// Check labels enrichment
 		labelsEnrichment := iss.Enrichments[0]
 		assert.Equal(t, "Alert Labels", *labelsEnrichment.Title)
-		assert.Equal(t, issue.EnrichmentTypeAlertLabels, *labelsEnrichment.EnrichmentType)
+		assert.Equal(t, issue.EnrichmentTypeAlertLabels, labelsEnrichment.Type)
 		assert.Len(t, labelsEnrichment.Blocks, 1)
 
 		// Check annotations enrichment
 		annotationsEnrichment := iss.Enrichments[1]
 		assert.Equal(t, "Alert Annotations", *annotationsEnrichment.Title)
-		assert.Equal(t, issue.EnrichmentTypeAlertAnnotations, *annotationsEnrichment.EnrichmentType)
+		assert.Equal(t, issue.EnrichmentTypeAlertAnnotations, annotationsEnrichment.Type)
 		assert.Len(t, annotationsEnrichment.Blocks, 1)
 	})
 

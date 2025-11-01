@@ -1,0 +1,14 @@
+{{- /* Links section - external links (Prometheus, Grafana, etc.) */ -}}
+{{- if .Links -}}
+[
+  {
+    "type": "section",
+    "text": {
+      "type": "mrkdwn",
+      "text": "*Links*\n{{- range .Links}}\n• <{{.URL}}|{{.Text}}>{{end}}"
+    }
+  }
+]
+{{- else -}}
+[]
+{{- end -}}

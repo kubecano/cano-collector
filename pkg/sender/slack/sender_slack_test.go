@@ -209,7 +209,7 @@ func TestSenderSlack_BuildSlackBlocks(t *testing.T) {
 		},
 		Enrichments: []issuepkg.Enrichment{
 			{
-				Title: stringPtr("Alert Labels"),
+				Title: "Alert Labels",
 				Blocks: []issuepkg.BaseBlock{
 					&issuepkg.TableBlock{
 						TableName: "Labels",
@@ -263,7 +263,7 @@ func TestSenderSlack_BuildSlackBlocks_ResolvedAlert(t *testing.T) {
 		},
 		Enrichments: []issuepkg.Enrichment{
 			{
-				Title: stringPtr("Alert Labels"),
+				Title: "Alert Labels",
 				Blocks: []issuepkg.BaseBlock{
 					&issuepkg.TableBlock{
 						TableName: "Labels",
@@ -1742,8 +1742,8 @@ func TestSenderSlack_DeduplicateEnrichments(t *testing.T) {
 
 		// Should have 2 unique items (first Alert Labels + Annotations)
 		assert.Len(t, unique, 2)
-		assert.Equal(t, issuepkg.EnrichmentTypeAlertLabels, *unique[0].EnrichmentType)
-		assert.Equal(t, issuepkg.EnrichmentTypeAlertAnnotations, *unique[1].EnrichmentType)
+		assert.Equal(t, issuepkg.EnrichmentTypeAlertLabels, unique[0].Type)
+		assert.Equal(t, issuepkg.EnrichmentTypeAlertAnnotations, unique[1].Type)
 	})
 
 	t.Run("keeps enrichments with same type but different titles", func(t *testing.T) {
@@ -1756,8 +1756,8 @@ func TestSenderSlack_DeduplicateEnrichments(t *testing.T) {
 
 		// Should keep both (different titles)
 		assert.Len(t, unique, 2)
-		assert.Equal(t, "Container Logs - app", *unique[0].Title)
-		assert.Equal(t, "Container Logs - sidecar", *unique[1].Title)
+		assert.Equal(t, "Container Logs - app", unique[0].Title)
+		assert.Equal(t, "Container Logs - sidecar", unique[1].Title)
 	})
 
 	t.Run("uses first block identifier for uniqueness - file blocks", func(t *testing.T) {
@@ -1862,32 +1862,32 @@ func TestSenderSlack_DeduplicateEnrichments(t *testing.T) {
 
 	t.Run("handles enrichments without type", func(t *testing.T) {
 		enrichment1 := issuepkg.NewEnrichment()
-		enrichment1.Title = stringPtr("Custom Enrichment 1")
+		enrichment1.Title = "Custom Enrichment 1"
 
 		enrichment2 := issuepkg.NewEnrichment()
-		enrichment2.Title = stringPtr("Custom Enrichment 1")
+		enrichment2.Title = "Custom Enrichment 1"
 
 		enrichment3 := issuepkg.NewEnrichment()
-		enrichment3.Title = stringPtr("Custom Enrichment 2")
+		enrichment3.Title = "Custom Enrichment 2"
 
 		enrichments := []issuepkg.Enrichment{*enrichment1, *enrichment2, *enrichment3}
 		unique := slackSender.deduplicateEnrichments(enrichments)
 
 		// Should have 2 unique items (duplicate title removed)
 		assert.Len(t, unique, 2)
-		assert.Equal(t, "Custom Enrichment 1", *unique[0].Title)
-		assert.Equal(t, "Custom Enrichment 2", *unique[1].Title)
+		assert.Equal(t, "Custom Enrichment 1", unique[0].Title)
+		assert.Equal(t, "Custom Enrichment 2", unique[1].Title)
 	})
 
 	t.Run("handles enrichments without title", func(t *testing.T) {
 		enrichment1 := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertLabels, "")
-		enrichment1.Title = nil
+		enrichment1.Title = ""
 
 		enrichment2 := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertLabels, "")
-		enrichment2.Title = nil
+		enrichment2.Title = ""
 
 		enrichment3 := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertAnnotations, "")
-		enrichment3.Title = nil
+		enrichment3.Title = ""
 
 		enrichments := []issuepkg.Enrichment{*enrichment1, *enrichment2, *enrichment3}
 		unique := slackSender.deduplicateEnrichments(enrichments)
@@ -1915,9 +1915,9 @@ func TestSenderSlack_DeduplicateEnrichments(t *testing.T) {
 
 		// Should preserve order: Annotations, Labels, Logs
 		assert.Len(t, unique, 3)
-		assert.Equal(t, issuepkg.EnrichmentTypeAlertAnnotations, *unique[0].EnrichmentType)
-		assert.Equal(t, issuepkg.EnrichmentTypeAlertLabels, *unique[1].EnrichmentType)
-		assert.Equal(t, issuepkg.EnrichmentTypeTextFile, *unique[2].EnrichmentType)
+		assert.Equal(t, issuepkg.EnrichmentTypeAlertAnnotations, unique[0].Type)
+		assert.Equal(t, issuepkg.EnrichmentTypeAlertLabels, unique[1].Type)
+		assert.Equal(t, issuepkg.EnrichmentTypeTextFile, unique[2].Type)
 	})
 
 	t.Run("handles markdown blocks shorter than 50 chars", func(t *testing.T) {

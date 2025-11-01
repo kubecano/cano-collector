@@ -341,10 +341,13 @@ func (a *PodLogsAction) createLogsEnrichment(podName, namespace, containerName, 
 
 	// Create enrichment with the file block
 	enrichment := issue.NewEnrichmentWithType(
-		issue.EnrichmentTypeTextFile,
+		issue.EnrichmentTypeLogs,
 		title,
 	)
 	enrichment.AddBlock(fileBlock)
+
+	// Set content to logs for inline display/search if needed
+	enrichment.Content = logs
 
 	return enrichment
 }
