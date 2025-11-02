@@ -2235,3 +2235,128 @@ func TestSenderSlack_ResolveChannelID(t *testing.T) {
 		assert.Equal(t, "CTARGET", channelID)
 	})
 }
+
+func TestSenderSlack_GetSeverityEmoji(t *testing.T) {
+	sender := &SenderSlack{}
+
+	t.Run("high severity", func(t *testing.T) {
+		result := sender.getSeverityEmoji(issuepkg.SeverityHigh)
+		assert.Equal(t, "🔴", result)
+	})
+
+	t.Run("low severity", func(t *testing.T) {
+		result := sender.getSeverityEmoji(issuepkg.SeverityLow)
+		assert.Equal(t, "🟡", result)
+	})
+
+	t.Run("info severity", func(t *testing.T) {
+		result := sender.getSeverityEmoji(issuepkg.SeverityInfo)
+		assert.Equal(t, "🟢", result)
+	})
+
+	t.Run("debug severity", func(t *testing.T) {
+		result := sender.getSeverityEmoji(issuepkg.SeverityDebug)
+		assert.Equal(t, "🔵", result)
+	})
+}
+
+func TestSenderSlack_GetSeverityName(t *testing.T) {
+	sender := &SenderSlack{}
+
+	t.Run("high severity", func(t *testing.T) {
+		result := sender.getSeverityName(issuepkg.SeverityHigh)
+		assert.Equal(t, "High", result)
+	})
+
+	t.Run("low severity", func(t *testing.T) {
+		result := sender.getSeverityName(issuepkg.SeverityLow)
+		assert.Equal(t, "Low", result)
+	})
+
+	t.Run("info severity", func(t *testing.T) {
+		result := sender.getSeverityName(issuepkg.SeverityInfo)
+		assert.Equal(t, "Info", result)
+	})
+
+	t.Run("debug severity", func(t *testing.T) {
+		result := sender.getSeverityName(issuepkg.SeverityDebug)
+		assert.Equal(t, "Debug", result)
+	})
+}
+
+func TestSenderSlack_BuildMessageContext(t *testing.T) {
+	sender := &SenderSlack{}
+
+	t.Run("builds context for firing alert", func(t *testing.T) {
+		issue := issuepkg.NewIssue("Test Alert", "test-key")
+		issue.Description = "Test description"
+		issue.ClusterName = "test-cluster"
+		issue.Subject.Namespace = "default"
+		issue.Subject.Name = "test-pod"
+		issue.Source = issuepkg.SourcePrometheus
+		issue.Severity = issuepkg.SeverityHigh
+		issue.Status = issuepkg.StatusFiring
+
+		context := sender.buildMessageContext(issue)
+
+		require.NotNil(t, context)
+		assert.Equal(t, "Test Alert", context.Title)
+		assert.Equal(t, "Test description", context.Description)
+		assert.Equal(t, "test-cluster", context.Cluster)
+		assert.Equal(t, "default", context.Namespace)
+		assert.Equal(t, "test-pod", context.PodName)
+		assert.Equal(t, "PROMETHEUS", context.Source)
+		assert.Equal(t, "firing", context.Status)
+		assert.Equal(t, "🔥", context.StatusEmoji)
+		assert.Equal(t, "High", context.Severity)
+		assert.Equal(t, "🔴", context.SeverityEmoji)
+	})
+
+	t.Run("builds context for resolved alert", func(t *testing.T) {
+		issue := issuepkg.NewIssue("Test Alert", "test-key")
+		issue.Status = issuepkg.StatusResolved
+		issue.Severity = issuepkg.SeverityLow
+
+		context := sender.buildMessageContext(issue)
+
+		require.NotNil(t, context)
+		assert.Equal(t, "resolved", context.Status)
+		assert.Equal(t, "✅", context.StatusEmoji)
+		assert.Equal(t, "Low", context.Severity)
+		assert.Equal(t, "🟡", context.SeverityEmoji)
+	})
+}
+
+func TestSenderSlack_GetIssueLabel(t *testing.T) {
+	sender := &SenderSlack{}
+
+	t.Run("returns label from issue", func(t *testing.T) {
+		issue := issuepkg.NewIssue("Test", "test-key")
+		issue.Subject.Labels = map[string]string{
+			"app":  "myapp",
+			"tier": "backend",
+		}
+
+		result := sender.getIssueLabel(issue, "app")
+		assert.Equal(t, "myapp", result)
+
+		result = sender.getIssueLabel(issue, "tier")
+		assert.Equal(t, "backend", result)
+	})
+
+	t.Run("returns empty for missing label", func(t *testing.T) {
+		issue := issuepkg.NewIssue("Test", "test-key")
+		issue.Subject.Labels = map[string]string{"app": "myapp"}
+
+		result := sender.getIssueLabel(issue, "nonexistent")
+		assert.Empty(t, result)
+	})
+
+	t.Run("returns empty when labels is nil", func(t *testing.T) {
+		issue := issuepkg.NewIssue("Test", "test-key")
+		issue.Subject.Labels = nil
+
+		result := sender.getIssueLabel(issue, "app")
+		assert.Empty(t, result)
+	})
+}
