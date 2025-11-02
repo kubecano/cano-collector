@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.0.21](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.20...cano-collector-v0.0.21) (2025-11-02)
+
+
+### Features
+
+* CU-869aj0nqy - Implement Slack File Upload and Enhanced Enrichments ([#254](https://github.com/kubecano/cano-collector/issues/254)) ([412a915](https://github.com/kubecano/cano-collector/commit/412a91580e458fa94efb8b051b9224aca62b0dc4))
+
+
+### Bug Fixes
+
+* CU-869atu6pv - Add files:read scope to Slack bot setup documentation ([#246](https://github.com/kubecano/cano-collector/issues/246)) ([bd69d48](https://github.com/kubecano/cano-collector/commit/bd69d48008244a93e45a7e5a4bdd144ec365a510))
+
 ## [0.0.20](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.19...cano-collector-v0.0.20) (2025-10-11)
 
 
