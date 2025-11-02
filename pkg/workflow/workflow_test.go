@@ -603,7 +603,7 @@ func TestWorkflowEngine_ExecuteWorkflowWithEnrichments(t *testing.T) {
 	enrichments, err := engine.ExecuteWorkflowWithEnrichments(ctx, workflow, workflowEvent)
 	require.NoError(t, err)
 	assert.Len(t, enrichments, 1)
-	assert.Equal(t, "Test Enrichment", *enrichments[0].Title)
+	assert.Equal(t, "Test Enrichment", enrichments[0].Title)
 }
 
 // Test ExecuteWorkflowsWithEnrichments method
@@ -640,7 +640,7 @@ func TestWorkflowEngine_ExecuteWorkflowsWithEnrichments(t *testing.T) {
 	enrichments, err := engine.ExecuteWorkflowsWithEnrichments(ctx, workflows, workflowEvent)
 	require.NoError(t, err)
 	assert.Len(t, enrichments, 2) // One from each workflow
-	assert.Equal(t, "Multiple Enrichment", *enrichments[0].Title)
+	assert.Equal(t, "Multiple Enrichment", enrichments[0].Title)
 }
 
 // Test ExecuteWorkflowWithEnrichments error cases

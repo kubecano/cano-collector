@@ -84,7 +84,7 @@ func TestProcessWorkflowEnrichments_WithEnrichments(t *testing.T) {
 
 	// Verify enrichments were added to the issue
 	assert.Len(t, testIssue.Enrichments, 1)
-	assert.Equal(t, "Test Title", *testIssue.Enrichments[0].Title)
+	assert.Equal(t, "Test Title", testIssue.Enrichments[0].Title)
 }
 
 func TestProcessWorkflowEnrichments_ExecutionError(t *testing.T) {
