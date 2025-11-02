@@ -1,0 +1,10 @@
+{{- /* File enrichment - uploaded files with permalinks (like Robusta format) */ -}}
+[
+  {
+    "type": "section",
+    "text": {
+      "type": "mrkdwn",
+      "text": "*{{.Title}}*\n• <{{.FileLink}}|{{.Title}}>"
+    }
+  }
+]

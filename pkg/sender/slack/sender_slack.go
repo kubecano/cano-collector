@@ -17,21 +17,21 @@ import (
 	issuepkg "github.com/kubecano/cano-collector/pkg/core/issue"
 	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
 	sender_interfaces "github.com/kubecano/cano-collector/pkg/sender/interfaces"
+	"github.com/kubecano/cano-collector/pkg/sender/slack/templates"
 	"github.com/kubecano/cano-collector/pkg/util"
 )
 
 type SenderSlack struct {
-	apiKey      string
-	channel     string
-	channelID   string // Cached channel ID after resolution
-	logger      logger_interfaces.LoggerInterface
-	unfurlLinks bool
-	slackClient sender_interfaces.SlackClientInterface
-	// Threading configuration - will be added in next step
-	threadManager sender_interfaces.SlackThreadManagerInterface
-	// Table formatting parameters (instead of full config dependency)
-	tableFormat  string
-	maxTableRows int
+	apiKey         string
+	channel        string
+	channelID      string // Cached channel ID after resolution
+	logger         logger_interfaces.LoggerInterface
+	unfurlLinks    bool
+	slackClient    sender_interfaces.SlackClientInterface
+	threadManager  sender_interfaces.SlackThreadManagerInterface
+	templateLoader *templates.TemplateLoader // Template system for message formatting
+	tableFormat    string
+	maxTableRows   int
 
 	// Prometheus metrics
 	fileUploadsTotal          *prometheus.CounterVec
@@ -51,14 +51,22 @@ func NewSenderSlack(apiKey, channel string, unfurlLinks bool, logger logger_inte
 		slackClient = slackapi.New(apiKey)
 	}
 
+	// Initialize template loader
+	templateLoader, err := templates.NewTemplateLoader()
+	if err != nil {
+		logger.Error("Failed to load Slack message templates, falling back to hardcoded format", zap.Error(err))
+		// Continue without templates - will use fallback formatting
+	}
+
 	s := &SenderSlack{
-		apiKey:       apiKey,
-		channel:      channel,
-		logger:       logger,
-		unfurlLinks:  unfurlLinks,
-		slackClient:  slackClient,
-		tableFormat:  "enhanced", // Default table format
-		maxTableRows: 20,         // Default max rows before converting to file
+		apiKey:         apiKey,
+		channel:        channel,
+		logger:         logger,
+		unfurlLinks:    unfurlLinks,
+		slackClient:    slackClient,
+		templateLoader: templateLoader,
+		tableFormat:    "enhanced", // Default table format
+		maxTableRows:   20,         // Default max rows before converting to file
 	}
 
 	// Initialize Prometheus metrics with error handling to avoid test panics
@@ -128,6 +136,9 @@ func (s *SenderSlack) Send(ctx context.Context, issue *issuepkg.Issue) error {
 		zap.String("channel", s.channel),
 		zap.String("status", issue.Status.String()),
 	)
+
+	// Preprocess enrichments: upload files and set FileInfo
+	s.preprocessEnrichments(issue)
 
 	// Create formatted blocks
 	blocks := s.buildSlackBlocks(issue)
@@ -227,11 +238,9 @@ func (s *SenderSlack) deduplicateEnrichments(enrichments []issuepkg.Enrichment) 
 	for _, e := range enrichments {
 		// Generate unique key: type + title + first block identifier
 		var key string
-		if e.EnrichmentType != nil {
-			key = e.EnrichmentType.String()
-		}
-		if e.Title != nil {
-			key += ":" + *e.Title
+		key = e.Type.String()
+		if e.Title != "" {
+			key += ":" + e.Title
 		}
 
 		// Add first block identifier for better uniqueness
@@ -255,13 +264,9 @@ func (s *SenderSlack) deduplicateEnrichments(enrichments []issuepkg.Enrichment) 
 			seen[key] = true
 			unique = append(unique, e)
 		} else {
-			typeStr := ""
-			if e.EnrichmentType != nil {
-				typeStr = e.EnrichmentType.String()
-			}
 			s.logger.Debug("Skipping duplicate enrichment",
 				zap.String("key", key),
-				zap.String("type", typeStr),
+				zap.String("type", e.Type.String()),
 			)
 		}
 	}
@@ -271,6 +276,88 @@ func (s *SenderSlack) deduplicateEnrichments(enrichments []issuepkg.Enrichment) 
 
 // buildSlackBlocks creates the main message blocks
 func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slackapi.Block {
+	// If template loader is not available, fall back to legacy format
+	if s.templateLoader == nil {
+		return s.buildSlackBlocksLegacy(issue)
+	}
+
+	// Build template context from issue
+	context := s.buildMessageContext(issue)
+
+	var blocks []slackapi.Block
+
+	// 1. Render header from template
+	headerBlocks, err := s.templateLoader.RenderToBlocks("header.tmpl", context)
+	if err != nil {
+		s.logger.Error("Failed to render header template, using fallback", zap.Error(err))
+		headerBlocks = s.buildHeaderBlockFallback(issue)
+	}
+	blocks = append(blocks, headerBlocks...)
+
+	// 2. Render context bar from template
+	contextBlocks, err := s.templateLoader.RenderToBlocks("context_bar.tmpl", context)
+	if err != nil {
+		s.logger.Error("Failed to render context bar template", zap.Error(err))
+	} else {
+		blocks = append(blocks, contextBlocks...)
+	}
+
+	// 3. Add divider
+	blocks = append(blocks, slackapi.NewDividerBlock())
+
+	// 4. Render description if present
+	if context.Description != "" {
+		descBlocks, err := s.templateLoader.RenderToBlocks("description.tmpl", context)
+		if err != nil {
+			s.logger.Error("Failed to render description template", zap.Error(err))
+		} else {
+			blocks = append(blocks, descBlocks...)
+		}
+	}
+
+	// 5. Render links if present
+	if len(context.Links) > 0 {
+		linksBlocks, err := s.templateLoader.RenderToBlocks("links.tmpl", context)
+		if err != nil {
+			s.logger.Error("Failed to render links template", zap.Error(err))
+		} else {
+			blocks = append(blocks, linksBlocks...)
+		}
+	}
+
+	// 6. Render crash info if present (for pod alerts)
+	if context.CrashInfo != nil {
+		crashBlocks, err := s.templateLoader.RenderToBlocks("crash_info.tmpl", context)
+		if err != nil {
+			s.logger.Error("Failed to render crash info template", zap.Error(err))
+		} else {
+			blocks = append(blocks, crashBlocks...)
+		}
+	}
+
+	// 7. Render file enrichments with permalinks (Robusta-style)
+	for _, enrichment := range context.Enrichments {
+		if enrichment.FileLink != "" {
+			// This is a file enrichment with permalink
+			fileBlocks, err := s.templateLoader.RenderToBlocks("file_enrichment.tmpl", enrichment)
+			if err != nil {
+				s.logger.Error("Failed to render file enrichment template", zap.Error(err))
+			} else {
+				blocks = append(blocks, fileBlocks...)
+			}
+		}
+	}
+
+	// 8. Add other enrichments (tables, markdown, etc.) using existing logic
+	uniqueEnrichments := s.deduplicateEnrichments(issue.Enrichments)
+	enrichmentBlocks := s.buildEnrichmentBlocks(uniqueEnrichments)
+	blocks = append(blocks, enrichmentBlocks...)
+
+	return blocks
+}
+
+// buildSlackBlocksLegacy is the old implementation (fallback if templates fail)
+func (s *SenderSlack) buildSlackBlocksLegacy(issue *issuepkg.Issue) []slackapi.Block {
 	var blocks []slackapi.Block
 
 	// Header block with status, severity and title
@@ -362,6 +449,16 @@ func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slackapi.Block {
 	return blocks
 }
 
+// buildHeaderBlockFallback creates a simple header block if template rendering fails
+func (s *SenderSlack) buildHeaderBlockFallback(issue *issuepkg.Issue) []slackapi.Block {
+	headerText := s.formatHeader(issue)
+	headerBlock := slackapi.NewSectionBlock(
+		slackapi.NewTextBlockObject("mrkdwn", headerText, false, false),
+		nil, nil,
+	)
+	return []slackapi.Block{headerBlock}
+}
+
 // buildSlackAttachments creates colored attachment with secondary issue details
 func (s *SenderSlack) buildSlackAttachments(issue *issuepkg.Issue) []slackapi.Attachment {
 	var attachments []slackapi.Attachment
@@ -443,9 +540,9 @@ func (s *SenderSlack) convertEnrichmentToBlocks(enrichment issuepkg.Enrichment) 
 	}
 
 	// Add enrichment title as smaller formatted text if available
-	if enrichment.Title != nil && *enrichment.Title != "" {
+	if enrichment.Title != "" {
 		// Small bold title instead of large header
-		titleText := "*" + *enrichment.Title + "*"
+		titleText := "*" + enrichment.Title + "*"
 
 		titleBlock := slackapi.NewSectionBlock(
 			slackapi.NewTextBlockObject("mrkdwn", titleText, false, false),
@@ -887,6 +984,54 @@ func (s *SenderSlack) resolveChannelID() (string, error) {
 	return "", fmt.Errorf("channel not found: %s", s.channel)
 }
 
+// preprocessEnrichments uploads files from FileBlocks and sets FileInfo for template rendering
+func (s *SenderSlack) preprocessEnrichments(issue *issuepkg.Issue) {
+	for i := range issue.Enrichments {
+		enrichment := &issue.Enrichments[i]
+
+		// Skip if enrichment already has FileInfo set
+		if enrichment.FileInfo != nil && enrichment.FileInfo.Permalink != "" {
+			continue
+		}
+
+		// Look for FileBlock in enrichment blocks
+		for _, block := range enrichment.Blocks {
+			if fileBlock, ok := block.(*issuepkg.FileBlock); ok {
+				// Upload file to Slack
+				permalink, err := s.uploadFileToSlack(fileBlock.Filename, fileBlock.Contents)
+				if err != nil {
+					s.logger.Warn("Failed to upload file for enrichment, skipping FileInfo",
+						zap.Error(err),
+						zap.String("filename", fileBlock.Filename),
+						zap.String("enrichment_title", enrichment.Title),
+					)
+					continue
+				}
+
+				// Set FileInfo with permalink
+				enrichment.FileInfo = &issuepkg.FileInfo{
+					Permalink: permalink,
+					Filename:  fileBlock.Filename,
+					Size:      fileBlock.Size,
+					MimeType:  fileBlock.MimeType,
+				}
+
+				// Set Content to file contents as string (for inline display if needed)
+				enrichment.Content = string(fileBlock.Contents)
+
+				s.logger.Debug("File uploaded and FileInfo set for enrichment",
+					zap.String("filename", fileBlock.Filename),
+					zap.String("permalink", permalink),
+					zap.String("enrichment_title", enrichment.Title),
+				)
+
+				// Only process first FileBlock per enrichment
+				break
+			}
+		}
+	}
+}
+
 // uploadFileToSlack uploads a file to Slack workspace storage using files_upload_v2 API
 // Returns the permalink to the uploaded file, which can be included in any message
 func (s *SenderSlack) uploadFileToSlack(filename string, content []byte) (string, error) {
@@ -1138,6 +1283,123 @@ func (s *SenderSlack) getSeverityColor(severity issuepkg.Severity) string {
 	default:
 		return "#00B302" // Default green
 	}
+}
+
+// getSeverityEmoji returns only the emoji for severity (for template use)
+func (s *SenderSlack) getSeverityEmoji(severity issuepkg.Severity) string {
+	switch severity {
+	case issuepkg.SeverityHigh:
+		return "🔴"
+	case issuepkg.SeverityLow:
+		return "🟡"
+	case issuepkg.SeverityInfo:
+		return "🟢"
+	case issuepkg.SeverityDebug:
+		return "🔵"
+	default:
+		return "🟢"
+	}
+}
+
+// getSeverityName returns severity name without emoji (for template use)
+func (s *SenderSlack) getSeverityName(severity issuepkg.Severity) string {
+	switch severity {
+	case issuepkg.SeverityHigh:
+		return "High"
+	case issuepkg.SeverityLow:
+		return "Low"
+	case issuepkg.SeverityInfo:
+		return "Info"
+	case issuepkg.SeverityDebug:
+		return "Debug"
+	default:
+		return severity.String()
+	}
+}
+
+// buildMessageContext prepares template context from Issue
+func (s *SenderSlack) buildMessageContext(issue *issuepkg.Issue) *MessageContext {
+	context := &MessageContext{
+		Title:       issue.Title,
+		Description: issue.Description,
+		Cluster:     issue.ClusterName,
+		Namespace:   issue.Subject.Namespace,
+		PodName:     issue.Subject.Name,
+		Source:      issue.Source.String(),
+	}
+
+	// Status
+	if issue.IsResolved() {
+		context.Status = "resolved"
+		context.StatusEmoji = "✅"
+		context.StatusText = "Alert resolved"
+	} else {
+		context.Status = "firing"
+		context.StatusEmoji = "🔥"
+		context.StatusText = "Alert firing"
+	}
+
+	// Severity
+	context.Severity = s.getSeverityName(issue.Severity)
+	context.SeverityEmoji = s.getSeverityEmoji(issue.Severity)
+
+	// Alert type
+	switch issue.Source {
+	case issuepkg.SourcePrometheus:
+		context.AlertType = "Prometheus Alert"
+		context.AlertTypeEmoji = "📊"
+	case issuepkg.SourceKubernetesAPIServer:
+		context.AlertType = "K8s Event"
+		context.AlertTypeEmoji = "👀"
+	default:
+		context.AlertType = "Notification"
+		context.AlertTypeEmoji = "📬"
+	}
+
+	// Extract crash info from labels (for pod alerts)
+	containerName := s.getIssueLabel(issue, "container")
+	if containerName != "" {
+		context.CrashInfo = &CrashInfo{
+			Container: containerName,
+			Restarts:  s.getIssueLabel(issue, "restarts"),
+			Status:    s.getIssueLabel(issue, "status"),
+			Reason:    s.getIssueLabel(issue, "reason"),
+		}
+	}
+
+	// Links
+	for _, link := range issue.Links {
+		context.Links = append(context.Links, Link{
+			Text: link.Text,
+			URL:  link.URL,
+		})
+	}
+
+	// Enrichments
+	for _, enrichment := range issue.Enrichments {
+		enrichData := EnrichmentData{
+			Type:    enrichment.Type.String(),
+			Title:   enrichment.Title,
+			Content: enrichment.Content,
+		}
+
+		// Add file permalink if available
+		if enrichment.FileInfo != nil && enrichment.FileInfo.Permalink != "" {
+			enrichData.FileLink = enrichment.FileInfo.Permalink
+		}
+
+		context.Enrichments = append(context.Enrichments, enrichData)
+	}
+
+	return context
+}
+
+// getIssueLabel safely extracts label value from issue
+func (s *SenderSlack) getIssueLabel(issue *issuepkg.Issue, key string) string {
+	if issue.Subject.Labels == nil {
+		return ""
+	}
+	return issue.Subject.Labels[key]
 }
 
 // formatIssueToString converts an Issue to a formatted string message (fallback)

@@ -209,7 +209,7 @@ func TestSenderSlack_BuildSlackBlocks(t *testing.T) {
 		},
 		Enrichments: []issuepkg.Enrichment{
 			{
-				Title: stringPtr("Alert Labels"),
+				Title: "Alert Labels",
 				Blocks: []issuepkg.BaseBlock{
 					&issuepkg.TableBlock{
 						TableName: "Labels",
@@ -263,7 +263,7 @@ func TestSenderSlack_BuildSlackBlocks_ResolvedAlert(t *testing.T) {
 		},
 		Enrichments: []issuepkg.Enrichment{
 			{
-				Title: stringPtr("Alert Labels"),
+				Title: "Alert Labels",
 				Blocks: []issuepkg.BaseBlock{
 					&issuepkg.TableBlock{
 						TableName: "Labels",
@@ -313,11 +313,6 @@ func TestSenderSlack_BuildSlackBlocks_ResolvedAlert(t *testing.T) {
 		_, isActionBlock := block.(*slack.ActionBlock)
 		assert.False(t, isActionBlock, "Resolved alerts should not have action blocks")
 	}
-}
-
-// Helper function for string pointer
-func stringPtr(s string) *string {
-	return &s
 }
 
 func TestSenderSlack_BuildSlackBlocks_WithoutRunbook(t *testing.T) {
@@ -1742,8 +1737,8 @@ func TestSenderSlack_DeduplicateEnrichments(t *testing.T) {
 
 		// Should have 2 unique items (first Alert Labels + Annotations)
 		assert.Len(t, unique, 2)
-		assert.Equal(t, issuepkg.EnrichmentTypeAlertLabels, *unique[0].EnrichmentType)
-		assert.Equal(t, issuepkg.EnrichmentTypeAlertAnnotations, *unique[1].EnrichmentType)
+		assert.Equal(t, issuepkg.EnrichmentTypeAlertLabels, unique[0].Type)
+		assert.Equal(t, issuepkg.EnrichmentTypeAlertAnnotations, unique[1].Type)
 	})
 
 	t.Run("keeps enrichments with same type but different titles", func(t *testing.T) {
@@ -1756,8 +1751,8 @@ func TestSenderSlack_DeduplicateEnrichments(t *testing.T) {
 
 		// Should keep both (different titles)
 		assert.Len(t, unique, 2)
-		assert.Equal(t, "Container Logs - app", *unique[0].Title)
-		assert.Equal(t, "Container Logs - sidecar", *unique[1].Title)
+		assert.Equal(t, "Container Logs - app", unique[0].Title)
+		assert.Equal(t, "Container Logs - sidecar", unique[1].Title)
 	})
 
 	t.Run("uses first block identifier for uniqueness - file blocks", func(t *testing.T) {
@@ -1862,32 +1857,32 @@ func TestSenderSlack_DeduplicateEnrichments(t *testing.T) {
 
 	t.Run("handles enrichments without type", func(t *testing.T) {
 		enrichment1 := issuepkg.NewEnrichment()
-		enrichment1.Title = stringPtr("Custom Enrichment 1")
+		enrichment1.Title = "Custom Enrichment 1"
 
 		enrichment2 := issuepkg.NewEnrichment()
-		enrichment2.Title = stringPtr("Custom Enrichment 1")
+		enrichment2.Title = "Custom Enrichment 1"
 
 		enrichment3 := issuepkg.NewEnrichment()
-		enrichment3.Title = stringPtr("Custom Enrichment 2")
+		enrichment3.Title = "Custom Enrichment 2"
 
 		enrichments := []issuepkg.Enrichment{*enrichment1, *enrichment2, *enrichment3}
 		unique := slackSender.deduplicateEnrichments(enrichments)
 
 		// Should have 2 unique items (duplicate title removed)
 		assert.Len(t, unique, 2)
-		assert.Equal(t, "Custom Enrichment 1", *unique[0].Title)
-		assert.Equal(t, "Custom Enrichment 2", *unique[1].Title)
+		assert.Equal(t, "Custom Enrichment 1", unique[0].Title)
+		assert.Equal(t, "Custom Enrichment 2", unique[1].Title)
 	})
 
 	t.Run("handles enrichments without title", func(t *testing.T) {
 		enrichment1 := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertLabels, "")
-		enrichment1.Title = nil
+		enrichment1.Title = ""
 
 		enrichment2 := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertLabels, "")
-		enrichment2.Title = nil
+		enrichment2.Title = ""
 
 		enrichment3 := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertAnnotations, "")
-		enrichment3.Title = nil
+		enrichment3.Title = ""
 
 		enrichments := []issuepkg.Enrichment{*enrichment1, *enrichment2, *enrichment3}
 		unique := slackSender.deduplicateEnrichments(enrichments)
@@ -1915,9 +1910,9 @@ func TestSenderSlack_DeduplicateEnrichments(t *testing.T) {
 
 		// Should preserve order: Annotations, Labels, Logs
 		assert.Len(t, unique, 3)
-		assert.Equal(t, issuepkg.EnrichmentTypeAlertAnnotations, *unique[0].EnrichmentType)
-		assert.Equal(t, issuepkg.EnrichmentTypeAlertLabels, *unique[1].EnrichmentType)
-		assert.Equal(t, issuepkg.EnrichmentTypeTextFile, *unique[2].EnrichmentType)
+		assert.Equal(t, issuepkg.EnrichmentTypeAlertAnnotations, unique[0].Type)
+		assert.Equal(t, issuepkg.EnrichmentTypeAlertLabels, unique[1].Type)
+		assert.Equal(t, issuepkg.EnrichmentTypeTextFile, unique[2].Type)
 	})
 
 	t.Run("handles markdown blocks shorter than 50 chars", func(t *testing.T) {
@@ -2238,5 +2233,130 @@ func TestSenderSlack_ResolveChannelID(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, "CTARGET", channelID)
+	})
+}
+
+func TestSenderSlack_GetSeverityEmoji(t *testing.T) {
+	sender := &SenderSlack{}
+
+	t.Run("high severity", func(t *testing.T) {
+		result := sender.getSeverityEmoji(issuepkg.SeverityHigh)
+		assert.Equal(t, "🔴", result)
+	})
+
+	t.Run("low severity", func(t *testing.T) {
+		result := sender.getSeverityEmoji(issuepkg.SeverityLow)
+		assert.Equal(t, "🟡", result)
+	})
+
+	t.Run("info severity", func(t *testing.T) {
+		result := sender.getSeverityEmoji(issuepkg.SeverityInfo)
+		assert.Equal(t, "🟢", result)
+	})
+
+	t.Run("debug severity", func(t *testing.T) {
+		result := sender.getSeverityEmoji(issuepkg.SeverityDebug)
+		assert.Equal(t, "🔵", result)
+	})
+}
+
+func TestSenderSlack_GetSeverityName(t *testing.T) {
+	sender := &SenderSlack{}
+
+	t.Run("high severity", func(t *testing.T) {
+		result := sender.getSeverityName(issuepkg.SeverityHigh)
+		assert.Equal(t, "High", result)
+	})
+
+	t.Run("low severity", func(t *testing.T) {
+		result := sender.getSeverityName(issuepkg.SeverityLow)
+		assert.Equal(t, "Low", result)
+	})
+
+	t.Run("info severity", func(t *testing.T) {
+		result := sender.getSeverityName(issuepkg.SeverityInfo)
+		assert.Equal(t, "Info", result)
+	})
+
+	t.Run("debug severity", func(t *testing.T) {
+		result := sender.getSeverityName(issuepkg.SeverityDebug)
+		assert.Equal(t, "Debug", result)
+	})
+}
+
+func TestSenderSlack_BuildMessageContext(t *testing.T) {
+	sender := &SenderSlack{}
+
+	t.Run("builds context for firing alert", func(t *testing.T) {
+		issue := issuepkg.NewIssue("Test Alert", "test-key")
+		issue.Description = "Test description"
+		issue.ClusterName = "test-cluster"
+		issue.Subject.Namespace = "default"
+		issue.Subject.Name = "test-pod"
+		issue.Source = issuepkg.SourcePrometheus
+		issue.Severity = issuepkg.SeverityHigh
+		issue.Status = issuepkg.StatusFiring
+
+		context := sender.buildMessageContext(issue)
+
+		require.NotNil(t, context)
+		assert.Equal(t, "Test Alert", context.Title)
+		assert.Equal(t, "Test description", context.Description)
+		assert.Equal(t, "test-cluster", context.Cluster)
+		assert.Equal(t, "default", context.Namespace)
+		assert.Equal(t, "test-pod", context.PodName)
+		assert.Equal(t, "PROMETHEUS", context.Source)
+		assert.Equal(t, "firing", context.Status)
+		assert.Equal(t, "🔥", context.StatusEmoji)
+		assert.Equal(t, "High", context.Severity)
+		assert.Equal(t, "🔴", context.SeverityEmoji)
+	})
+
+	t.Run("builds context for resolved alert", func(t *testing.T) {
+		issue := issuepkg.NewIssue("Test Alert", "test-key")
+		issue.Status = issuepkg.StatusResolved
+		issue.Severity = issuepkg.SeverityLow
+
+		context := sender.buildMessageContext(issue)
+
+		require.NotNil(t, context)
+		assert.Equal(t, "resolved", context.Status)
+		assert.Equal(t, "✅", context.StatusEmoji)
+		assert.Equal(t, "Low", context.Severity)
+		assert.Equal(t, "🟡", context.SeverityEmoji)
+	})
+}
+
+func TestSenderSlack_GetIssueLabel(t *testing.T) {
+	sender := &SenderSlack{}
+
+	t.Run("returns label from issue", func(t *testing.T) {
+		issue := issuepkg.NewIssue("Test", "test-key")
+		issue.Subject.Labels = map[string]string{
+			"app":  "myapp",
+			"tier": "backend",
+		}
+
+		result := sender.getIssueLabel(issue, "app")
+		assert.Equal(t, "myapp", result)
+
+		result = sender.getIssueLabel(issue, "tier")
+		assert.Equal(t, "backend", result)
+	})
+
+	t.Run("returns empty for missing label", func(t *testing.T) {
+		issue := issuepkg.NewIssue("Test", "test-key")
+		issue.Subject.Labels = map[string]string{"app": "myapp"}
+
+		result := sender.getIssueLabel(issue, "nonexistent")
+		assert.Empty(t, result)
+	})
+
+	t.Run("returns empty when labels is nil", func(t *testing.T) {
+		issue := issuepkg.NewIssue("Test", "test-key")
+		issue.Subject.Labels = nil
+
+		result := sender.getIssueLabel(issue, "app")
+		assert.Empty(t, result)
 	})
 }

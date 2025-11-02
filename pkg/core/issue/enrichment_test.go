@@ -14,8 +14,8 @@ func TestNewEnrichment(t *testing.T) {
 	assert.NotNil(t, enrichment.Annotations)
 	assert.Empty(t, enrichment.Blocks)
 	assert.Empty(t, enrichment.Annotations)
-	assert.Nil(t, enrichment.EnrichmentType)
-	assert.Nil(t, enrichment.Title)
+	assert.Equal(t, EnrichmentType(0), enrichment.Type)
+	assert.Empty(t, enrichment.Title)
 }
 
 func TestNewEnrichmentWithType(t *testing.T) {
@@ -29,10 +29,8 @@ func TestNewEnrichmentWithType(t *testing.T) {
 	assert.NotNil(t, enrichment.Annotations)
 	assert.Empty(t, enrichment.Blocks)
 	assert.Empty(t, enrichment.Annotations)
-	assert.NotNil(t, enrichment.EnrichmentType)
-	assert.Equal(t, enrichmentType, *enrichment.EnrichmentType)
-	assert.NotNil(t, enrichment.Title)
-	assert.Equal(t, title, *enrichment.Title)
+	assert.Equal(t, enrichmentType, enrichment.Type)
+	assert.Equal(t, title, enrichment.Title)
 }
 
 func TestEnrichment_AddBlock(t *testing.T) {

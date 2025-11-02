@@ -10,6 +10,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	pod_logs_config "github.com/kubecano/cano-collector/config/workflow/actions"
 	"github.com/kubecano/cano-collector/pkg/core/event"
@@ -51,6 +53,33 @@ func (m *MockKubernetesClientForTest) SetLogs(namespace, podName, logs string) {
 
 func (m *MockKubernetesClientForTest) SetShouldError(shouldErr bool) {
 	m.shouldErr = shouldErr
+}
+
+func (m *MockKubernetesClientForTest) GetPod(ctx context.Context, namespace, podName string) (*corev1.Pod, error) {
+	if m.shouldErr {
+		return nil, assert.AnError
+	}
+
+	// Return a simple mock pod
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      podName,
+			Namespace: namespace,
+		},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			ContainerStatuses: []corev1.ContainerStatus{
+				{
+					Name:         "test-container",
+					RestartCount: 0,
+					State: corev1.ContainerState{
+						Running: &corev1.ContainerStateRunning{},
+					},
+				},
+			},
+		},
+	}
+	return pod, nil
 }
 
 // Helper function to create test workflow event for pod logs tests
@@ -165,8 +194,8 @@ func TestPodLogsAction_Execute_Success(t *testing.T) {
 
 	// Check enrichment
 	enrichment := result.Enrichments[0]
-	assert.Equal(t, issue.EnrichmentTypeTextFile, *enrichment.EnrichmentType)
-	assert.Contains(t, *enrichment.Title, "Pod Logs: test-namespace/test-pod")
+	assert.Equal(t, issue.EnrichmentTypeLogs, enrichment.Type)
+	assert.Contains(t, enrichment.Title, "Pod Logs: test-namespace/test-pod")
 }
 
 func TestPodLogsAction_Execute_JavaContainer(t *testing.T) {
@@ -229,7 +258,7 @@ func TestPodLogsAction_Execute_JavaContainer(t *testing.T) {
 
 	// Check that Java-specific title is used
 	enrichment := result.Enrichments[0]
-	assert.Contains(t, *enrichment.Title, "Java Pod Logs")
+	assert.Contains(t, enrichment.Title, "Java Pod Logs")
 }
 
 func TestPodLogsAction_Execute_NoPodFound(t *testing.T) {

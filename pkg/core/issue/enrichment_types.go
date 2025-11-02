@@ -16,6 +16,7 @@ const (
 	EnrichmentTypeCrashInfo
 	EnrichmentTypeImagePullBackoffInfo
 	EnrichmentTypePendingPodInfo
+	EnrichmentTypeLogs // Pod logs enrichment
 )
 
 // String returns the string representation of the enrichment type
@@ -45,6 +46,8 @@ func (et EnrichmentType) String() string {
 		return "image_pull_backoff_info"
 	case EnrichmentTypePendingPodInfo:
 		return "pending_pod_info"
+	case EnrichmentTypeLogs:
+		return "logs"
 	default:
 		return "unknown"
 	}

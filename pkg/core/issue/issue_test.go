@@ -176,8 +176,8 @@ func TestIssue_AddEnrichmentBlocks(t *testing.T) {
 	assert.Len(t, issue.Enrichments[0].Blocks, 2)
 	assert.Equal(t, block1, issue.Enrichments[0].Blocks[0])
 	assert.Equal(t, block2, issue.Enrichments[0].Blocks[1])
-	assert.Nil(t, issue.Enrichments[0].EnrichmentType)
-	assert.Nil(t, issue.Enrichments[0].Title)
+	assert.Equal(t, EnrichmentType(0), issue.Enrichments[0].Type)
+	assert.Empty(t, issue.Enrichments[0].Title)
 }
 
 func TestIssue_AddEnrichmentWithType(t *testing.T) {
@@ -199,10 +199,8 @@ func TestIssue_AddEnrichmentWithType(t *testing.T) {
 	assert.Len(t, issue.Enrichments[0].Blocks, 2)
 	assert.Equal(t, block1, issue.Enrichments[0].Blocks[0])
 	assert.Equal(t, block2, issue.Enrichments[0].Blocks[1])
-	assert.NotNil(t, issue.Enrichments[0].EnrichmentType)
-	assert.Equal(t, enrichmentType, *issue.Enrichments[0].EnrichmentType)
-	assert.NotNil(t, issue.Enrichments[0].Title)
-	assert.Equal(t, title, *issue.Enrichments[0].Title)
+	assert.Equal(t, enrichmentType, issue.Enrichments[0].Type)
+	assert.Equal(t, title, issue.Enrichments[0].Title)
 }
 
 func TestIssue_AddEnrichmentBlocks_EmptyBlocks(t *testing.T) {
@@ -231,12 +229,12 @@ func TestIssue_AddEnrichmentWithType_MultipleEnrichments(t *testing.T) {
 	assert.Len(t, issue.Enrichments, 2)
 
 	// Check first enrichment
-	assert.Equal(t, EnrichmentTypeAlertLabels, *issue.Enrichments[0].EnrichmentType)
-	assert.Equal(t, "Labels", *issue.Enrichments[0].Title)
+	assert.Equal(t, EnrichmentTypeAlertLabels, issue.Enrichments[0].Type)
+	assert.Equal(t, "Labels", issue.Enrichments[0].Title)
 	assert.Equal(t, block1, issue.Enrichments[0].Blocks[0])
 
 	// Check second enrichment
-	assert.Equal(t, EnrichmentTypeGraph, *issue.Enrichments[1].EnrichmentType)
-	assert.Equal(t, "Graph", *issue.Enrichments[1].Title)
+	assert.Equal(t, EnrichmentTypeGraph, issue.Enrichments[1].Type)
+	assert.Equal(t, "Graph", issue.Enrichments[1].Title)
 	assert.Equal(t, block2, issue.Enrichments[1].Blocks[0])
 }

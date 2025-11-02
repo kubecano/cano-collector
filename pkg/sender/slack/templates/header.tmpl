@@ -1,0 +1,10 @@
+{{- /* Header block template - displays alert status, severity, and title */ -}}
+[
+  {
+    "type": "section",
+    "text": {
+      "type": "mrkdwn",
+      "text": "{{.StatusEmoji}} {{.StatusText}} {{.StatusEmoji}}  {{.SeverityEmoji}} {{.Severity}}\n*{{.Title}}*"
+    }
+  }
+]

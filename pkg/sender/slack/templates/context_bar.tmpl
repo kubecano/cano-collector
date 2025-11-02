@@ -1,0 +1,33 @@
+{{- /* Context bar - displays alert type, cluster, namespace, pod metadata */ -}}
+[
+  {
+    "type": "context",
+    "elements": [
+      {
+        "type": "mrkdwn",
+        "text": "{{.AlertTypeEmoji}} Type: {{.AlertType}}"
+      }
+      {{- if .Cluster -}}
+      ,
+      {
+        "type": "mrkdwn",
+        "text": "Cluster: `{{.Cluster}}`"
+      }
+      {{- end -}}
+      {{- if .Namespace -}}
+      ,
+      {
+        "type": "mrkdwn",
+        "text": "Namespace: `{{.Namespace}}`"
+      }
+      {{- end -}}
+      {{- if .PodName -}}
+      ,
+      {
+        "type": "mrkdwn",
+        "text": "📦 Pod: `{{.PodName}}`"
+      }
+      {{- end }}
+    ]
+  }
+]

@@ -141,6 +141,39 @@ func (r *RealKubernetesClient) GetPodLogs(ctx context.Context, namespace, podNam
 	return logs, nil
 }
 
+// GetPod retrieves pod information using kubernetes client-go
+func (r *RealKubernetesClient) GetPod(ctx context.Context, namespace, podName string) (*corev1.Pod, error) {
+	r.logger.Info("Fetching pod information",
+		zap.String("namespace", namespace),
+		zap.String("pod_name", podName),
+	)
+
+	pod, err := r.clientset.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			r.logger.Warn("Pod not found",
+				zap.String("namespace", namespace),
+				zap.String("pod_name", podName),
+			)
+			return nil, fmt.Errorf("pod %s/%s not found", namespace, podName)
+		}
+		r.logger.Error("Failed to get pod",
+			zap.Error(err),
+			zap.String("namespace", namespace),
+			zap.String("pod_name", podName),
+		)
+		return nil, fmt.Errorf("failed to get pod: %w", err)
+	}
+
+	r.logger.Debug("Successfully retrieved pod information",
+		zap.String("namespace", namespace),
+		zap.String("pod_name", podName),
+		zap.String("pod_phase", string(pod.Status.Phase)),
+	)
+
+	return pod, nil
+}
+
 // MockKubernetesClient implements KubernetesClient for testing and development
 type MockKubernetesClient struct {
 	logger logger_interfaces.LoggerInterface
@@ -177,6 +210,51 @@ Options: %v`, namespace, podName, podName, namespace, options)
 	return mockLogs, nil
 }
 
+// GetPod returns a mock pod object for testing
+func (m *MockKubernetesClient) GetPod(ctx context.Context, namespace, podName string) (*corev1.Pod, error) {
+	m.logger.Info("Mock: Fetching pod information",
+		zap.String("namespace", namespace),
+		zap.String("pod_name", podName),
+	)
+
+	// Return a mock pod object with crash info
+	mockPod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      podName,
+			Namespace: namespace,
+		},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			ContainerStatuses: []corev1.ContainerStatus{
+				{
+					Name:         "main-container",
+					RestartCount: 3,
+					State: corev1.ContainerState{
+						Waiting: &corev1.ContainerStateWaiting{
+							Reason:  "CrashLoopBackOff",
+							Message: "Back-off 5m0s restarting failed container",
+						},
+					},
+					LastTerminationState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							Reason:   "Error",
+							ExitCode: 1,
+							StartedAt: metav1.Time{
+								Time: time.Now().Add(-10 * time.Minute),
+							},
+							FinishedAt: metav1.Time{
+								Time: time.Now().Add(-5 * time.Minute),
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	return mockPod, nil
+}
+
 // PlaceholderKubernetesClient implements KubernetesClient returning errors for production
 // This signals that real implementation is needed
 type PlaceholderKubernetesClient struct {
@@ -198,4 +276,14 @@ func (p *PlaceholderKubernetesClient) GetPodLogs(ctx context.Context, namespace,
 	)
 
 	return "", fmt.Errorf("kubernetes client not implemented - requires kubernetes client-go dependencies. Pod: %s/%s", namespace, podName)
+}
+
+// GetPod returns an error indicating real implementation is needed
+func (p *PlaceholderKubernetesClient) GetPod(ctx context.Context, namespace, podName string) (*corev1.Pod, error) {
+	p.logger.Error("Placeholder KubernetesClient used - real implementation required",
+		zap.String("namespace", namespace),
+		zap.String("pod_name", podName),
+	)
+
+	return nil, fmt.Errorf("kubernetes client not implemented - requires kubernetes client-go dependencies. Pod: %s/%s", namespace, podName)
 }

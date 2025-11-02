@@ -42,13 +42,11 @@ func TestDestinationSlack_Send_DelegatesToSender(t *testing.T) {
 		UnfurlLinks:  true,
 	}
 
-	testIssue := &issuepkg.Issue{
-		Title:       "Test Issue",
-		Description: "This is a test issue",
-		Severity:    issuepkg.SeverityHigh,
-		Status:      issuepkg.StatusFiring,
-		Source:      issuepkg.SourcePrometheus,
-	}
+	testIssue := issuepkg.NewIssue("Test Issue", "test-key")
+	testIssue.Description = "This is a test issue"
+	testIssue.Severity = issuepkg.SeverityHigh
+	testIssue.Status = issuepkg.StatusFiring
+	testIssue.Source = issuepkg.SourcePrometheus
 
 	d := NewDestinationSlack(cfg, mockLogger, mockClient)
 	err := d.Send(context.Background(), testIssue)
@@ -83,13 +81,11 @@ func TestDestinationSlack_Send_WithError(t *testing.T) {
 		UnfurlLinks:  true,
 	}
 
-	testIssue := &issuepkg.Issue{
-		Title:       "Test Issue",
-		Description: "This is a test issue",
-		Severity:    issuepkg.SeverityHigh,
-		Status:      issuepkg.StatusFiring,
-		Source:      issuepkg.SourcePrometheus,
-	}
+	testIssue := issuepkg.NewIssue("Test Issue", "test-key")
+	testIssue.Description = "This is a test issue"
+	testIssue.Severity = issuepkg.SeverityHigh
+	testIssue.Status = issuepkg.StatusFiring
+	testIssue.Source = issuepkg.SourcePrometheus
 
 	d := NewDestinationSlack(cfg, mockLogger, mockClient)
 	err := d.Send(context.Background(), testIssue)

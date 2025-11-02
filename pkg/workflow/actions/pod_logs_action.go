@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 
 	pod_logs_config "github.com/kubecano/cano-collector/config/workflow/actions"
 	"github.com/kubecano/cano-collector/pkg/core/event"
@@ -20,6 +21,7 @@ import (
 // In real implementation, this would be replaced with kubernetes.Interface
 type KubernetesClient interface {
 	GetPodLogs(ctx context.Context, namespace, podName string, options map[string]interface{}) (string, error)
+	GetPod(ctx context.Context, namespace, podName string) (*corev1.Pod, error)
 }
 
 // PodLogsAction retrieves pod logs for alerts
@@ -341,10 +343,13 @@ func (a *PodLogsAction) createLogsEnrichment(podName, namespace, containerName, 
 
 	// Create enrichment with the file block
 	enrichment := issue.NewEnrichmentWithType(
-		issue.EnrichmentTypeTextFile,
+		issue.EnrichmentTypeLogs,
 		title,
 	)
 	enrichment.AddBlock(fileBlock)
+
+	// Set content to logs for inline display/search if needed
+	enrichment.Content = logs
 
 	return enrichment
 }

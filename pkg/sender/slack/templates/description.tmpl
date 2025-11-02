@@ -1,0 +1,14 @@
+{{- /* Description block - alert description text */ -}}
+{{- if .Description -}}
+[
+  {
+    "type": "section",
+    "text": {
+      "type": "mrkdwn",
+      "text": "{{.Description}}"
+    }
+  }
+]
+{{- else -}}
+[]
+{{- end -}}

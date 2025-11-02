@@ -50,12 +50,22 @@ type BaseBlock interface {
 	BlockType() string
 }
 
+// FileInfo contains metadata about uploaded files
+type FileInfo struct {
+	Permalink string `json:"permalink"`           // Slack file permalink
+	Filename  string `json:"filename"`            // Original filename
+	Size      int64  `json:"size,omitempty"`      // File size in bytes
+	MimeType  string `json:"mime_type,omitempty"` // MIME type
+}
+
 // Enrichment provides additional context to an Issue
 type Enrichment struct {
-	Blocks         []BaseBlock       `json:"blocks"`
-	Annotations    map[string]string `json:"annotations,omitempty"`
-	EnrichmentType *EnrichmentType   `json:"enrichment_type,omitempty"`
-	Title          *string           `json:"title,omitempty"`
+	Type        EnrichmentType    `json:"type"`                  // Enrichment type (logs, table, etc.)
+	Title       string            `json:"title,omitempty"`       // Enrichment title
+	Content     string            `json:"content,omitempty"`     // Text content for inline rendering
+	Blocks      []BaseBlock       `json:"blocks,omitempty"`      // Structured blocks (tables, etc.)
+	Annotations map[string]string `json:"annotations,omitempty"` // Additional metadata
+	FileInfo    *FileInfo         `json:"file_info,omitempty"`   // File upload metadata (for Slack/Teams)
 }
 
 // NewEnrichment creates a new Enrichment
@@ -69,10 +79,10 @@ func NewEnrichment() *Enrichment {
 // NewEnrichmentWithType creates a new Enrichment with type and title
 func NewEnrichmentWithType(enrichmentType EnrichmentType, title string) *Enrichment {
 	return &Enrichment{
-		Blocks:         make([]BaseBlock, 0),
-		Annotations:    make(map[string]string),
-		EnrichmentType: &enrichmentType,
-		Title:          &title,
+		Type:        enrichmentType,
+		Title:       title,
+		Blocks:      make([]BaseBlock, 0),
+		Annotations: make(map[string]string),
 	}
 }
 
