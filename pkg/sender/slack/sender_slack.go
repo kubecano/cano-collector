@@ -1344,13 +1344,14 @@ func (s *SenderSlack) buildMessageContext(issue *issuepkg.Issue) *MessageContext
 	context.SeverityEmoji = s.getSeverityEmoji(issue.Severity)
 
 	// Alert type
-	if issue.Source == issuepkg.SourcePrometheus {
+	switch issue.Source {
+	case issuepkg.SourcePrometheus:
 		context.AlertType = "Prometheus Alert"
 		context.AlertTypeEmoji = "📊"
-	} else if issue.Source == issuepkg.SourceKubernetesAPIServer {
+	case issuepkg.SourceKubernetesAPIServer:
 		context.AlertType = "K8s Event"
 		context.AlertTypeEmoji = "👀"
-	} else {
+	default:
 		context.AlertType = "Notification"
 		context.AlertTypeEmoji = "📬"
 	}

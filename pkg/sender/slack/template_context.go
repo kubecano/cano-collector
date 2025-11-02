@@ -3,9 +3,9 @@ package slack
 // MessageContext holds all data needed for rendering Slack message templates
 type MessageContext struct {
 	// Status and state
-	Status        string // "firing" or "resolved"
-	StatusEmoji   string // "🔥" or "✅"
-	StatusText    string // "Alert firing" or "Alert resolved"
+	Status      string // "firing" or "resolved"
+	StatusEmoji string // "🔥" or "✅"
+	StatusText  string // "Alert firing" or "Alert resolved"
 
 	// Severity
 	Severity      string // "High", "Medium", "Low"

@@ -60,12 +60,12 @@ type FileInfo struct {
 
 // Enrichment provides additional context to an Issue
 type Enrichment struct {
-	Type        EnrichmentType    `json:"type"`                // Enrichment type (logs, table, etc.)
-	Title       string            `json:"title,omitempty"`     // Enrichment title
-	Content     string            `json:"content,omitempty"`   // Text content for inline rendering
-	Blocks      []BaseBlock       `json:"blocks,omitempty"`    // Structured blocks (tables, etc.)
+	Type        EnrichmentType    `json:"type"`                  // Enrichment type (logs, table, etc.)
+	Title       string            `json:"title,omitempty"`       // Enrichment title
+	Content     string            `json:"content,omitempty"`     // Text content for inline rendering
+	Blocks      []BaseBlock       `json:"blocks,omitempty"`      // Structured blocks (tables, etc.)
 	Annotations map[string]string `json:"annotations,omitempty"` // Additional metadata
-	FileInfo    *FileInfo         `json:"file_info,omitempty"` // File upload metadata (for Slack/Teams)
+	FileInfo    *FileInfo         `json:"file_info,omitempty"`   // File upload metadata (for Slack/Teams)
 }
 
 // NewEnrichment creates a new Enrichment

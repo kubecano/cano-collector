@@ -3,6 +3,7 @@ package actions
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"go.uber.org/zap"
@@ -136,12 +137,12 @@ func (a *PodInfoAction) Execute(ctx context.Context, event event.WorkflowEvent) 
 	result := &actions_interfaces.ActionResult{
 		Success: true,
 		Data: map[string]interface{}{
-			"pod_name":           podName,
-			"namespace":          namespace,
-			"crash_count":        len(crashInfos),
-			"include_previous":   a.config.IncludePreviousState,
-			"include_init":       a.config.IncludeInitContainers,
-			"min_restart_count":  a.config.MinRestartCount,
+			"pod_name":          podName,
+			"namespace":         namespace,
+			"crash_count":       len(crashInfos),
+			"include_previous":  a.config.IncludePreviousState,
+			"include_init":      a.config.IncludeInitContainers,
+			"min_restart_count": a.config.MinRestartCount,
 		},
 		Enrichments: []issue.Enrichment{*enrichment},
 		Metadata: map[string]interface{}{
@@ -312,7 +313,7 @@ func (a *PodInfoAction) createCrashInfoEnrichment(crashInfos []ContainerCrashInf
 		// Crash Info table
 		crashRows := [][]string{
 			{"Container", info.Container},
-			{"Restarts", fmt.Sprintf("%d", info.RestartCount)},
+			{"Restarts", strconv.Itoa(int(info.RestartCount))},
 			{"Status", info.Status},
 			{"Reason", info.Reason},
 		}
@@ -330,7 +331,7 @@ func (a *PodInfoAction) createCrashInfoEnrichment(crashInfos []ContainerCrashInf
 			prevRows := [][]string{
 				{"Status", "TERMINATED"},
 				{"Reason", info.LastStateInfo.Reason},
-				{"Exit Code", fmt.Sprintf("%d", info.LastStateInfo.ExitCode)},
+				{"Exit Code", strconv.Itoa(int(info.LastStateInfo.ExitCode))},
 				{"Started At", info.LastStateInfo.StartedAt.Format(time.RFC3339)},
 				{"Finished At", info.LastStateInfo.FinishedAt.Format(time.RFC3339)},
 			}

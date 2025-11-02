@@ -315,11 +315,6 @@ func TestSenderSlack_BuildSlackBlocks_ResolvedAlert(t *testing.T) {
 	}
 }
 
-// Helper function for string pointer
-func stringPtr(s string) *string {
-	return &s
-}
-
 func TestSenderSlack_BuildSlackBlocks_WithoutRunbook(t *testing.T) {
 	slackSender, _, _ := setupSenderSlackTest(t)
 

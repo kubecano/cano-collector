@@ -64,16 +64,13 @@ func (l *TemplateLoader) RenderToBlocks(templateName string, context interface{}
 	}
 
 	// Convert to Slack blocks
-	blocks, err := convertToSlackBlocks(rawBlocks)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert to Slack blocks for %s: %w", templateName, err)
-	}
+	blocks := convertToSlackBlocks(rawBlocks)
 
 	return blocks, nil
 }
 
 // convertToSlackBlocks converts generic JSON blocks to slack.Block types
-func convertToSlackBlocks(rawBlocks []map[string]interface{}) ([]slackapi.Block, error) {
+func convertToSlackBlocks(rawBlocks []map[string]interface{}) []slackapi.Block {
 	blocks := make([]slackapi.Block, 0, len(rawBlocks))
 
 	for _, raw := range rawBlocks {
@@ -101,7 +98,7 @@ func convertToSlackBlocks(rawBlocks []map[string]interface{}) ([]slackapi.Block,
 		}
 	}
 
-	return blocks, nil
+	return blocks
 }
 
 // parseSectionBlock parses a section block from raw JSON
