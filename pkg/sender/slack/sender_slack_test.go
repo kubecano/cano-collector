@@ -647,8 +647,8 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 		// Test enrichment blocks building directly
 		enrichmentBlocks := slackSender.buildEnrichmentBlocks(issue.Enrichments)
 
-		// Should have 6 blocks: 2 enrichments * (header + section + divider) = 6 blocks
-		assert.Len(t, enrichmentBlocks, 6)
+		// Should have 4 blocks: 2 enrichments * (header + section) = 4 blocks (dividers removed)
+		assert.Len(t, enrichmentBlocks, 4)
 
 		// Verify first enrichment blocks (labels)
 		sectionBlock1, ok := enrichmentBlocks[0].(*slack.SectionBlock)
@@ -656,8 +656,8 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 		assert.Equal(t, "*Alert Labels*", sectionBlock1.Text.Text)
 
 		// Verify second enrichment blocks (annotations)
-		sectionBlock2, ok := enrichmentBlocks[3].(*slack.SectionBlock)
-		assert.True(t, ok, "Fourth block should be section block with title")
+		sectionBlock2, ok := enrichmentBlocks[2].(*slack.SectionBlock)
+		assert.True(t, ok, "Third block should be section block with title")
 		assert.Equal(t, "*Alert Annotations*", sectionBlock2.Text.Text)
 	})
 
@@ -683,8 +683,8 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 		// Test enrichment blocks building
 		enrichmentBlocks := slackSender.buildEnrichmentBlocks(issue.Enrichments)
 
-		// Should have 3 blocks: header + section + divider
-		assert.Len(t, enrichmentBlocks, 3)
+		// Should have 2 blocks: header + section (dividers removed in Phase 2)
+		assert.Len(t, enrichmentBlocks, 2)
 
 		// Verify title block
 		titleBlock, ok := enrichmentBlocks[0].(*slack.SectionBlock)
@@ -696,10 +696,6 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 		sectionBlock, ok := contentBlock.(*slack.SectionBlock)
 		assert.True(t, ok, "Second block should be section block for JSON content")
 		assert.Contains(t, sectionBlock.Text.Text, "```") // Should be wrapped in code block
-
-		// Verify divider block
-		_, ok = enrichmentBlocks[2].(*slack.DividerBlock)
-		assert.True(t, ok, "Third block should be divider")
 	})
 
 	t.Run("handles empty enrichments gracefully", func(t *testing.T) {
@@ -744,8 +740,8 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 
 		text := sectionBlock.Text.Text
 		assert.Contains(t, text, "*Test Table*")
-		assert.Contains(t, text, "▸ *key1*: `value1`")
-		assert.Contains(t, text, "▸ *key2*: `value2`")
+		assert.Contains(t, text, "● key1  `value1`")
+		assert.Contains(t, text, "● key2  `value2`")
 	})
 
 	t.Run("formats json blocks correctly", func(t *testing.T) {
@@ -964,8 +960,8 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 
 		text := sectionBlock.Text.Text
 		assert.Contains(t, text, "*Enhanced Table*")
-		assert.Contains(t, text, "▸ *key1*: `value1`")
-		assert.Contains(t, text, "▸ *key2*: `value2`")
+		assert.Contains(t, text, "● key1  `value1`")
+		assert.Contains(t, text, "● key2  `value2`")
 	})
 
 	t.Run("adaptive formatting - attachment table format", func(t *testing.T) {
@@ -1264,8 +1260,8 @@ func TestSenderSlack_EnrichmentBlocks_WithMarkdown(t *testing.T) {
 	// Test enrichment blocks building
 	enrichmentBlocks := slackSender.buildEnrichmentBlocks(issue.Enrichments)
 
-	// Should have 3 blocks: header + section + divider
-	assert.Len(t, enrichmentBlocks, 3)
+	// Should have 2 blocks: header + section (dividers removed in Phase 2)
+	assert.Len(t, enrichmentBlocks, 2)
 
 	// Verify title block
 	titleBlock, ok := enrichmentBlocks[0].(*slack.SectionBlock)
@@ -1279,10 +1275,6 @@ func TestSenderSlack_EnrichmentBlocks_WithMarkdown(t *testing.T) {
 	assert.Contains(t, sectionBlock.Text.Text, "## Analysis Result")
 	assert.Contains(t, sectionBlock.Text.Text, "**high CPU usage**")
 	assert.Equal(t, "mrkdwn", sectionBlock.Text.Type)
-
-	// Verify divider block
-	_, ok = enrichmentBlocks[2].(*slack.DividerBlock)
-	assert.True(t, ok, "Third block should be divider")
 }
 
 func TestSenderSlack_TableToCSV(t *testing.T) {
