@@ -866,7 +866,7 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 		).AnyTimes()
 		// Mock upload failure for this test to avoid complexity
 		uploadError := fmt.Errorf("test upload error")
-		mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(nil, uploadError)
+		mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(nil, uploadError).Times(2)
 
 		testSender := &SenderSlack{
 			apiKey:       "xoxb-test-token",
@@ -1417,7 +1417,7 @@ func TestSenderSlack_ConvertFileBlockToSlack_ErrorPath(t *testing.T) {
 	mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
 	// Mock file upload failure (no channel resolution needed)
 	uploadError := fmt.Errorf("file too large")
-	mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(nil, uploadError)
+	mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(nil, uploadError).Times(2)
 
 	slackSender := &SenderSlack{
 		apiKey:       "xoxb-test-token",
@@ -1441,7 +1441,7 @@ func TestSenderSlack_ConvertFileBlockToSlack_ErrorPath(t *testing.T) {
 
 	text := sectionBlock.Text.Text
 	assert.Contains(t, text, "📎 *File: large-file.log* (upload failed)")
-	assert.Contains(t, text, "Error: slack file upload failed: file too large")
+	assert.Contains(t, text, "Error: file upload failed: upload: file too large")
 	assert.Contains(t, text, "Content preview:")
 	assert.Contains(t, text, "very large content")
 }
@@ -1472,7 +1472,7 @@ func TestSenderSlack_ConvertFileBlockToSlack_ErrorPath_BinaryFile(t *testing.T) 
 	mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
 	// Mock file upload failure (no channel resolution needed)
 	uploadError := fmt.Errorf("binary file not supported")
-	mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(nil, uploadError)
+	mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(nil, uploadError).Times(2)
 
 	slackSender := &SenderSlack{
 		apiKey:       "xoxb-test-token",
@@ -1619,15 +1619,15 @@ func TestSenderSlack_ConvertFileBlockToSlack_GetFileInfoError(t *testing.T) {
 
 	mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
 
-	// Mock successful upload but GetFileInfo fails
+	// Mock successful upload but GetFileInfo fails (both direct and fallback attempts)
 	mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(&slack.FileSummary{
 		ID:    "F789TEST",
 		Title: "test.log",
-	}, nil)
+	}, nil).Times(2)
 
 	mockSlackClient.EXPECT().GetFileInfo("F789TEST", 0, 0).Return(
 		nil, nil, nil, fmt.Errorf("file not found"),
-	)
+	).Times(2)
 
 	slackSender := &SenderSlack{
 		apiKey:      "xoxb-test-token",
@@ -1646,7 +1646,7 @@ func TestSenderSlack_ConvertFileBlockToSlack_GetFileInfoError(t *testing.T) {
 
 	text := sectionBlock.Text.Text
 	assert.Contains(t, text, "📎 *File: test.log* (upload failed)")
-	assert.Contains(t, text, "Error: failed to get file permalink: file not found")
+	assert.Contains(t, text, "Error: file upload failed: get file info: file not found")
 }
 
 // ============================================================================

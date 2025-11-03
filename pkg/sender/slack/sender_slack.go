@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -1035,6 +1036,14 @@ func (s *SenderSlack) preprocessEnrichments(issue *issuepkg.Issue) {
 // uploadFileToSlack uploads a file to Slack workspace storage using files_upload_v2 API
 // Returns the permalink to the uploaded file, which can be included in any message
 func (s *SenderSlack) uploadFileToSlack(filename string, content []byte) (string, error) {
+	// Skip empty files (Slack throws error on empty files)
+	if len(content) == 0 {
+		s.logger.Warn("Skipping empty file upload",
+			zap.String("filename", filename),
+		)
+		return "", fmt.Errorf("file is empty")
+	}
+
 	// Determine file type for metrics
 	fileType := "log"
 	if strings.HasSuffix(filename, ".csv") {
@@ -1046,57 +1055,113 @@ func (s *SenderSlack) uploadFileToSlack(filename string, content []byte) (string
 		s.fileUploadSizeBytes.WithLabelValues(s.channel, fileType).Observe(float64(len(content)))
 	}
 
-	// Upload file to workspace storage without channel parameter
-	// This avoids needing conversations.list permission and follows Slack API best practices
-	params := slackapi.UploadFileV2Parameters{
-		Filename: filename,
-		FileSize: len(content),
-		Reader:   bytes.NewReader(content),
+	// Try direct upload with bytes.Reader
+	permalink, err := s.tryUploadDirect(filename, content)
+	if err == nil {
+		s.recordFileUploadSuccess()
+		s.logger.Info("File uploaded successfully",
+			zap.String("method", "direct"),
+			zap.String("filename", filename),
+			zap.String("permalink", permalink),
+			zap.Int("size", len(content)),
+		)
+		return permalink, nil
 	}
 
-	fileSummary, err := s.slackClient.UploadFileV2(params)
-	if err != nil {
-		// Record failure metric (if metrics are initialized)
-		if s.fileUploadsTotal != nil {
-			s.fileUploadsTotal.WithLabelValues("failure", s.channel).Inc()
-		}
+	s.logger.Warn("Direct upload failed, trying temp file fallback",
+		zap.Error(err),
+		zap.String("filename", filename),
+	)
 
-		s.logger.Error("Failed to upload file to Slack",
+	// Fallback: Upload via temporary file
+	permalink, err = s.tryUploadViaTempFile(filename, content)
+	if err != nil {
+		s.recordFileUploadFailure()
+		s.logger.Error("All upload strategies failed",
 			zap.Error(err),
 			zap.String("filename", filename),
 			zap.Int("size", len(content)),
 		)
-		return "", fmt.Errorf("slack file upload failed: %w", err)
+		return "", fmt.Errorf("file upload failed: %w", err)
 	}
 
-	// FileSummary only contains ID and Title, need to get full File info for permalink
-	fileInfo, _, _, err := s.slackClient.GetFileInfo(fileSummary.ID, 0, 0)
-	if err != nil {
-		// Record failure metric (GetFileInfo failed after upload) (if metrics are initialized)
-		if s.fileUploadsTotal != nil {
-			s.fileUploadsTotal.WithLabelValues("failure", s.channel).Inc()
-		}
-
-		s.logger.Error("Failed to get file info after upload",
-			zap.Error(err),
-			zap.String("file_id", fileSummary.ID),
-		)
-		return "", fmt.Errorf("failed to get file permalink: %w", err)
-	}
-
-	// Record success metric (if metrics are initialized)
-	if s.fileUploadsTotal != nil {
-		s.fileUploadsTotal.WithLabelValues("success", s.channel).Inc()
-	}
-
-	s.logger.Info("File uploaded successfully to Slack workspace",
+	s.recordFileUploadSuccess()
+	s.logger.Info("File uploaded successfully",
+		zap.String("method", "tempfile"),
 		zap.String("filename", filename),
-		zap.String("file_id", fileSummary.ID),
-		zap.String("permalink", fileInfo.Permalink),
+		zap.String("permalink", permalink),
 		zap.Int("size", len(content)),
 	)
 
+	return permalink, nil
+}
+
+// tryUploadDirect attempts direct upload using bytes.Reader
+func (s *SenderSlack) tryUploadDirect(filename string, content []byte) (string, error) {
+	params := slackapi.UploadFileV2Parameters{
+		Filename: filename,
+		FileSize: len(content),
+		Reader:   bytes.NewReader(content),
+		Channel:  s.channel, // Share file to channel for visibility
+	}
+
+	return s.executeUpload(params)
+}
+
+// tryUploadViaTempFile attempts upload using temporary file as fallback strategy
+func (s *SenderSlack) tryUploadViaTempFile(filename string, content []byte) (string, error) {
+	tmpFile, err := os.CreateTemp("", "slack-upload-*")
+	if err != nil {
+		return "", fmt.Errorf("create temp file: %w", err)
+	}
+	defer os.Remove(tmpFile.Name())
+	defer tmpFile.Close()
+
+	if _, err = tmpFile.Write(content); err != nil {
+		return "", fmt.Errorf("write temp file: %w", err)
+	}
+
+	if _, err = tmpFile.Seek(0, 0); err != nil {
+		return "", fmt.Errorf("seek temp file: %w", err)
+	}
+
+	params := slackapi.UploadFileV2Parameters{
+		Filename: filename,
+		FileSize: len(content),
+		Reader:   tmpFile,
+		Channel:  s.channel,
+	}
+
+	return s.executeUpload(params)
+}
+
+// executeUpload performs the actual upload and retrieves permalink
+func (s *SenderSlack) executeUpload(params slackapi.UploadFileV2Parameters) (string, error) {
+	fileSummary, err := s.slackClient.UploadFileV2(params)
+	if err != nil {
+		return "", fmt.Errorf("upload: %w", err)
+	}
+
+	fileInfo, _, _, err := s.slackClient.GetFileInfo(fileSummary.ID, 0, 0)
+	if err != nil {
+		return "", fmt.Errorf("get file info: %w", err)
+	}
+
 	return fileInfo.Permalink, nil
+}
+
+// recordFileUploadSuccess records successful file upload metric
+func (s *SenderSlack) recordFileUploadSuccess() {
+	if s.fileUploadsTotal != nil {
+		s.fileUploadsTotal.WithLabelValues("success", s.channel).Inc()
+	}
+}
+
+// recordFileUploadFailure records failed file upload metric
+func (s *SenderSlack) recordFileUploadFailure() {
+	if s.fileUploadsTotal != nil {
+		s.fileUploadsTotal.WithLabelValues("failure", s.channel).Inc()
+	}
 }
 
 // convertFileBlockToSlack converts a file block to Slack section block with actual file upload
