@@ -7,6 +7,7 @@ import (
 	slackapi "github.com/slack-go/slack"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/kubecano/cano-collector/pkg/logger"
 )
@@ -73,8 +74,8 @@ func TestUploadFileToSlack_EmptyFile(t *testing.T) {
 
 	permalink, err := sender.uploadFileToSlack("empty.log", []byte{})
 
-	assert.Error(t, err)
-	assert.Equal(t, "", permalink)
+	require.Error(t, err)
+	assert.Empty(t, permalink)
 	assert.Contains(t, err.Error(), "file is empty")
 	mockClient.AssertNotCalled(t, "UploadFileV2")
 }
@@ -109,7 +110,7 @@ func TestUploadFileToSlack_DirectSuccess(t *testing.T) {
 
 	permalink, err := sender.uploadFileToSlack("test.log", content)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "https://slack.com/files/test/F12345", permalink)
 	mockClient.AssertExpectations(t)
 }
@@ -144,7 +145,7 @@ func TestUploadFileToSlack_DirectFailTempFileSuccess(t *testing.T) {
 
 	permalink, err := sender.uploadFileToSlack("test.log", content)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "https://slack.com/files/test/F12345", permalink)
 	mockClient.AssertExpectations(t)
 }
@@ -164,8 +165,8 @@ func TestUploadFileToSlack_BothStrategiesFail(t *testing.T) {
 
 	permalink, err := sender.uploadFileToSlack("test.log", content)
 
-	assert.Error(t, err)
-	assert.Equal(t, "", permalink)
+	require.Error(t, err)
+	assert.Empty(t, permalink)
 	assert.Contains(t, err.Error(), "file upload failed")
 	mockClient.AssertExpectations(t)
 }
@@ -190,8 +191,8 @@ func TestUploadFileToSlack_GetFileInfoFails(t *testing.T) {
 
 	permalink, err := sender.uploadFileToSlack("test.log", content)
 
-	assert.Error(t, err)
-	assert.Equal(t, "", permalink)
+	require.Error(t, err)
+	assert.Empty(t, permalink)
 	mockClient.AssertExpectations(t)
 }
 
@@ -218,7 +219,7 @@ func TestUploadFileToSlack_ChannelParameterSet(t *testing.T) {
 
 	permalink, err := sender.uploadFileToSlack("test.log", content)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "https://slack.com/files/test/F12345", permalink)
 	mockClient.AssertExpectations(t)
 }
@@ -241,7 +242,7 @@ func TestTryUploadDirect(t *testing.T) {
 
 	permalink, err := sender.tryUploadDirect("test.log", content)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "https://slack.com/files/test/F12345", permalink)
 	mockClient.AssertExpectations(t)
 }
@@ -264,7 +265,7 @@ func TestTryUploadViaTempFile(t *testing.T) {
 
 	permalink, err := sender.tryUploadViaTempFile("test.log", content)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "https://slack.com/files/test/F12345", permalink)
 	mockClient.AssertExpectations(t)
 }
@@ -292,7 +293,7 @@ func TestExecuteUpload(t *testing.T) {
 
 	permalink, err := sender.executeUpload(params)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "https://slack.com/files/test/F12345", permalink)
 	mockClient.AssertExpectations(t)
 }

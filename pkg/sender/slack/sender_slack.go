@@ -1058,7 +1058,7 @@ func (s *SenderSlack) uploadFileToSlack(filename string, content []byte) (string
 	// Try direct upload with bytes.Reader
 	permalink, err := s.tryUploadDirect(filename, content)
 	if err == nil {
-		s.recordFileUploadSuccess("direct")
+		s.recordFileUploadSuccess()
 		s.logger.Info("File uploaded successfully",
 			zap.String("method", "direct"),
 			zap.String("filename", filename),
@@ -1085,7 +1085,7 @@ func (s *SenderSlack) uploadFileToSlack(filename string, content []byte) (string
 		return "", fmt.Errorf("file upload failed: %w", err)
 	}
 
-	s.recordFileUploadSuccess("tempfile")
+	s.recordFileUploadSuccess()
 	s.logger.Info("File uploaded successfully",
 		zap.String("method", "tempfile"),
 		zap.String("filename", filename),
@@ -1151,7 +1151,7 @@ func (s *SenderSlack) executeUpload(params slackapi.UploadFileV2Parameters) (str
 }
 
 // recordFileUploadSuccess records successful file upload metric
-func (s *SenderSlack) recordFileUploadSuccess(method string) {
+func (s *SenderSlack) recordFileUploadSuccess() {
 	if s.fileUploadsTotal != nil {
 		s.fileUploadsTotal.WithLabelValues("success", s.channel).Inc()
 	}
