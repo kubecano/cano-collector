@@ -48,7 +48,7 @@ jobs:
         run: |
           go vet -json ./... 2> go-vet.out
       - name: Upload go-vet report
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: go-vet-report
           path: go-vet.out
@@ -90,7 +90,7 @@ jobs:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
           args: --verbose --output.checkstyle.path=golangci-lint-report.xml
       - name: Upload golangci-lint report
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: golangci-lint-report
           path: golangci-lint-report.xml
@@ -107,7 +107,7 @@ jobs:
           output-file: hadolint-report.out
           format: json
       - name: Upload hadolint report
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: hadolint-report
           path: hadolint-report.out
@@ -143,7 +143,7 @@ jobs:
       - name: Run all unit tests
         run: gotestsum --jsonfile test-report.out -- -coverprofile=coverage.out ./...
       - name: Upload test report
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: test-report
           path: |
@@ -163,7 +163,7 @@ jobs:
           # Disabling shallow clones is recommended for improving the relevancy of reporting
           fetch-depth: 0
       - name: Download SAST reports
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           path: ./sast-reports
           merge-multiple: true
