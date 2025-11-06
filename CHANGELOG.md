@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.0.22](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.21...cano-collector-v0.0.22) (2025-11-06)
+
+
+### Features
+
+* CU-869aj0nqy - Implement Slack File Upload and Enhanced Enrichments ([#258](https://github.com/kubecano/cano-collector/issues/258)) ([3aeaf57](https://github.com/kubecano/cano-collector/commit/3aeaf57104ebf50dfcb080d3d42af76cff2d4078))
+* CU-869aj0nqy - Implement Slack File Upload and Enhanced Enrichments ([#259](https://github.com/kubecano/cano-collector/issues/259)) ([81ddbe4](https://github.com/kubecano/cano-collector/commit/81ddbe4de85c8f9376a555883999f369804e2df9))
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/getsentry/sentry-go to v0.36.2 ([#257](https://github.com/kubecano/cano-collector/issues/257)) ([524901a](https://github.com/kubecano/cano-collector/commit/524901abe5a1feeac9de94eef9487e32f8ecdabf))
+* **deps:** update module github.com/getsentry/sentry-go/gin to v0.36.2 ([#262](https://github.com/kubecano/cano-collector/issues/262)) ([d37eabc](https://github.com/kubecano/cano-collector/commit/d37eabc3468c0465b1c819e33102f2e8d0880e5a))
+
 ## [0.0.21](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.20...cano-collector-v0.0.21) (2025-11-02)
 
 
