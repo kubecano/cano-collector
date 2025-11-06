@@ -647,8 +647,8 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 		// Test enrichment blocks building directly
 		enrichmentBlocks := slackSender.buildEnrichmentBlocks(issue.Enrichments)
 
-		// Should have 6 blocks: 2 enrichments * (header + section + divider) = 6 blocks
-		assert.Len(t, enrichmentBlocks, 6)
+		// Should have 4 blocks: 2 enrichments * (header + section) = 4 blocks (dividers removed)
+		assert.Len(t, enrichmentBlocks, 4)
 
 		// Verify first enrichment blocks (labels)
 		sectionBlock1, ok := enrichmentBlocks[0].(*slack.SectionBlock)
@@ -656,8 +656,8 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 		assert.Equal(t, "*Alert Labels*", sectionBlock1.Text.Text)
 
 		// Verify second enrichment blocks (annotations)
-		sectionBlock2, ok := enrichmentBlocks[3].(*slack.SectionBlock)
-		assert.True(t, ok, "Fourth block should be section block with title")
+		sectionBlock2, ok := enrichmentBlocks[2].(*slack.SectionBlock)
+		assert.True(t, ok, "Third block should be section block with title")
 		assert.Equal(t, "*Alert Annotations*", sectionBlock2.Text.Text)
 	})
 
@@ -683,8 +683,8 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 		// Test enrichment blocks building
 		enrichmentBlocks := slackSender.buildEnrichmentBlocks(issue.Enrichments)
 
-		// Should have 3 blocks: header + section + divider
-		assert.Len(t, enrichmentBlocks, 3)
+		// Should have 2 blocks: header + section (dividers removed in Phase 2)
+		assert.Len(t, enrichmentBlocks, 2)
 
 		// Verify title block
 		titleBlock, ok := enrichmentBlocks[0].(*slack.SectionBlock)
@@ -696,10 +696,6 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 		sectionBlock, ok := contentBlock.(*slack.SectionBlock)
 		assert.True(t, ok, "Second block should be section block for JSON content")
 		assert.Contains(t, sectionBlock.Text.Text, "```") // Should be wrapped in code block
-
-		// Verify divider block
-		_, ok = enrichmentBlocks[2].(*slack.DividerBlock)
-		assert.True(t, ok, "Third block should be divider")
 	})
 
 	t.Run("handles empty enrichments gracefully", func(t *testing.T) {
@@ -744,8 +740,8 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 
 		text := sectionBlock.Text.Text
 		assert.Contains(t, text, "*Test Table*")
-		assert.Contains(t, text, "▸ *key1*: `value1`")
-		assert.Contains(t, text, "▸ *key2*: `value2`")
+		assert.Contains(t, text, "● key1  `value1`")
+		assert.Contains(t, text, "● key2  `value2`")
 	})
 
 	t.Run("formats json blocks correctly", func(t *testing.T) {
@@ -964,8 +960,8 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 
 		text := sectionBlock.Text.Text
 		assert.Contains(t, text, "*Enhanced Table*")
-		assert.Contains(t, text, "▸ *key1*: `value1`")
-		assert.Contains(t, text, "▸ *key2*: `value2`")
+		assert.Contains(t, text, "● key1  `value1`")
+		assert.Contains(t, text, "● key2  `value2`")
 	})
 
 	t.Run("adaptive formatting - attachment table format", func(t *testing.T) {
@@ -1264,8 +1260,8 @@ func TestSenderSlack_EnrichmentBlocks_WithMarkdown(t *testing.T) {
 	// Test enrichment blocks building
 	enrichmentBlocks := slackSender.buildEnrichmentBlocks(issue.Enrichments)
 
-	// Should have 3 blocks: header + section + divider
-	assert.Len(t, enrichmentBlocks, 3)
+	// Should have 2 blocks: header + section (dividers removed in Phase 2)
+	assert.Len(t, enrichmentBlocks, 2)
 
 	// Verify title block
 	titleBlock, ok := enrichmentBlocks[0].(*slack.SectionBlock)
@@ -1279,10 +1275,6 @@ func TestSenderSlack_EnrichmentBlocks_WithMarkdown(t *testing.T) {
 	assert.Contains(t, sectionBlock.Text.Text, "## Analysis Result")
 	assert.Contains(t, sectionBlock.Text.Text, "**high CPU usage**")
 	assert.Equal(t, "mrkdwn", sectionBlock.Text.Type)
-
-	// Verify divider block
-	_, ok = enrichmentBlocks[2].(*slack.DividerBlock)
-	assert.True(t, ok, "Third block should be divider")
 }
 
 func TestSenderSlack_TableToCSV(t *testing.T) {
@@ -2359,4 +2351,384 @@ func TestSenderSlack_GetIssueLabel(t *testing.T) {
 		result := sender.getIssueLabel(issue, "app")
 		assert.Empty(t, result)
 	})
+}
+
+// TestSenderSlack_RemoveTimestampFromFilename tests timestamp removal from filenames
+func TestSenderSlack_RemoveTimestampFromFilename(t *testing.T) {
+	sender, _, _ := setupSenderSlackTest(t)
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "filename with timestamp",
+			input:    "pod-logs-namespace-pod-20251103-001242.log",
+			expected: "pod-logs-namespace-pod.log",
+		},
+		{
+			name:     "filename without timestamp",
+			input:    "pod-logs-namespace-pod.log",
+			expected: "pod-logs-namespace-pod.log",
+		},
+		{
+			name:     "filename with timestamp and txt extension",
+			input:    "error-report-20251103-123456.txt",
+			expected: "error-report.txt",
+		},
+		{
+			name:     "filename with timestamp and csv extension",
+			input:    "metrics-20251103-235959.csv",
+			expected: "metrics.csv",
+		},
+		{
+			name:     "filename with partial timestamp should not match",
+			input:    "file-2025.log",
+			expected: "file-2025.log",
+		},
+		{
+			name:     "filename with different pattern should not match",
+			input:    "file-123456.log",
+			expected: "file-123456.log",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := sender.removeTimestampFromFilename(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+// TestSenderSlack_DeduplicateEnrichments_WithFileBlocks tests deduplication with file blocks
+func TestSenderSlack_DeduplicateEnrichments_WithFileBlocks(t *testing.T) {
+	sender, _, _ := setupSenderSlackTest(t)
+
+	t.Run("deduplicates file blocks with different timestamps", func(t *testing.T) {
+		enrichments := []issuepkg.Enrichment{
+			{
+				Type:  issuepkg.EnrichmentTypeLogs,
+				Title: "Pod Logs",
+				Blocks: []issuepkg.BaseBlock{
+					&issuepkg.FileBlock{
+						Filename: "pod-logs-namespace-pod-20251103-001242.log",
+					},
+				},
+			},
+			{
+				Type:  issuepkg.EnrichmentTypeLogs,
+				Title: "Pod Logs",
+				Blocks: []issuepkg.BaseBlock{
+					&issuepkg.FileBlock{
+						Filename: "pod-logs-namespace-pod-20251103-001300.log", // different timestamp
+					},
+				},
+			},
+		}
+
+		result := sender.deduplicateEnrichments(enrichments)
+
+		// Should deduplicate because base filename is the same
+		assert.Len(t, result, 1)
+		assert.Equal(t, "Pod Logs", result[0].Title)
+	})
+
+	t.Run("keeps file blocks with different base names", func(t *testing.T) {
+		enrichments := []issuepkg.Enrichment{
+			{
+				Type:  issuepkg.EnrichmentTypeLogs,
+				Title: "Pod Logs 1",
+				Blocks: []issuepkg.BaseBlock{
+					&issuepkg.FileBlock{
+						Filename: "pod-logs-pod1-20251103-001242.log",
+					},
+				},
+			},
+			{
+				Type:  issuepkg.EnrichmentTypeLogs,
+				Title: "Pod Logs 2",
+				Blocks: []issuepkg.BaseBlock{
+					&issuepkg.FileBlock{
+						Filename: "pod-logs-pod2-20251103-001242.log", // different pod
+					},
+				},
+			},
+		}
+
+		result := sender.deduplicateEnrichments(enrichments)
+
+		// Should keep both because base filenames are different
+		assert.Len(t, result, 2)
+	})
+
+	t.Run("deduplicates table blocks by table name", func(t *testing.T) {
+		enrichments := []issuepkg.Enrichment{
+			{
+				Type:  issuepkg.EnrichmentTypeAlertLabels,
+				Title: "Labels",
+				Blocks: []issuepkg.BaseBlock{
+					&issuepkg.TableBlock{
+						TableName: "alert-labels",
+						Headers:   []string{"Label", "Value"},
+						Rows:      [][]string{{"severity", "high"}},
+					},
+				},
+			},
+			{
+				Type:  issuepkg.EnrichmentTypeAlertLabels,
+				Title: "Labels",
+				Blocks: []issuepkg.BaseBlock{
+					&issuepkg.TableBlock{
+						TableName: "alert-labels",
+						Headers:   []string{"Label", "Value"},
+						Rows:      [][]string{{"severity", "high"}},
+					},
+				},
+			},
+		}
+
+		result := sender.deduplicateEnrichments(enrichments)
+
+		// Should deduplicate tables with same name
+		assert.Len(t, result, 1)
+	})
+
+	t.Run("deduplicates markdown blocks by content prefix", func(t *testing.T) {
+		enrichments := []issuepkg.Enrichment{
+			{
+				Type:  issuepkg.EnrichmentTypeTextFile,
+				Title: "Description",
+				Blocks: []issuepkg.BaseBlock{
+					&issuepkg.MarkdownBlock{
+						Text: "This is a long description that should be deduplicated based on first 50 characters",
+					},
+				},
+			},
+			{
+				Type:  issuepkg.EnrichmentTypeTextFile,
+				Title: "Description",
+				Blocks: []issuepkg.BaseBlock{
+					&issuepkg.MarkdownBlock{
+						Text: "This is a long description that should be deduplicated based on first 50 characters - different end",
+					},
+				},
+			},
+		}
+
+		result := sender.deduplicateEnrichments(enrichments)
+
+		// Should deduplicate based on first 50 chars
+		assert.Len(t, result, 1)
+	})
+}
+
+// TestSenderSlack_BuildSlackBlocks_WithFileEnrichments tests file enrichment handling
+func TestSenderSlack_BuildSlackBlocks_WithFileEnrichments(t *testing.T) {
+	sender, _, _ := setupSenderSlackTest(t)
+
+	t.Run("renders file enrichments separately", func(t *testing.T) {
+		issue := issuepkg.NewIssue("Test Issue", "test-key")
+		issue.Severity = issuepkg.SeverityHigh
+		issue.Status = issuepkg.StatusFiring
+		issue.Source = issuepkg.SourcePrometheus
+
+		// Add file enrichment with permalink
+		fileEnrichment := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeLogs, "Pod Logs")
+		fileEnrichment.FileInfo = &issuepkg.FileInfo{
+			Permalink: "https://files.slack.com/files-pri/T123/F456/pod-logs.log",
+			Filename:  "pod-logs-namespace-pod-20251103-001242.log",
+			Size:      1024,
+		}
+		issue.AddEnrichment(*fileEnrichment)
+
+		// Add regular enrichment
+		tableEnrichment := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertLabels, "Alert Labels")
+		tableEnrichment.AddBlock(&issuepkg.TableBlock{
+			TableName: "labels",
+			Headers:   []string{"Label", "Value"},
+			Rows:      [][]string{{"severity", "high"}},
+		})
+		issue.AddEnrichment(*tableEnrichment)
+
+		blocks := sender.buildSlackBlocks(issue)
+
+		// Should have blocks: header, context, file enrichment, table enrichment, divider
+		assert.GreaterOrEqual(t, len(blocks), 4)
+	})
+
+	t.Run("adds divider at end when enrichments exist", func(t *testing.T) {
+		issue := issuepkg.NewIssue("Test Issue", "test-key")
+		issue.Severity = issuepkg.SeverityHigh
+		issue.Status = issuepkg.StatusFiring
+
+		// Add file enrichment
+		fileEnrichment := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeLogs, "Pod Logs")
+		fileEnrichment.FileInfo = &issuepkg.FileInfo{
+			Permalink: "https://files.slack.com/files-pri/T123/F456/file.log",
+			Filename:  "file.log",
+			Size:      1024,
+		}
+		issue.AddEnrichment(*fileEnrichment)
+
+		blocks := sender.buildSlackBlocks(issue)
+
+		// Should have divider at the end (because enrichments exist)
+		lastBlock := blocks[len(blocks)-1]
+		_, isDivider := lastBlock.(*slack.DividerBlock)
+		assert.True(t, isDivider, "Last block should be divider when enrichments exist")
+	})
+
+	t.Run("no divider when no enrichments", func(t *testing.T) {
+		issue := issuepkg.NewIssue("Test Issue", "test-key")
+		issue.Severity = issuepkg.SeverityHigh
+		issue.Status = issuepkg.StatusFiring
+
+		blocks := sender.buildSlackBlocks(issue)
+
+		// Should NOT have divider at the end when no enrichments
+		lastBlock := blocks[len(blocks)-1]
+		_, isDivider := lastBlock.(*slack.DividerBlock)
+		assert.False(t, isDivider, "Should not have divider when no enrichments")
+	})
+}
+
+// TestSenderSlack_BuildHeaderBlockFallback tests fallback header generation
+func TestSenderSlack_BuildHeaderBlockFallback(t *testing.T) {
+	sender, _, _ := setupSenderSlackTest(t)
+
+	t.Run("creates fallback header for firing issue", func(t *testing.T) {
+		issue := issuepkg.NewIssue("Test Alert", "test-key")
+		issue.Severity = issuepkg.SeverityHigh
+		issue.Status = issuepkg.StatusFiring
+
+		blocks := sender.buildHeaderBlockFallback(issue)
+
+		assert.GreaterOrEqual(t, len(blocks), 1)
+
+		// First block should be section with title
+		sectionBlock, ok := blocks[0].(*slack.SectionBlock)
+		assert.True(t, ok, "First block should be section block")
+		assert.Contains(t, sectionBlock.Text.Text, "Test Alert")
+	})
+
+	t.Run("creates fallback header for resolved issue", func(t *testing.T) {
+		issue := issuepkg.NewIssue("Test Alert", "test-key")
+		issue.Severity = issuepkg.SeverityHigh
+		issue.Status = issuepkg.StatusResolved
+
+		blocks := sender.buildHeaderBlockFallback(issue)
+
+		assert.GreaterOrEqual(t, len(blocks), 1)
+
+		sectionBlock, ok := blocks[0].(*slack.SectionBlock)
+		assert.True(t, ok)
+		// Should contain resolved indicator (text contains Resolved or ✅)
+		text := sectionBlock.Text.Text
+		hasResolved := false
+		if len(text) > 0 {
+			hasResolved = containsSubstring(text, "Resolved") || containsSubstring(text, "✅")
+		}
+		assert.True(t, hasResolved, "Should indicate resolved status")
+	})
+}
+
+// TestSenderSlack_PreprocessEnrichments tests enrichment preprocessing
+func TestSenderSlack_PreprocessEnrichments(t *testing.T) {
+	sender, mockClient, _ := setupSenderSlackTest(t)
+
+	t.Run("uploads file blocks and sets FileInfo", func(t *testing.T) {
+		issue := issuepkg.NewIssue("Test", "test-key")
+
+		// Create enrichment with FileBlock
+		fileBlock := &issuepkg.FileBlock{
+			Filename: "test-file.log",
+			Contents: []byte("test content"),
+			Size:     12,
+			MimeType: "text/plain",
+		}
+
+		enrichment := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeLogs, "Test File")
+		enrichment.AddBlock(fileBlock)
+		issue.AddEnrichment(*enrichment)
+
+		// Mock successful file upload - returns FileSummary with ID
+		mockClient.EXPECT().
+			UploadFileV2(gomock.Any()).
+			Return(&slack.FileSummary{
+				ID: "F123456",
+			}, nil)
+
+		// Mock GetFileInfo to return file details with permalink
+		mockClient.EXPECT().
+			GetFileInfo("F123456", 0, 0).
+			Return(&slack.File{
+				Permalink: "https://files.slack.com/files-pri/T123/F456/test-file.log",
+			}, nil, nil, nil)
+
+		// Call preprocessing
+		sender.preprocessEnrichments(issue)
+
+		// Should have set FileInfo on enrichment
+		assert.NotNil(t, issue.Enrichments[0].FileInfo)
+		assert.Equal(t, "https://files.slack.com/files-pri/T123/F456/test-file.log", issue.Enrichments[0].FileInfo.Permalink)
+		assert.Equal(t, "test-file.log", issue.Enrichments[0].FileInfo.Filename)
+		assert.Equal(t, int64(12), issue.Enrichments[0].FileInfo.Size)
+	})
+
+	t.Run("skips enrichments without FileBlocks", func(t *testing.T) {
+		issue := issuepkg.NewIssue("Test", "test-key")
+
+		// Create enrichment with TableBlock (not FileBlock)
+		tableBlock := &issuepkg.TableBlock{
+			TableName: "test-table",
+			Headers:   []string{"Key", "Value"},
+			Rows:      [][]string{{"key1", "value1"}},
+		}
+
+		enrichment := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeAlertLabels, "Test Table")
+		enrichment.AddBlock(tableBlock)
+		issue.AddEnrichment(*enrichment)
+
+		// Call preprocessing (should not interact with Slack client)
+		sender.preprocessEnrichments(issue)
+
+		// Should not set FileInfo
+		assert.Nil(t, issue.Enrichments[0].FileInfo)
+	})
+
+	t.Run("skips enrichments with existing FileInfo", func(t *testing.T) {
+		issue := issuepkg.NewIssue("Test", "test-key")
+
+		// Create enrichment with FileInfo already set
+		enrichment := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeLogs, "Existing File")
+		enrichment.FileInfo = &issuepkg.FileInfo{
+			Permalink: "https://existing.com/file.log",
+			Filename:  "file.log",
+		}
+		issue.AddEnrichment(*enrichment)
+
+		// Call preprocessing (should not upload anything)
+		sender.preprocessEnrichments(issue)
+
+		// FileInfo should remain unchanged
+		assert.Equal(t, "https://existing.com/file.log", issue.Enrichments[0].FileInfo.Permalink)
+	})
+}
+
+// Helper function for substring check
+func containsSubstring(s, substr string) bool {
+	if len(substr) == 0 {
+		return true
+	}
+	if len(s) < len(substr) {
+		return false
+	}
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }

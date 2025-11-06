@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -231,6 +232,15 @@ func (s *SenderSlack) Send(ctx context.Context, issue *issuepkg.Issue) error {
 	return nil
 }
 
+// removeTimestampFromFilename removes timestamp suffix from filename for deduplication
+// Example: "pod-logs-namespace-pod-20251103-001242.log" -> "pod-logs-namespace-pod.log"
+func (s *SenderSlack) removeTimestampFromFilename(filename string) string {
+	// Remove timestamp pattern: -YYYYMMDD-HHMMSS before extension
+	// Pattern: -20251103-001242.log -> .log
+	re := regexp.MustCompile(`-\d{8}-\d{6}(\.\w+)$`)
+	return re.ReplaceAllString(filename, "$1")
+}
+
 // deduplicateEnrichments removes duplicate enrichments based on composite key
 func (s *SenderSlack) deduplicateEnrichments(enrichments []issuepkg.Enrichment) []issuepkg.Enrichment {
 	seen := make(map[string]bool)
@@ -248,7 +258,9 @@ func (s *SenderSlack) deduplicateEnrichments(enrichments []issuepkg.Enrichment) 
 		if len(e.Blocks) > 0 {
 			switch block := e.Blocks[0].(type) {
 			case *issuepkg.FileBlock:
-				key += ":" + block.Filename
+				// Remove timestamp from filename for deduplication
+				baseFilename := s.removeTimestampFromFilename(block.Filename)
+				key += ":" + baseFilename
 			case *issuepkg.TableBlock:
 				key += ":" + block.TableName
 			case *issuepkg.MarkdownBlock:
@@ -303,10 +315,9 @@ func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slackapi.Block {
 		blocks = append(blocks, contextBlocks...)
 	}
 
-	// 3. Add divider
-	blocks = append(blocks, slackapi.NewDividerBlock())
+	// Note: Intermediate dividers removed (Robusta pattern - single divider at end)
 
-	// 4. Render description if present
+	// 3. Render description if present
 	if context.Description != "" {
 		descBlocks, err := s.templateLoader.RenderToBlocks("description.tmpl", context)
 		if err != nil {
@@ -336,23 +347,39 @@ func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slackapi.Block {
 		}
 	}
 
-	// 7. Render file enrichments with permalinks (Robusta-style)
-	for _, enrichment := range context.Enrichments {
-		if enrichment.FileLink != "" {
-			// This is a file enrichment with permalink
-			fileBlocks, err := s.templateLoader.RenderToBlocks("file_enrichment.tmpl", enrichment)
-			if err != nil {
-				s.logger.Error("Failed to render file enrichment template", zap.Error(err))
-			} else {
-				blocks = append(blocks, fileBlocks...)
-			}
+	// 7. Deduplicate enrichments BEFORE rendering to prevent duplicates
+	uniqueEnrichments := s.deduplicateEnrichments(issue.Enrichments)
+
+	// 8. Separate file enrichments from other enrichments (single rendering path)
+	var fileEnrichments []issuepkg.Enrichment
+	var otherEnrichments []issuepkg.Enrichment
+
+	for _, e := range uniqueEnrichments {
+		if e.FileInfo != nil && e.FileInfo.Permalink != "" {
+			fileEnrichments = append(fileEnrichments, e)
+		} else {
+			otherEnrichments = append(otherEnrichments, e)
 		}
 	}
 
-	// 8. Add other enrichments (tables, markdown, etc.) using existing logic
-	uniqueEnrichments := s.deduplicateEnrichments(issue.Enrichments)
-	enrichmentBlocks := s.buildEnrichmentBlocks(uniqueEnrichments)
+	// 9. Render file enrichments with permalinks (Robusta-style)
+	for _, enrichment := range fileEnrichments {
+		fileBlocks, err := s.templateLoader.RenderToBlocks("file_enrichment.tmpl", enrichment)
+		if err != nil {
+			s.logger.Error("Failed to render file enrichment template", zap.Error(err))
+		} else {
+			blocks = append(blocks, fileBlocks...)
+		}
+	}
+
+	// 10. Add other enrichments (tables, markdown, etc.) using existing logic
+	enrichmentBlocks := s.buildEnrichmentBlocks(otherEnrichments)
 	blocks = append(blocks, enrichmentBlocks...)
+
+	// 11. Add single divider at end for visual separation (Robusta pattern)
+	if len(enrichmentBlocks) > 0 || len(fileEnrichments) > 0 {
+		blocks = append(blocks, slackapi.NewDividerBlock())
+	}
 
 	return blocks
 }
@@ -558,11 +585,8 @@ func (s *SenderSlack) convertEnrichmentToBlocks(enrichment issuepkg.Enrichment) 
 		blocks = append(blocks, slackBlock)
 	}
 
-	// Add divider for visual separation between enrichments
-	if len(blocks) > 0 {
-		dividerBlock := slackapi.NewDividerBlock()
-		blocks = append(blocks, dividerBlock)
-	}
+	// Note: Dividers removed to reduce visual clutter (Robusta pattern)
+	// Single divider will be added at end of message instead
 
 	return blocks
 }
@@ -644,11 +668,11 @@ func (s *SenderSlack) convertTableToEnhancedBlock(table *issuepkg.TableBlock) sl
 		text = fmt.Sprintf("*%s*\n", table.TableName)
 	}
 
-	// For two-column tables, use enhanced key-value format
+	// For two-column tables, use Robusta-style key-value format
 	if len(table.Headers) == 2 {
 		for _, row := range table.Rows {
 			if len(row) >= 2 {
-				text += fmt.Sprintf("▸ *%s*: `%s`\n", row[0], row[1])
+				text += fmt.Sprintf("● %s  `%s`\n", row[0], row[1])
 			}
 		}
 	} else if len(table.Headers) > 0 {
@@ -682,12 +706,12 @@ func (s *SenderSlack) convertTableToEnhancedBlock(table *issuepkg.TableBlock) sl
 		}
 		text += "```"
 	} else {
-		// For headerless tables, use enhanced key-value format similar to two-column tables
+		// For headerless tables, use Robusta-style key-value format
 		for _, row := range table.Rows {
 			if len(row) >= 2 {
-				text += fmt.Sprintf("▸ *%s*: `%s`\n", row[0], row[1])
+				text += fmt.Sprintf("● %s  `%s`\n", row[0], row[1])
 			} else if len(row) == 1 {
-				text += fmt.Sprintf("▸ %s\n", row[0])
+				text += fmt.Sprintf("● %s\n", row[0])
 			}
 		}
 	}
@@ -1421,16 +1445,9 @@ func (s *SenderSlack) buildMessageContext(issue *issuepkg.Issue) *MessageContext
 		context.AlertTypeEmoji = "📬"
 	}
 
-	// Extract crash info from labels (for pod alerts)
-	containerName := s.getIssueLabel(issue, "container")
-	if containerName != "" {
-		context.CrashInfo = &CrashInfo{
-			Container: containerName,
-			Restarts:  s.getIssueLabel(issue, "restarts"),
-			Status:    s.getIssueLabel(issue, "status"),
-			Reason:    s.getIssueLabel(issue, "reason"),
-		}
-	}
+	// Note: CrashInfo is populated by PodInfoAction enrichments from Kubernetes API
+	// Do not extract from alert labels as "restarts" and "status" don't exist in Prometheus labels
+	// The template will show crash info if it's present in enrichments
 
 	// Links
 	for _, link := range issue.Links {
