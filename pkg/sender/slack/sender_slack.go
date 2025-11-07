@@ -337,17 +337,9 @@ func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slackapi.Block {
 		}
 	}
 
-	// 6. Render crash info if present (for pod alerts)
-	if context.CrashInfo != nil {
-		crashBlocks, err := s.templateLoader.RenderToBlocks("crash_info.tmpl", context)
-		if err != nil {
-			s.logger.Error("Failed to render crash info template", zap.Error(err))
-		} else {
-			blocks = append(blocks, crashBlocks...)
-		}
-	}
+	// NOTE: Crash info now comes from PodInfoAction enrichments, not templates
 
-	// 7. Deduplicate enrichments BEFORE rendering to prevent duplicates
+	// 6. Deduplicate enrichments BEFORE rendering to prevent duplicates
 	uniqueEnrichments := s.deduplicateEnrichments(issue.Enrichments)
 
 	// 8. Separate file enrichments from other enrichments (single rendering path)
@@ -1122,11 +1114,17 @@ func (s *SenderSlack) uploadFileToSlack(filename string, content []byte) (string
 
 // tryUploadDirect attempts direct upload using bytes.Reader
 func (s *SenderSlack) tryUploadDirect(filename string, content []byte) (string, error) {
+	// Resolve channel name to ID (Slack API requires ID, not name)
+	channelID, err := s.resolveChannelID()
+	if err != nil {
+		return "", fmt.Errorf("resolve channel: %w", err)
+	}
+
 	params := slackapi.UploadFileV2Parameters{
 		Filename: filename,
 		FileSize: len(content),
 		Reader:   bytes.NewReader(content),
-		Channel:  s.channel, // Share file to channel for visibility
+		Channel:  channelID, // Use channel ID, not name
 	}
 
 	return s.executeUpload(params)
@@ -1134,6 +1132,12 @@ func (s *SenderSlack) tryUploadDirect(filename string, content []byte) (string, 
 
 // tryUploadViaTempFile attempts upload using temporary file as fallback strategy
 func (s *SenderSlack) tryUploadViaTempFile(filename string, content []byte) (string, error) {
+	// Resolve channel name to ID (Slack API requires ID, not name)
+	channelID, err := s.resolveChannelID()
+	if err != nil {
+		return "", fmt.Errorf("resolve channel: %w", err)
+	}
+
 	tmpFile, err := os.CreateTemp("", "slack-upload-*")
 	if err != nil {
 		return "", fmt.Errorf("create temp file: %w", err)
@@ -1153,7 +1157,7 @@ func (s *SenderSlack) tryUploadViaTempFile(filename string, content []byte) (str
 		Filename: filename,
 		FileSize: len(content),
 		Reader:   tmpFile,
-		Channel:  s.channel,
+		Channel:  channelID, // Use channel ID, not name
 	}
 
 	return s.executeUpload(params)

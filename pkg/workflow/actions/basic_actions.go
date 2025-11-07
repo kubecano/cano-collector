@@ -424,9 +424,7 @@ func (a *IssueEnrichmentAction) createIssueEnrichments(alertEvent *core_event.Al
 
 // createMetadataEnrichment creates enrichment with alert metadata
 func (a *IssueEnrichmentAction) createMetadataEnrichment(alertEvent *core_event.AlertManagerEvent) *issue.Enrichment {
-	// Use proper Slack markdown (single asterisk for bold) and emojis
-	text := fmt.Sprintf("*Alert Metadata*\n\n"+
-		"📥 *Receiver:* %s\n"+
+	text := fmt.Sprintf("📥 *Receiver:* %s\n"+
 		"📊 *Status:* %s\n"+
 		"🔢 *Alert Count:* %d\n"+
 		"⚠️ *Severity:* %s\n",
@@ -444,14 +442,13 @@ func (a *IssueEnrichmentAction) createLabelsEnrichment(alertEvent *core_event.Al
 		return issue.NewEnrichmentWithType(issue.EnrichmentTypeAlertLabels, AlertLabelsTitle)
 	}
 
-	// Get labels from first alert
 	labels := alertEvent.Alerts[0].Labels
 	var rows [][]string
 	for key, value := range labels {
 		rows = append(rows, []string{key, value})
 	}
 
-	tableBlock := issue.NewTableBlock([]string{"Label", "Value"}, rows, AlertLabelsTitle, issue.TableBlockFormatHorizontal)
+	tableBlock := issue.NewTableBlock([]string{"Label", "Value"}, rows, "", issue.TableBlockFormatHorizontal)
 	enrichment := issue.NewEnrichmentWithType(issue.EnrichmentTypeAlertLabels, AlertLabelsTitle)
 	enrichment.AddBlock(tableBlock)
 	return enrichment
