@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -459,7 +460,7 @@ func (a *IssueEnrichmentAction) createConsolidatedDetailsEnrichment(alertEvent *
 		var rows [][]string
 		rows = append(rows, []string{"receiver", alertEvent.Receiver})
 		rows = append(rows, []string{"status", alertEvent.Status})
-		rows = append(rows, []string{"alert_count", fmt.Sprintf("%d", len(alertEvent.Alerts))})
+		rows = append(rows, []string{"alert_count", strconv.Itoa(len(alertEvent.Alerts))})
 		rows = append(rows, []string{"severity", alertEvent.GetSeverity()})
 
 		tableBlock := issue.NewTableBlock([]string{"Metadata", "Value"}, rows, "", issue.TableBlockFormatHorizontal)
