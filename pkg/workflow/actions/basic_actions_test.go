@@ -553,12 +553,13 @@ func TestIssueEnrichmentAction_Execute_Success(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.True(t, result.Success)
-	assert.Equal(t, 3, result.Data.(map[string]interface{})["enrichments_added"])
+	// Now returns 2 enrichments: consolidated "Alert Details" + custom title
+	assert.Equal(t, 2, result.Data.(map[string]interface{})["enrichments_added"])
 	assert.Equal(t, "TestAlert", result.Data.(map[string]interface{})["alert_name"])
 	assert.Equal(t, "default", result.Data.(map[string]interface{})["namespace"])
 	assert.Equal(t, "issue_enrichment", result.Metadata["action_type"])
 	assert.Equal(t, "metadata", result.Metadata["enrichment_type"])
-	assert.Len(t, result.Enrichments, 3)
+	assert.Len(t, result.Enrichments, 2)
 }
 
 func TestIssueEnrichmentAction_Execute_MinimalConfig(t *testing.T) {
@@ -586,9 +587,9 @@ func TestIssueEnrichmentAction_Execute_MinimalConfig(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.True(t, result.Success)
-	// Should have 2 enrichments (metadata and labels) since include_metadata and include_labels default to true
-	assert.Equal(t, 2, result.Data.(map[string]interface{})["enrichments_added"])
-	assert.Len(t, result.Enrichments, 2)
+	// Should have 1 enrichment (consolidated "Alert Details" with metadata and labels) since include_metadata and include_labels default to true
+	assert.Equal(t, 1, result.Data.(map[string]interface{})["enrichments_added"])
+	assert.Len(t, result.Enrichments, 1)
 }
 
 func TestIssueEnrichmentAction_Execute_NoAlertsInEvent(t *testing.T) {

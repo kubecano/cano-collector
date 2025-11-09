@@ -88,7 +88,7 @@ func (a *PodLogsAction) Execute(ctx context.Context, event event.WorkflowEvent) 
 	logs, err := a.getPodLogs(ctx, podName, namespace, containerName)
 	if err != nil {
 		// Instead of failing, create an enrichment with error explanation
-		// This follows Robusta's pattern of EmptyFileBlock with remarks
+		// This provides better user experience by showing why logs are unavailable
 		a.logger.Warn("Failed to retrieve pod logs, creating empty log enrichment with explanation",
 			zap.Error(err),
 			zap.String("action_name", a.GetName()),

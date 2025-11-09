@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/slack-go/slack"
+	slackapi "github.com/slack-go/slack"
 
 	"github.com/kubecano/cano-collector/mocks"
 	issuepkg "github.com/kubecano/cano-collector/pkg/core/issue"
@@ -50,11 +50,11 @@ func setupSenderSlackTest(t *testing.T) (*SenderSlack, *mocks.MockSlackClientInt
 	mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
 
 	// Mock channel resolution for #test-channel (used by many tests)
-	testChannel := slack.Channel{}
+	testChannel := slackapi.Channel{}
 	testChannel.ID = "C123TEST"
 	testChannel.Name = "test-channel"
 	mockSlackClient.EXPECT().GetConversations(gomock.Any()).Return(
-		[]slack.Channel{testChannel},
+		[]slackapi.Channel{testChannel},
 		"",
 		nil,
 	).AnyTimes()
@@ -227,13 +227,13 @@ func TestSenderSlack_BuildSlackBlocks(t *testing.T) {
 	assert.GreaterOrEqual(t, len(blocks), 5)
 
 	// First block should be header
-	_, ok := blocks[0].(*slack.SectionBlock)
+	_, ok := blocks[0].(*slackapi.SectionBlock)
 	assert.True(t, ok, "First block should be section block (header)")
 
 	// Should find runbook URL block
 	found := false
 	for _, block := range blocks {
-		if sectionBlock, ok := block.(*slack.SectionBlock); ok {
+		if sectionBlock, ok := block.(*slackapi.SectionBlock); ok {
 			if strings.Contains(sectionBlock.Text.Text, "Runbook URL:") &&
 				strings.Contains(sectionBlock.Text.Text, "runbooks.prometheus-operator.dev") {
 				found = true
@@ -281,7 +281,7 @@ func TestSenderSlack_BuildSlackBlocks_ResolvedAlert(t *testing.T) {
 	assert.LessOrEqual(t, len(blocks), 3)
 
 	// First block should be header
-	headerBlock, ok := blocks[0].(*slack.SectionBlock)
+	headerBlock, ok := blocks[0].(*slackapi.SectionBlock)
 	assert.True(t, ok, "First block should be section block (header)")
 	assert.Contains(t, headerBlock.Text.Text, "Alert resolved")
 	assert.Contains(t, headerBlock.Text.Text, "✅")
@@ -290,7 +290,7 @@ func TestSenderSlack_BuildSlackBlocks_ResolvedAlert(t *testing.T) {
 	foundSource := false
 	foundResolved := false
 	for _, block := range blocks {
-		if sectionBlock, ok := block.(*slack.SectionBlock); ok {
+		if sectionBlock, ok := block.(*slackapi.SectionBlock); ok {
 			if strings.Contains(sectionBlock.Text.Text, "Source: PROMETHEUS") &&
 				strings.Contains(sectionBlock.Text.Text, "Cluster: test-cluster") {
 				foundSource = true
@@ -305,12 +305,12 @@ func TestSenderSlack_BuildSlackBlocks_ResolvedAlert(t *testing.T) {
 
 	// Should NOT contain enrichments, links, or description blocks
 	for _, block := range blocks {
-		if sectionBlock, ok := block.(*slack.SectionBlock); ok {
+		if sectionBlock, ok := block.(*slackapi.SectionBlock); ok {
 			assert.NotContains(t, sectionBlock.Text.Text, "Alert:")
 			assert.NotContains(t, sectionBlock.Text.Text, "Runbook URL:")
 		}
 		// Should not have action blocks (links)
-		_, isActionBlock := block.(*slack.ActionBlock)
+		_, isActionBlock := block.(*slackapi.ActionBlock)
 		assert.False(t, isActionBlock, "Resolved alerts should not have action blocks")
 	}
 }
@@ -336,7 +336,7 @@ func TestSenderSlack_BuildSlackBlocks_WithoutRunbook(t *testing.T) {
 	// Should NOT find runbook URL block
 	found := false
 	for _, block := range blocks {
-		if sectionBlock, ok := block.(*slack.SectionBlock); ok {
+		if sectionBlock, ok := block.(*slackapi.SectionBlock); ok {
 			if strings.Contains(sectionBlock.Text.Text, "Runbook URL:") {
 				found = true
 				break
@@ -407,7 +407,7 @@ func TestSenderSlack_BuildSlackAttachments_WithClusterName(t *testing.T) {
 	// Convert blocks to find cluster info
 	found := false
 	for _, block := range attachment.Blocks.BlockSet {
-		if sectionBlock, ok := block.(*slack.SectionBlock); ok {
+		if sectionBlock, ok := block.(*slackapi.SectionBlock); ok {
 			if sectionBlock.Text != nil && strings.Contains(sectionBlock.Text.Text, "🌐 *Cluster:* `production-cluster`") {
 				found = true
 				break
@@ -448,7 +448,7 @@ func TestSenderSlack_BuildSlackAttachments_WithTimeFormatting(t *testing.T) {
 	// Find the time block and verify UTC formatting
 	foundTimeBlock := false
 	for _, block := range attachment.Blocks.BlockSet {
-		if sectionBlock, ok := block.(*slack.SectionBlock); ok {
+		if sectionBlock, ok := block.(*slackapi.SectionBlock); ok {
 			if sectionBlock.Text != nil && sectionBlock.Text.Text != "" {
 				text := sectionBlock.Text.Text
 				// Check if this is the time block
@@ -495,7 +495,7 @@ func TestSenderSlack_BuildSlackAttachments_WithoutTime(t *testing.T) {
 
 	// Verify that no time block exists
 	for _, block := range attachment.Blocks.BlockSet {
-		if sectionBlock, ok := block.(*slack.SectionBlock); ok {
+		if sectionBlock, ok := block.(*slackapi.SectionBlock); ok {
 			if sectionBlock.Text != nil && sectionBlock.Text.Text != "" {
 				text := sectionBlock.Text.Text
 				// Should not contain time information
@@ -590,16 +590,16 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 	slackSender, mockSlackClient, _ := setupSenderSlackTest(t)
 
 	// Add mock for file upload to support large table tests
-	mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(&slack.FileSummary{
+	mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(&slackapi.FileSummary{
 		ID:    "F123456789",
 		Title: "test-file.csv",
 	}, nil).AnyTimes()
 
 	// Add mock for GetFileInfo to support permalink retrieval
-	mockSlackClient.EXPECT().GetFileInfo("F123456789", 0, 0).Return(&slack.File{
+	mockSlackClient.EXPECT().GetFileInfo("F123456789", 0, 0).Return(&slackapi.File{
 		ID:        "F123456789",
 		Name:      "test-file.csv",
-		Permalink: "https://files.slack.com/files-pri/T123/F123456789/test-file.csv",
+		Permalink: "https://files.slackapi.com/files-pri/T123/F123456789/test-file.csv",
 	}, nil, nil, nil).AnyTimes()
 
 	t.Run("builds enrichment blocks for table blocks", func(t *testing.T) {
@@ -651,12 +651,12 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 		assert.Len(t, enrichmentBlocks, 4)
 
 		// Verify first enrichment blocks (labels)
-		sectionBlock1, ok := enrichmentBlocks[0].(*slack.SectionBlock)
+		sectionBlock1, ok := enrichmentBlocks[0].(*slackapi.SectionBlock)
 		assert.True(t, ok, "First block should be section block with title")
 		assert.Equal(t, "*Alert Labels*", sectionBlock1.Text.Text)
 
 		// Verify second enrichment blocks (annotations)
-		sectionBlock2, ok := enrichmentBlocks[2].(*slack.SectionBlock)
+		sectionBlock2, ok := enrichmentBlocks[2].(*slackapi.SectionBlock)
 		assert.True(t, ok, "Third block should be section block with title")
 		assert.Equal(t, "*Alert Annotations*", sectionBlock2.Text.Text)
 	})
@@ -687,13 +687,13 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 		assert.Len(t, enrichmentBlocks, 2)
 
 		// Verify title block
-		titleBlock, ok := enrichmentBlocks[0].(*slack.SectionBlock)
+		titleBlock, ok := enrichmentBlocks[0].(*slackapi.SectionBlock)
 		assert.True(t, ok, "First block should be section block with title")
 		assert.Equal(t, "*Alert Labels (JSON)*", titleBlock.Text.Text)
 
 		// Verify the JSON block was converted to a section block
 		contentBlock := enrichmentBlocks[1]
-		sectionBlock, ok := contentBlock.(*slack.SectionBlock)
+		sectionBlock, ok := contentBlock.(*slackapi.SectionBlock)
 		assert.True(t, ok, "Second block should be section block for JSON content")
 		assert.Contains(t, sectionBlock.Text.Text, "```") // Should be wrapped in code block
 	})
@@ -735,7 +735,7 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 
 		slackBlock := slackSender.convertTableBlockToSlack(tableBlock)
 
-		sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+		sectionBlock, ok := slackBlock.(*slackapi.SectionBlock)
 		assert.True(t, ok, "Expected section block")
 
 		text := sectionBlock.Text.Text
@@ -753,7 +753,7 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 
 		slackBlock := slackSender.convertJsonBlockToSlack(jsonBlock)
 
-		sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+		sectionBlock, ok := slackBlock.(*slackapi.SectionBlock)
 		assert.True(t, ok, "Expected section block")
 
 		text := sectionBlock.Text.Text
@@ -768,7 +768,7 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 
 		slackBlock := slackSender.convertHeaderBlockToSlack(headerBlock)
 
-		headerSlackBlock, ok := slackBlock.(*slack.HeaderBlock)
+		headerSlackBlock, ok := slackBlock.(*slackapi.HeaderBlock)
 		assert.True(t, ok, "Expected header block")
 		assert.Equal(t, "Test Header", headerSlackBlock.Text.Text)
 	})
@@ -782,7 +782,7 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 
 		slackBlock := slackSender.convertListBlockToSlack(listBlock)
 
-		sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+		sectionBlock, ok := slackBlock.(*slackapi.SectionBlock)
 		assert.True(t, ok, "Expected section block")
 
 		text := sectionBlock.Text.Text
@@ -800,7 +800,7 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 
 		slackBlock := slackSender.convertListBlockToSlack(listBlock)
 
-		sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+		sectionBlock, ok := slackBlock.(*slackapi.SectionBlock)
 		assert.True(t, ok, "Expected section block")
 
 		text := sectionBlock.Text.Text
@@ -821,7 +821,7 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 
 		slackBlock := slackSender.convertLinksBlockToSlack(linksBlock)
 
-		actionBlock, ok := slackBlock.(*slack.ActionBlock)
+		actionBlock, ok := slackBlock.(*slackapi.ActionBlock)
 		assert.True(t, ok, "Expected action block")
 		assert.Equal(t, "links_related_links", actionBlock.BlockID)
 		assert.Len(t, actionBlock.Elements.ElementSet, 2)
@@ -852,11 +852,11 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 		mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
 
 		// Mock channel resolution
-		testChannel := slack.Channel{}
+		testChannel := slackapi.Channel{}
 		testChannel.ID = "C123TEST"
 		testChannel.Name = "test-channel"
 		mockSlackClient.EXPECT().GetConversations(gomock.Any()).Return(
-			[]slack.Channel{testChannel},
+			[]slackapi.Channel{testChannel},
 			"",
 			nil,
 		).AnyTimes()
@@ -884,7 +884,7 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 
 		slackBlock := testSender.convertFileBlockToSlack(fileBlock)
 
-		sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+		sectionBlock, ok := slackBlock.(*slackapi.SectionBlock)
 		assert.True(t, ok, "Expected section block")
 
 		text := sectionBlock.Text.Text
@@ -899,7 +899,7 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 
 		slackBlock := slackSender.convertBlockToSlack(dividerBlock)
 
-		_, ok := slackBlock.(*slack.DividerBlock)
+		_, ok := slackBlock.(*slackapi.DividerBlock)
 		assert.True(t, ok, "Expected divider block")
 	})
 
@@ -909,7 +909,7 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 
 		slackBlock := slackSender.convertBlockToSlack(unknownBlock)
 
-		sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+		sectionBlock, ok := slackBlock.(*slackapi.SectionBlock)
 		assert.True(t, ok, "Expected section block for unknown type")
 		assert.Contains(t, sectionBlock.Text.Text, "Unknown block type: unsupported-test-type")
 	})
@@ -930,7 +930,7 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 
 		slackBlock := slackSender.convertTableBlockToSlack(tableBlock)
 
-		sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+		sectionBlock, ok := slackBlock.(*slackapi.SectionBlock)
 		assert.True(t, ok, "Expected section block")
 
 		text := sectionBlock.Text.Text
@@ -955,7 +955,7 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 
 		slackBlock := slackSender.convertTableBlockToSlack(tableBlock)
 
-		sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+		sectionBlock, ok := slackBlock.(*slackapi.SectionBlock)
 		assert.True(t, ok, "Expected section block")
 
 		text := sectionBlock.Text.Text
@@ -980,13 +980,13 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 
 		slackBlock := slackSender.convertTableBlockToSlack(tableBlock)
 
-		sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+		sectionBlock, ok := slackBlock.(*slackapi.SectionBlock)
 		assert.True(t, ok, "Expected section block")
 
 		text := sectionBlock.Text.Text
 		assert.Contains(t, text, "📊 *Attachment Table*")
-		assert.Contains(t, text, "└ key1: `value1`")
-		assert.Contains(t, text, "└ key2: `value2`")
+		assert.Contains(t, text, "● key1  `value1`")
+		assert.Contains(t, text, "● key2  `value2`")
 	})
 
 	t.Run("adaptive formatting - large table exceeding row limit", func(t *testing.T) {
@@ -1007,7 +1007,7 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 
 		slackBlock := slackSender.convertTableBlockToSlack(tableBlock)
 
-		sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+		sectionBlock, ok := slackBlock.(*slackapi.SectionBlock)
 		assert.True(t, ok, "Expected section block")
 
 		text := sectionBlock.Text.Text
@@ -1032,7 +1032,7 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 
 		slackBlock := slackSender.convertTableBlockToSlack(tableBlock)
 
-		sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+		sectionBlock, ok := slackBlock.(*slackapi.SectionBlock)
 		assert.True(t, ok, "Expected section block")
 
 		text := sectionBlock.Text.Text
@@ -1062,7 +1062,7 @@ func TestSenderSlack_EnrichmentSupport(t *testing.T) {
 
 		slackBlock := slackSender.convertTableBlockToSlack(tableBlock)
 
-		sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+		sectionBlock, ok := slackBlock.(*slackapi.SectionBlock)
 		assert.True(t, ok, "Expected section block")
 
 		text := sectionBlock.Text.Text
@@ -1159,7 +1159,7 @@ func TestSenderSlack_ConvertMarkdownBlockToSlack(t *testing.T) {
 
 	slackBlock := slackSender.convertMarkdownBlockToSlack(markdownBlock)
 
-	sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+	sectionBlock, ok := slackBlock.(*slackapi.SectionBlock)
 	assert.True(t, ok, "Expected section block")
 	assert.Equal(t, "**This is bold text** and *this is italic*", sectionBlock.Text.Text)
 	assert.Equal(t, "mrkdwn", sectionBlock.Text.Type)
@@ -1175,7 +1175,7 @@ func TestSenderSlack_ConvertBlockToSlack_WithMarkdown(t *testing.T) {
 
 	slackBlock := slackSender.convertBlockToSlack(markdownBlock)
 
-	sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+	sectionBlock, ok := slackBlock.(*slackapi.SectionBlock)
 	assert.True(t, ok, "Expected section block")
 	assert.Equal(t, "# Header\n\nSome **bold** text", sectionBlock.Text.Text)
 	assert.Equal(t, "mrkdwn", sectionBlock.Text.Type)
@@ -1190,7 +1190,7 @@ func TestSenderSlack_ConvertBlockToSlack_WithUnsupportedBlock(t *testing.T) {
 
 	// Should return a section block with fallback text
 	assert.NotNil(t, slackBlock, "Expected non-nil block for unsupported type")
-	sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+	sectionBlock, ok := slackBlock.(*slackapi.SectionBlock)
 	assert.True(t, ok, "Expected section block for unsupported type")
 	assert.Contains(t, sectionBlock.Text.Text, "Unknown block type: unsupported-test-type")
 }
@@ -1232,7 +1232,7 @@ func TestSenderSlack_ConvertBlockToSlack_AllTypes(t *testing.T) {
 			slackBlock := slackSender.convertBlockToSlack(tt.block)
 			assert.NotNil(t, slackBlock, "Expected non-nil block for %s", tt.name)
 
-			sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+			sectionBlock, ok := slackBlock.(*slackapi.SectionBlock)
 			assert.True(t, ok, "Expected section block for %s", tt.name)
 			assert.NotEmpty(t, sectionBlock.Text.Text, "Expected non-empty text for %s", tt.name)
 		})
@@ -1264,13 +1264,13 @@ func TestSenderSlack_EnrichmentBlocks_WithMarkdown(t *testing.T) {
 	assert.Len(t, enrichmentBlocks, 2)
 
 	// Verify title block
-	titleBlock, ok := enrichmentBlocks[0].(*slack.SectionBlock)
+	titleBlock, ok := enrichmentBlocks[0].(*slackapi.SectionBlock)
 	assert.True(t, ok, "First block should be section block with title")
 	assert.Equal(t, "*AI Analysis*", titleBlock.Text.Text)
 
 	// Verify the markdown block was converted to a section block
 	contentBlock := enrichmentBlocks[1]
-	sectionBlock, ok := contentBlock.(*slack.SectionBlock)
+	sectionBlock, ok := contentBlock.(*slackapi.SectionBlock)
 	assert.True(t, ok, "Second block should be section block for markdown content")
 	assert.Contains(t, sectionBlock.Text.Text, "## Analysis Result")
 	assert.Contains(t, sectionBlock.Text.Text, "**high CPU usage**")
@@ -1323,7 +1323,7 @@ func TestSenderSlack_CreateTableErrorBlock(t *testing.T) {
 	err := fmt.Errorf("file upload failed: network timeout")
 	block := slackSender.createTableErrorBlock(table, err)
 
-	sectionBlock, ok := block.(*slack.SectionBlock)
+	sectionBlock, ok := block.(*slackapi.SectionBlock)
 	assert.True(t, ok, "Expected section block")
 
 	text := sectionBlock.Text.Text
@@ -1349,7 +1349,7 @@ func TestSenderSlack_CreateTableErrorBlock_WithoutTableName(t *testing.T) {
 	err := fmt.Errorf("upload error")
 	block := slackSender.createTableErrorBlock(table, err)
 
-	sectionBlock, ok := block.(*slack.SectionBlock)
+	sectionBlock, ok := block.(*slackapi.SectionBlock)
 	assert.True(t, ok)
 
 	text := sectionBlock.Text.Text
@@ -1374,7 +1374,7 @@ func TestSenderSlack_CreateTableErrorBlock_ManyRows(t *testing.T) {
 	err := fmt.Errorf("table too large")
 	block := slackSender.createTableErrorBlock(table, err)
 
-	sectionBlock, ok := block.(*slack.SectionBlock)
+	sectionBlock, ok := block.(*slackapi.SectionBlock)
 	assert.True(t, ok)
 
 	text := sectionBlock.Text.Text
@@ -1407,7 +1407,16 @@ func TestSenderSlack_ConvertFileBlockToSlack_ErrorPath(t *testing.T) {
 	mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 	mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
-	// Mock file upload failure (no channel resolution needed)
+	// Mock channel resolution
+	mockChannel := slackapi.Channel{}
+	mockChannel.ID = "C123TEST"
+	mockChannel.Name = "test-channel"
+	mockSlackClient.EXPECT().GetConversations(gomock.Any()).Return(
+		[]slackapi.Channel{mockChannel},
+		"",
+		nil,
+	).AnyTimes()
+	// Mock file upload failure
 	uploadError := fmt.Errorf("file too large")
 	mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(nil, uploadError).Times(2)
 
@@ -1428,7 +1437,7 @@ func TestSenderSlack_ConvertFileBlockToSlack_ErrorPath(t *testing.T) {
 	slackBlock := slackSender.convertFileBlockToSlack(fileBlock)
 
 	// Verify error fallback behavior
-	sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+	sectionBlock, ok := slackBlock.(*slackapi.SectionBlock)
 	assert.True(t, ok)
 
 	text := sectionBlock.Text.Text
@@ -1462,7 +1471,16 @@ func TestSenderSlack_ConvertFileBlockToSlack_ErrorPath_BinaryFile(t *testing.T) 
 	mockLogger.EXPECT().Debug(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 	mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
-	// Mock file upload failure (no channel resolution needed)
+	// Mock channel resolution
+	mockChannel := slackapi.Channel{}
+	mockChannel.ID = "C123TEST"
+	mockChannel.Name = "test-channel"
+	mockSlackClient.EXPECT().GetConversations(gomock.Any()).Return(
+		[]slackapi.Channel{mockChannel},
+		"",
+		nil,
+	).AnyTimes()
+	// Mock file upload failure
 	uploadError := fmt.Errorf("binary file not supported")
 	mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(nil, uploadError).Times(2)
 
@@ -1481,7 +1499,7 @@ func TestSenderSlack_ConvertFileBlockToSlack_ErrorPath_BinaryFile(t *testing.T) 
 
 	slackBlock := slackSender.convertFileBlockToSlack(fileBlock)
 
-	sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+	sectionBlock, ok := slackBlock.(*slackapi.SectionBlock)
 	assert.True(t, ok)
 
 	text := sectionBlock.Text.Text
@@ -1505,17 +1523,27 @@ func TestSenderSlack_ConvertFileBlockToSlack_SuccessPath(t *testing.T) {
 
 	mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
 
+	// Mock channel resolution
+	mockChannel := slackapi.Channel{}
+	mockChannel.ID = "C123TEST"
+	mockChannel.Name = "test-channel"
+	mockSlackClient.EXPECT().GetConversations(gomock.Any()).Return(
+		[]slackapi.Channel{mockChannel},
+		"",
+		nil,
+	).AnyTimes()
+
 	// Mock successful file upload
-	mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(&slack.FileSummary{
+	mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(&slackapi.FileSummary{
 		ID:    "F123TEST",
 		Title: "test.log",
 	}, nil)
 
 	// Mock GetFileInfo to return permalink
-	mockSlackClient.EXPECT().GetFileInfo("F123TEST", 0, 0).Return(&slack.File{
+	mockSlackClient.EXPECT().GetFileInfo("F123TEST", 0, 0).Return(&slackapi.File{
 		ID:        "F123TEST",
 		Name:      "test.log",
-		Permalink: "https://files.slack.com/files-pri/T123/F123TEST/test.log",
+		Permalink: "https://files.slackapi.com/files-pri/T123/F123TEST/test.log",
 	}, nil, nil, nil)
 
 	slackSender := &SenderSlack{
@@ -1530,14 +1558,14 @@ func TestSenderSlack_ConvertFileBlockToSlack_SuccessPath(t *testing.T) {
 
 	slackBlock := slackSender.convertFileBlockToSlack(fileBlock)
 
-	sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+	sectionBlock, ok := slackBlock.(*slackapi.SectionBlock)
 	assert.True(t, ok)
 
 	text := sectionBlock.Text.Text
 	assert.Contains(t, text, "📎 *test.log*")
 	assert.Contains(t, text, "KB")
 	assert.Contains(t, text, "text/plain")
-	assert.Contains(t, text, "https://files.slack.com/files-pri/T123/F123TEST/test.log")
+	assert.Contains(t, text, "https://files.slackapi.com/files-pri/T123/F123TEST/test.log")
 	assert.Contains(t, text, "View File")
 }
 
@@ -1556,15 +1584,25 @@ func TestSenderSlack_ConvertFileBlockToSlack_SuccessPath_LargeFile(t *testing.T)
 
 	mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
 
-	mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(&slack.FileSummary{
+	// Mock channel resolution
+	mockChannel := slackapi.Channel{}
+	mockChannel.ID = "C123TEST"
+	mockChannel.Name = "test-channel"
+	mockSlackClient.EXPECT().GetConversations(gomock.Any()).Return(
+		[]slackapi.Channel{mockChannel},
+		"",
+		nil,
+	).AnyTimes()
+
+	mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(&slackapi.FileSummary{
 		ID:    "F456TEST",
 		Title: "large.csv",
 	}, nil)
 
-	mockSlackClient.EXPECT().GetFileInfo("F456TEST", 0, 0).Return(&slack.File{
+	mockSlackClient.EXPECT().GetFileInfo("F456TEST", 0, 0).Return(&slackapi.File{
 		ID:        "F456TEST",
 		Name:      "large.csv",
-		Permalink: "https://files.slack.com/files-pri/T123/F456TEST/large.csv",
+		Permalink: "https://files.slackapi.com/files-pri/T123/F456TEST/large.csv",
 	}, nil, nil, nil)
 
 	slackSender := &SenderSlack{
@@ -1580,7 +1618,7 @@ func TestSenderSlack_ConvertFileBlockToSlack_SuccessPath_LargeFile(t *testing.T)
 
 	slackBlock := slackSender.convertFileBlockToSlack(fileBlock)
 
-	sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+	sectionBlock, ok := slackBlock.(*slackapi.SectionBlock)
 	assert.True(t, ok)
 
 	text := sectionBlock.Text.Text
@@ -1611,8 +1649,18 @@ func TestSenderSlack_ConvertFileBlockToSlack_GetFileInfoError(t *testing.T) {
 
 	mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
 
+	// Mock channel resolution
+	mockChannel := slackapi.Channel{}
+	mockChannel.ID = "C123TEST"
+	mockChannel.Name = "test-channel"
+	mockSlackClient.EXPECT().GetConversations(gomock.Any()).Return(
+		[]slackapi.Channel{mockChannel},
+		"",
+		nil,
+	).AnyTimes()
+
 	// Mock successful upload but GetFileInfo fails (both direct and fallback attempts)
-	mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(&slack.FileSummary{
+	mockSlackClient.EXPECT().UploadFileV2(gomock.Any()).Return(&slackapi.FileSummary{
 		ID:    "F789TEST",
 		Title: "test.log",
 	}, nil).Times(2)
@@ -1633,7 +1681,7 @@ func TestSenderSlack_ConvertFileBlockToSlack_GetFileInfoError(t *testing.T) {
 	slackBlock := slackSender.convertFileBlockToSlack(fileBlock)
 
 	// Should fall back to error display
-	sectionBlock, ok := slackBlock.(*slack.SectionBlock)
+	sectionBlock, ok := slackBlock.(*slackapi.SectionBlock)
 	assert.True(t, ok)
 
 	text := sectionBlock.Text.Text
@@ -1985,20 +2033,20 @@ func TestSenderSlack_ResolveChannelID(t *testing.T) {
 		mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
 
 		// Mock API response with matching channel
-		testChannel1 := slack.Channel{}
+		testChannel1 := slackapi.Channel{}
 		testChannel1.ID = "C111111"
 		testChannel1.Name = "general"
 
-		testChannel2 := slack.Channel{}
+		testChannel2 := slackapi.Channel{}
 		testChannel2.ID = "C222222"
 		testChannel2.Name = "alerts"
 
-		testChannel3 := slack.Channel{}
+		testChannel3 := slackapi.Channel{}
 		testChannel3.ID = "C333333"
 		testChannel3.Name = "monitoring"
 
 		mockSlackClient.EXPECT().GetConversations(gomock.Any()).Return(
-			[]slack.Channel{testChannel1, testChannel2, testChannel3},
+			[]slackapi.Channel{testChannel1, testChannel2, testChannel3},
 			"",
 			nil,
 		)
@@ -2027,12 +2075,12 @@ func TestSenderSlack_ResolveChannelID(t *testing.T) {
 		mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
 
 		// Mock API response without matching channel
-		testChannel1 := slack.Channel{}
+		testChannel1 := slackapi.Channel{}
 		testChannel1.ID = "C111111"
 		testChannel1.Name = "general"
 
 		mockSlackClient.EXPECT().GetConversations(gomock.Any()).Return(
-			[]slack.Channel{testChannel1},
+			[]slackapi.Channel{testChannel1},
 			"",
 			nil,
 		)
@@ -2094,12 +2142,12 @@ func TestSenderSlack_ResolveChannelID(t *testing.T) {
 
 		mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
 
-		testChannel := slack.Channel{}
+		testChannel := slackapi.Channel{}
 		testChannel.ID = "C999999"
 		testChannel.Name = "team-alerts" // Name without # in API
 
 		mockSlackClient.EXPECT().GetConversations(gomock.Any()).Return(
-			[]slack.Channel{testChannel},
+			[]slackapi.Channel{testChannel},
 			"",
 			nil,
 		)
@@ -2128,7 +2176,7 @@ func TestSenderSlack_ResolveChannelID(t *testing.T) {
 
 		// Empty channel list
 		mockSlackClient.EXPECT().GetConversations(gomock.Any()).Return(
-			[]slack.Channel{},
+			[]slackapi.Channel{},
 			"",
 			nil,
 		)
@@ -2156,12 +2204,12 @@ func TestSenderSlack_ResolveChannelID(t *testing.T) {
 
 		mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
 
-		testChannel := slack.Channel{}
+		testChannel := slackapi.Channel{}
 		testChannel.ID = "C123456"
 		testChannel.Name = "Alerts" // Capital A
 
 		mockSlackClient.EXPECT().GetConversations(gomock.Any()).Return(
-			[]slack.Channel{testChannel},
+			[]slackapi.Channel{testChannel},
 			"",
 			nil,
 		)
@@ -2191,11 +2239,11 @@ func TestSenderSlack_ResolveChannelID(t *testing.T) {
 		mockSlackClient := mocks.NewMockSlackClientInterface(ctrl)
 
 		// Create many channels
-		channels := make([]slack.Channel, 100)
+		channels := make([]slackapi.Channel, 100)
 		for i := 0; i < 100; i++ {
-			channels[i] = slack.Channel{
-				GroupConversation: slack.GroupConversation{
-					Conversation: slack.Conversation{
+			channels[i] = slackapi.Channel{
+				GroupConversation: slackapi.GroupConversation{
+					Conversation: slackapi.Conversation{
 						ID: fmt.Sprintf("C%d", i),
 					},
 					Name: fmt.Sprintf("channel-%d", i),
@@ -2203,7 +2251,7 @@ func TestSenderSlack_ResolveChannelID(t *testing.T) {
 			}
 		}
 		// Add target channel in the middle
-		targetChannel := slack.Channel{}
+		targetChannel := slackapi.Channel{}
 		targetChannel.ID = "CTARGET"
 		targetChannel.Name = "target-channel"
 		channels[50] = targetChannel
@@ -2537,7 +2585,7 @@ func TestSenderSlack_BuildSlackBlocks_WithFileEnrichments(t *testing.T) {
 		// Add file enrichment with permalink
 		fileEnrichment := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeLogs, "Pod Logs")
 		fileEnrichment.FileInfo = &issuepkg.FileInfo{
-			Permalink: "https://files.slack.com/files-pri/T123/F456/pod-logs.log",
+			Permalink: "https://files.slackapi.com/files-pri/T123/F456/pod-logs.log",
 			Filename:  "pod-logs-namespace-pod-20251103-001242.log",
 			Size:      1024,
 		}
@@ -2566,7 +2614,7 @@ func TestSenderSlack_BuildSlackBlocks_WithFileEnrichments(t *testing.T) {
 		// Add file enrichment
 		fileEnrichment := issuepkg.NewEnrichmentWithType(issuepkg.EnrichmentTypeLogs, "Pod Logs")
 		fileEnrichment.FileInfo = &issuepkg.FileInfo{
-			Permalink: "https://files.slack.com/files-pri/T123/F456/file.log",
+			Permalink: "https://files.slackapi.com/files-pri/T123/F456/file.log",
 			Filename:  "file.log",
 			Size:      1024,
 		}
@@ -2576,7 +2624,7 @@ func TestSenderSlack_BuildSlackBlocks_WithFileEnrichments(t *testing.T) {
 
 		// Should have divider at the end (because enrichments exist)
 		lastBlock := blocks[len(blocks)-1]
-		_, isDivider := lastBlock.(*slack.DividerBlock)
+		_, isDivider := lastBlock.(*slackapi.DividerBlock)
 		assert.True(t, isDivider, "Last block should be divider when enrichments exist")
 	})
 
@@ -2589,7 +2637,7 @@ func TestSenderSlack_BuildSlackBlocks_WithFileEnrichments(t *testing.T) {
 
 		// Should NOT have divider at the end when no enrichments
 		lastBlock := blocks[len(blocks)-1]
-		_, isDivider := lastBlock.(*slack.DividerBlock)
+		_, isDivider := lastBlock.(*slackapi.DividerBlock)
 		assert.False(t, isDivider, "Should not have divider when no enrichments")
 	})
 }
@@ -2608,7 +2656,7 @@ func TestSenderSlack_BuildHeaderBlockFallback(t *testing.T) {
 		assert.GreaterOrEqual(t, len(blocks), 1)
 
 		// First block should be section with title
-		sectionBlock, ok := blocks[0].(*slack.SectionBlock)
+		sectionBlock, ok := blocks[0].(*slackapi.SectionBlock)
 		assert.True(t, ok, "First block should be section block")
 		assert.Contains(t, sectionBlock.Text.Text, "Test Alert")
 	})
@@ -2622,7 +2670,7 @@ func TestSenderSlack_BuildHeaderBlockFallback(t *testing.T) {
 
 		assert.GreaterOrEqual(t, len(blocks), 1)
 
-		sectionBlock, ok := blocks[0].(*slack.SectionBlock)
+		sectionBlock, ok := blocks[0].(*slackapi.SectionBlock)
 		assert.True(t, ok)
 		// Should contain resolved indicator (text contains Resolved or ✅)
 		text := sectionBlock.Text.Text
@@ -2656,15 +2704,15 @@ func TestSenderSlack_PreprocessEnrichments(t *testing.T) {
 		// Mock successful file upload - returns FileSummary with ID
 		mockClient.EXPECT().
 			UploadFileV2(gomock.Any()).
-			Return(&slack.FileSummary{
+			Return(&slackapi.FileSummary{
 				ID: "F123456",
 			}, nil)
 
 		// Mock GetFileInfo to return file details with permalink
 		mockClient.EXPECT().
 			GetFileInfo("F123456", 0, 0).
-			Return(&slack.File{
-				Permalink: "https://files.slack.com/files-pri/T123/F456/test-file.log",
+			Return(&slackapi.File{
+				Permalink: "https://files.slackapi.com/files-pri/T123/F456/test-file.log",
 			}, nil, nil, nil)
 
 		// Call preprocessing
@@ -2672,7 +2720,7 @@ func TestSenderSlack_PreprocessEnrichments(t *testing.T) {
 
 		// Should have set FileInfo on enrichment
 		assert.NotNil(t, issue.Enrichments[0].FileInfo)
-		assert.Equal(t, "https://files.slack.com/files-pri/T123/F456/test-file.log", issue.Enrichments[0].FileInfo.Permalink)
+		assert.Equal(t, "https://files.slackapi.com/files-pri/T123/F456/test-file.log", issue.Enrichments[0].FileInfo.Permalink)
 		assert.Equal(t, "test-file.log", issue.Enrichments[0].FileInfo.Filename)
 		assert.Equal(t, int64(12), issue.Enrichments[0].FileInfo.Size)
 	})
