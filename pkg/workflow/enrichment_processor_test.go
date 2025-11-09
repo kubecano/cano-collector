@@ -99,12 +99,16 @@ func TestProcessWorkflowEnrichments_ExecutionError(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	issues := []*issue.Issue{createTestIssue()}
+	testIssue := createTestIssue()
+	issues := []*issue.Issue{testIssue}
 	alertEvent := createTestAlertManagerEvent()
 
+	// With fault-tolerant behavior, the function logs the error and continues
 	err := processor.ProcessWorkflowEnrichments(ctx, issues, mockEngine, alertEvent)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "assert.AnError general error for testing")
+	require.NoError(t, err)
+
+	// Verify that the issue was NOT enriched when workflow execution failed
+	assert.Empty(t, testIssue.Enrichments)
 }
 
 // Test helper functions

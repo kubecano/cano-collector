@@ -41,7 +41,7 @@ func NewRealKubernetesClient(logger logger_interfaces.LoggerInterface) (*RealKub
 	}, nil
 }
 
-// GetPodLogs retrieves pod logs using kubernetes client-go (inspired by Robusta implementation)
+// GetPodLogs retrieves pod logs using kubernetes client-go
 func (r *RealKubernetesClient) GetPodLogs(ctx context.Context, namespace, podName string, options map[string]interface{}) (string, error) {
 	r.logger.Info("Fetching pod logs",
 		zap.String("namespace", namespace),
@@ -52,7 +52,7 @@ func (r *RealKubernetesClient) GetPodLogs(ctx context.Context, namespace, podNam
 	// Build log options from the provided map
 	podLogOpts := &corev1.PodLogOptions{}
 
-	// Parse options similar to Robusta's approach
+	// Parse options from provided map
 	if container, ok := options["container"].(string); ok && container != "" {
 		podLogOpts.Container = container
 	}
@@ -87,7 +87,7 @@ func (r *RealKubernetesClient) GetPodLogs(ctx context.Context, namespace, podNam
 
 	podLogs, err := req.Stream(ctx)
 	if err != nil {
-		// Handle 404 errors gracefully like Robusta does
+		// Handle 404 errors gracefully
 		if errors.IsNotFound(err) {
 			r.logger.Warn("Pod not found",
 				zap.String("namespace", namespace),
@@ -104,7 +104,7 @@ func (r *RealKubernetesClient) GetPodLogs(ctx context.Context, namespace, podNam
 	}
 	defer podLogs.Close()
 
-	// Read logs from stream (inspired by Robusta's approach)
+	// Read logs from stream
 	buf, err := io.ReadAll(podLogs)
 	if err != nil {
 		r.logger.Error("Failed to read pod logs",

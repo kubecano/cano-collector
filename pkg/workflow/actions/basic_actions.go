@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -401,16 +402,10 @@ func (a *IssueEnrichmentAction) Execute(ctx context.Context, event core_event.Wo
 func (a *IssueEnrichmentAction) createIssueEnrichments(alertEvent *core_event.AlertManagerEvent) []issue.Enrichment {
 	var enrichments []issue.Enrichment
 
-	// Add alert metadata enrichment if enabled
-	if a.GetBoolParameter("include_metadata", true) {
-		metadataEnrichment := a.createMetadataEnrichment(alertEvent)
-		enrichments = append(enrichments, *metadataEnrichment)
-	}
-
-	// Add alert labels enrichment if enabled
-	if a.GetBoolParameter("include_labels", true) {
-		labelsEnrichment := a.createLabelsEnrichment(alertEvent)
-		enrichments = append(enrichments, *labelsEnrichment)
+	// Create consolidated "Alert Details" enrichment (labels + annotations + metadata)
+	if a.GetBoolParameter("include_labels", true) || a.GetBoolParameter("include_metadata", true) {
+		detailsEnrichment := a.createConsolidatedDetailsEnrichment(alertEvent)
+		enrichments = append(enrichments, *detailsEnrichment)
 	}
 
 	// Add custom title/description if configured
@@ -422,38 +417,56 @@ func (a *IssueEnrichmentAction) createIssueEnrichments(alertEvent *core_event.Al
 	return enrichments
 }
 
-// createMetadataEnrichment creates enrichment with alert metadata
-func (a *IssueEnrichmentAction) createMetadataEnrichment(alertEvent *core_event.AlertManagerEvent) *issue.Enrichment {
-	// Use proper Slack markdown (single asterisk for bold) and emojis
-	text := fmt.Sprintf("*Alert Metadata*\n\n"+
-		"📥 *Receiver:* %s\n"+
-		"📊 *Status:* %s\n"+
-		"🔢 *Alert Count:* %d\n"+
-		"⚠️ *Severity:* %s\n",
-		alertEvent.Receiver, alertEvent.Status, len(alertEvent.Alerts), alertEvent.GetSeverity())
+// createConsolidatedDetailsEnrichment creates a single enrichment combining labels, annotations, and metadata
+func (a *IssueEnrichmentAction) createConsolidatedDetailsEnrichment(alertEvent *core_event.AlertManagerEvent) *issue.Enrichment {
+	enrichment := issue.NewEnrichmentWithType(issue.EnrichmentTypeAlertLabels, "Alert Details")
 
-	textBlock := issue.NewMarkdownBlock(text)
-	enrichment := issue.NewEnrichmentWithType(issue.EnrichmentTypeAlertLabels, "Alert Metadata")
-	enrichment.AddBlock(textBlock)
-	return enrichment
-}
-
-// createLabelsEnrichment creates enrichment with alert labels
-func (a *IssueEnrichmentAction) createLabelsEnrichment(alertEvent *core_event.AlertManagerEvent) *issue.Enrichment {
-	if len(alertEvent.Alerts) == 0 {
-		return issue.NewEnrichmentWithType(issue.EnrichmentTypeAlertLabels, AlertLabelsTitle)
+	// Add labels section if enabled and available
+	if a.GetBoolParameter("include_labels", true) && len(alertEvent.Alerts) > 0 {
+		labels := alertEvent.Alerts[0].Labels
+		if len(labels) > 0 {
+			var rows [][]string
+			for key, value := range labels {
+				rows = append(rows, []string{key, value})
+			}
+			tableBlock := issue.NewTableBlock([]string{"Label", "Value"}, rows, "", issue.TableBlockFormatHorizontal)
+			enrichment.AddBlock(tableBlock)
+		}
 	}
 
-	// Get labels from first alert
-	labels := alertEvent.Alerts[0].Labels
-	var rows [][]string
-	for key, value := range labels {
-		rows = append(rows, []string{key, value})
+	// Add annotations section if available
+	if len(alertEvent.Alerts) > 0 {
+		annotations := alertEvent.Alerts[0].Annotations
+		if len(annotations) > 0 {
+			// Add subheader divider
+			dividerBlock := issue.NewMarkdownBlock("\n*--- Annotations ---*")
+			enrichment.AddBlock(dividerBlock)
+
+			var rows [][]string
+			for key, value := range annotations {
+				rows = append(rows, []string{key, value})
+			}
+			tableBlock := issue.NewTableBlock([]string{"Annotation", "Value"}, rows, "", issue.TableBlockFormatHorizontal)
+			enrichment.AddBlock(tableBlock)
+		}
 	}
 
-	tableBlock := issue.NewTableBlock([]string{"Label", "Value"}, rows, AlertLabelsTitle, issue.TableBlockFormatHorizontal)
-	enrichment := issue.NewEnrichmentWithType(issue.EnrichmentTypeAlertLabels, AlertLabelsTitle)
-	enrichment.AddBlock(tableBlock)
+	// Add metadata section if enabled
+	if a.GetBoolParameter("include_metadata", true) {
+		// Add subheader divider
+		dividerBlock := issue.NewMarkdownBlock("\n*--- Metadata ---*")
+		enrichment.AddBlock(dividerBlock)
+
+		var rows [][]string
+		rows = append(rows, []string{"receiver", alertEvent.Receiver})
+		rows = append(rows, []string{"status", alertEvent.Status})
+		rows = append(rows, []string{"alert_count", strconv.Itoa(len(alertEvent.Alerts))})
+		rows = append(rows, []string{"severity", alertEvent.GetSeverity()})
+
+		tableBlock := issue.NewTableBlock([]string{"Metadata", "Value"}, rows, "", issue.TableBlockFormatHorizontal)
+		enrichment.AddBlock(tableBlock)
+	}
+
 	return enrichment
 }
 

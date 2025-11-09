@@ -315,7 +315,7 @@ func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slackapi.Block {
 		blocks = append(blocks, contextBlocks...)
 	}
 
-	// Note: Intermediate dividers removed (Robusta pattern - single divider at end)
+	// Note: Intermediate dividers removed for cleaner layout
 
 	// 3. Render description if present
 	if context.Description != "" {
@@ -337,17 +337,9 @@ func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slackapi.Block {
 		}
 	}
 
-	// 6. Render crash info if present (for pod alerts)
-	if context.CrashInfo != nil {
-		crashBlocks, err := s.templateLoader.RenderToBlocks("crash_info.tmpl", context)
-		if err != nil {
-			s.logger.Error("Failed to render crash info template", zap.Error(err))
-		} else {
-			blocks = append(blocks, crashBlocks...)
-		}
-	}
+	// NOTE: Crash info now comes from PodInfoAction enrichments, not templates
 
-	// 7. Deduplicate enrichments BEFORE rendering to prevent duplicates
+	// 6. Deduplicate enrichments BEFORE rendering to prevent duplicates
 	uniqueEnrichments := s.deduplicateEnrichments(issue.Enrichments)
 
 	// 8. Separate file enrichments from other enrichments (single rendering path)
@@ -362,7 +354,7 @@ func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slackapi.Block {
 		}
 	}
 
-	// 9. Render file enrichments with permalinks (Robusta-style)
+	// 9. Render file enrichments with permalinks
 	for _, enrichment := range fileEnrichments {
 		fileBlocks, err := s.templateLoader.RenderToBlocks("file_enrichment.tmpl", enrichment)
 		if err != nil {
@@ -376,7 +368,7 @@ func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slackapi.Block {
 	enrichmentBlocks := s.buildEnrichmentBlocks(otherEnrichments)
 	blocks = append(blocks, enrichmentBlocks...)
 
-	// 11. Add single divider at end for visual separation (Robusta pattern)
+	// 11. Add single divider at end for visual separation
 	if len(enrichmentBlocks) > 0 || len(fileEnrichments) > 0 {
 		blocks = append(blocks, slackapi.NewDividerBlock())
 	}
@@ -585,8 +577,8 @@ func (s *SenderSlack) convertEnrichmentToBlocks(enrichment issuepkg.Enrichment) 
 		blocks = append(blocks, slackBlock)
 	}
 
-	// Note: Dividers removed to reduce visual clutter (Robusta pattern)
-	// Single divider will be added at end of message instead
+	// Note: Dividers removed to reduce visual clutter
+	// Single divider is added at end of message instead
 
 	return blocks
 }
@@ -668,7 +660,7 @@ func (s *SenderSlack) convertTableToEnhancedBlock(table *issuepkg.TableBlock) sl
 		text = fmt.Sprintf("*%s*\n", table.TableName)
 	}
 
-	// For two-column tables, use Robusta-style key-value format
+	// For two-column tables, use clean key-value format
 	if len(table.Headers) == 2 {
 		for _, row := range table.Rows {
 			if len(row) >= 2 {
@@ -706,7 +698,7 @@ func (s *SenderSlack) convertTableToEnhancedBlock(table *issuepkg.TableBlock) sl
 		}
 		text += "```"
 	} else {
-		// For headerless tables, use Robusta-style key-value format
+		// For headerless tables, use clean key-value format
 		for _, row := range table.Rows {
 			if len(row) >= 2 {
 				text += fmt.Sprintf("● %s  `%s`\n", row[0], row[1])
@@ -729,10 +721,10 @@ func (s *SenderSlack) convertTableToAttachmentStyleBlock(table *issuepkg.TableBl
 		text = fmt.Sprintf("📊 *%s*\n", table.TableName)
 	}
 
-	// More compact format suitable for attachments
+	// Compact format suitable for attachments
 	for _, row := range table.Rows {
 		if len(row) >= 2 {
-			text += fmt.Sprintf("└ %s: `%s`\n", row[0], row[1])
+			text += fmt.Sprintf("● %s  `%s`\n", row[0], row[1])
 		}
 	}
 
@@ -1122,11 +1114,17 @@ func (s *SenderSlack) uploadFileToSlack(filename string, content []byte) (string
 
 // tryUploadDirect attempts direct upload using bytes.Reader
 func (s *SenderSlack) tryUploadDirect(filename string, content []byte) (string, error) {
+	// Resolve channel name to ID (Slack API requires ID, not name)
+	channelID, err := s.resolveChannelID()
+	if err != nil {
+		return "", fmt.Errorf("resolve channel: %w", err)
+	}
+
 	params := slackapi.UploadFileV2Parameters{
 		Filename: filename,
 		FileSize: len(content),
 		Reader:   bytes.NewReader(content),
-		Channel:  s.channel, // Share file to channel for visibility
+		Channel:  channelID, // Use channel ID, not name
 	}
 
 	return s.executeUpload(params)
@@ -1134,6 +1132,12 @@ func (s *SenderSlack) tryUploadDirect(filename string, content []byte) (string, 
 
 // tryUploadViaTempFile attempts upload using temporary file as fallback strategy
 func (s *SenderSlack) tryUploadViaTempFile(filename string, content []byte) (string, error) {
+	// Resolve channel name to ID (Slack API requires ID, not name)
+	channelID, err := s.resolveChannelID()
+	if err != nil {
+		return "", fmt.Errorf("resolve channel: %w", err)
+	}
+
 	tmpFile, err := os.CreateTemp("", "slack-upload-*")
 	if err != nil {
 		return "", fmt.Errorf("create temp file: %w", err)
@@ -1153,7 +1157,7 @@ func (s *SenderSlack) tryUploadViaTempFile(filename string, content []byte) (str
 		Filename: filename,
 		FileSize: len(content),
 		Reader:   tmpFile,
-		Channel:  s.channel,
+		Channel:  channelID, // Use channel ID, not name
 	}
 
 	return s.executeUpload(params)
@@ -1256,12 +1260,23 @@ func (s *SenderSlack) createFileErrorBlock(file *issuepkg.FileBlock, err error) 
 func (s *SenderSlack) formatHeader(issue *issuepkg.Issue) string {
 	var statusText string
 	var statusEmoji string
+
 	if issue.IsResolved() {
 		statusText = "Alert resolved"
 		statusEmoji = "✅"
 	} else {
-		statusText = "Alert firing"
-		statusEmoji = "🔥"
+		// Source-based emoji and status text
+		switch issue.Source {
+		case issuepkg.SourcePrometheus:
+			statusEmoji = "🔥"
+			statusText = "Prometheus Alert Firing"
+		case issuepkg.SourceKubernetesAPIServer:
+			statusEmoji = "👀"
+			statusText = "K8s event detected"
+		default:
+			statusEmoji = "🔥"
+			statusText = "Alert firing"
+		}
 	}
 
 	severityText := s.getSeverityText(issue.Severity)
