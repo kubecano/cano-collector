@@ -6,6 +6,7 @@ type EnrichmentType int
 const (
 	EnrichmentTypeAlertLabels EnrichmentType = iota
 	EnrichmentTypeAlertAnnotations
+	EnrichmentTypeAlertMetadata
 	EnrichmentTypeGraph
 	EnrichmentTypeAIAnalysis
 	EnrichmentTypeNodeInfo
@@ -26,6 +27,8 @@ func (et EnrichmentType) String() string {
 		return "alert_labels"
 	case EnrichmentTypeAlertAnnotations:
 		return "alert_annotations"
+	case EnrichmentTypeAlertMetadata:
+		return "alert_metadata"
 	case EnrichmentTypeGraph:
 		return "graph"
 	case EnrichmentTypeAIAnalysis:

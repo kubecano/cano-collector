@@ -162,6 +162,9 @@ local-deploy: local-create-namespace
 		--set collector.image.tag=$(LOCAL_IMAGE_TAG) \
 		--wait \
 		--timeout 5m
+	@echo "🔄 Restarting deployment to pull new image..."
+	kubectl rollout restart deployment/$(LOCAL_RELEASE_NAME) -n $(LOCAL_NAMESPACE)
+	kubectl rollout status deployment/$(LOCAL_RELEASE_NAME) -n $(LOCAL_NAMESPACE) --timeout=2m
 	@echo "✅ Deployment complete"
 
 # Show deployment status
