@@ -327,14 +327,10 @@ func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slackapi.Block {
 		}
 	}
 
-	// Note: Links section removed - generator URL button not needed
-
-	// NOTE: Crash info now comes from PodInfoAction enrichments, not templates
-
-	// 6. Deduplicate enrichments BEFORE rendering to prevent duplicates
+	// 4. Deduplicate enrichments before rendering
 	uniqueEnrichments := s.deduplicateEnrichments(issue.Enrichments)
 
-	// 8. Separate file enrichments from other enrichments (single rendering path)
+	// 5. Separate file enrichments from other enrichments
 	var fileEnrichments []issuepkg.Enrichment
 	var otherEnrichments []issuepkg.Enrichment
 
@@ -346,7 +342,7 @@ func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slackapi.Block {
 		}
 	}
 
-	// 9. Render file enrichments with permalinks
+	// 6. Render file enrichments (logs, text files)
 	for _, enrichment := range fileEnrichments {
 		fileBlocks, err := s.templateLoader.RenderToBlocks("file_enrichment.tmpl", enrichment)
 		if err != nil {
@@ -356,19 +352,16 @@ func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slackapi.Block {
 		}
 	}
 
-	// 10. Render other enrichments (tables, markdown, etc.) using templates
-	// EXCEPT Alert Labels (in attachments), Alert Annotations and Alert Metadata (not needed)
+	// 7. Render other enrichments (tables, crash info, etc.)
+	// Skip Alert Labels (rendered in attachments), Alert Annotations and Alert Metadata
 	for _, enrichment := range otherEnrichments {
-		// Skip enrichments that shouldn't be displayed in main blocks
 		if enrichment.Type == issuepkg.EnrichmentTypeAlertLabels ||
 			enrichment.Type == issuepkg.EnrichmentTypeAlertAnnotations ||
 			enrichment.Type == issuepkg.EnrichmentTypeAlertMetadata {
 			continue
 		}
 
-		// Select appropriate template based on enrichment type
 		templateName := s.selectTemplateForEnrichment(enrichment)
-
 		enrichmentBlocks, err := s.templateLoader.RenderToBlocks(templateName, enrichment)
 		if err != nil {
 			s.logger.Error("Failed to render enrichment template",
@@ -380,7 +373,17 @@ func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slackapi.Block {
 		}
 	}
 
-	// 11. Add single divider at end for visual separation
+	// 8. Render links section (runbook URLs with preview)
+	if len(context.Links) > 0 {
+		linkBlocks, err := s.templateLoader.RenderToBlocks("links.tmpl", context)
+		if err != nil {
+			s.logger.Error("Failed to render links template", zap.Error(err))
+		} else {
+			blocks = append(blocks, linkBlocks...)
+		}
+	}
+
+	// 9. Add divider at the end
 	if len(otherEnrichments) > 0 || len(fileEnrichments) > 0 {
 		blocks = append(blocks, slackapi.NewDividerBlock())
 	}
