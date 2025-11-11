@@ -107,11 +107,11 @@ func convertToSlackBlocks(rawBlocks []map[string]interface{}) []slackapi.Block {
 		}
 
 		switch blockType {
-	case "header":
-		block := parseHeaderBlock(raw)
-		if block != nil {
-			blocks = append(blocks, block)
-		}
+		case "header":
+			block := parseHeaderBlock(raw)
+			if block != nil {
+				blocks = append(blocks, block)
+			}
 		case "section":
 			block := parseSectionBlock(raw)
 			if block != nil {
