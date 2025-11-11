@@ -327,15 +327,7 @@ func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slackapi.Block {
 		}
 	}
 
-	// 5. Render links if present
-	if len(context.Links) > 0 {
-		linksBlocks, err := s.templateLoader.RenderToBlocks("links.tmpl", context)
-		if err != nil {
-			s.logger.Error("Failed to render links template", zap.Error(err))
-		} else {
-			blocks = append(blocks, linksBlocks...)
-		}
-	}
+	// Note: Links section removed - generator URL button not needed
 
 	// NOTE: Crash info now comes from PodInfoAction enrichments, not templates
 
@@ -365,10 +357,12 @@ func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slackapi.Block {
 	}
 
 	// 10. Render other enrichments (tables, markdown, etc.) using templates
-	// EXCEPT Alert Labels which will be rendered in attachments with colored borders
+	// EXCEPT Alert Labels (in attachments), Alert Annotations and Alert Metadata (not needed)
 	for _, enrichment := range otherEnrichments {
-		// Skip Alert Labels - they'll be rendered in attachments
-		if enrichment.Type == issuepkg.EnrichmentTypeAlertLabels {
+		// Skip enrichments that shouldn't be displayed in main blocks
+		if enrichment.Type == issuepkg.EnrichmentTypeAlertLabels ||
+			enrichment.Type == issuepkg.EnrichmentTypeAlertAnnotations ||
+			enrichment.Type == issuepkg.EnrichmentTypeAlertMetadata {
 			continue
 		}
 

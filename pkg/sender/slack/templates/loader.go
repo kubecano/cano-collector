@@ -5,6 +5,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"text/template"
 
 	slackapi "github.com/slack-go/slack"
@@ -18,10 +19,35 @@ type TemplateLoader struct {
 	templates map[string]*template.Template
 }
 
+// jsonEscape escapes a string for safe use in JSON
+func jsonEscape(s string) string {
+	b, err := json.Marshal(s)
+	if err != nil {
+		// Fallback to basic escaping if marshal fails
+		s = strings.ReplaceAll(s, "\\", "\\\\")
+		s = strings.ReplaceAll(s, "\"", "\\\"")
+		s = strings.ReplaceAll(s, "\n", "\\n")
+		s = strings.ReplaceAll(s, "\r", "\\r")
+		s = strings.ReplaceAll(s, "\t", "\\t")
+		return s
+	}
+	// json.Marshal adds quotes, remove them
+	result := string(b)
+	if len(result) >= 2 && result[0] == '"' && result[len(result)-1] == '"' {
+		result = result[1 : len(result)-1]
+	}
+	return result
+}
+
 // NewTemplateLoader creates a new template loader and parses all embedded templates
 func NewTemplateLoader() (*TemplateLoader, error) {
 	loader := &TemplateLoader{
 		templates: make(map[string]*template.Template),
+	}
+
+	// Define custom template functions
+	funcMap := template.FuncMap{
+		"jsonEscape": jsonEscape,
 	}
 
 	// Load all template files
@@ -36,7 +62,7 @@ func NewTemplateLoader() (*TemplateLoader, error) {
 	}
 
 	for _, file := range files {
-		tmpl, err := template.ParseFS(templateFS, file)
+		tmpl, err := template.New(file).Funcs(funcMap).ParseFS(templateFS, file)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse template %s: %w", file, err)
 		}
@@ -81,6 +107,11 @@ func convertToSlackBlocks(rawBlocks []map[string]interface{}) []slackapi.Block {
 		}
 
 		switch blockType {
+	case "header":
+		block := parseHeaderBlock(raw)
+		if block != nil {
+			blocks = append(blocks, block)
+		}
 		case "section":
 			block := parseSectionBlock(raw)
 			if block != nil {
@@ -150,4 +181,20 @@ func parseContextBlock(raw map[string]interface{}) *slackapi.ContextBlock {
 	}
 
 	return slackapi.NewContextBlock("", elements...)
+}
+
+// parseHeaderBlock parses a header block from raw JSON
+func parseHeaderBlock(raw map[string]interface{}) *slackapi.HeaderBlock {
+	textObj, ok := raw["text"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	textContent, _ := textObj["text"].(string)
+	if textContent == "" {
+		return nil
+	}
+
+	textBlockObj := slackapi.NewTextBlockObject("plain_text", textContent, true, false)
+	return slackapi.NewHeaderBlock(textBlockObj)
 }
