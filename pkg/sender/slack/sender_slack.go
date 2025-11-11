@@ -144,7 +144,7 @@ func (s *SenderSlack) Send(ctx context.Context, issue *issuepkg.Issue) error {
 
 	// Create formatted blocks
 	blocks := s.buildSlackBlocks(issue)
-	attachments := s.buildSlackAttachments(issue)
+	attachments := s.buildSlackAttachments(issue, issue.Enrichments)
 
 	// Fallback text for notifications
 	fallbackText := s.formatIssueToString(issue)
@@ -327,22 +327,10 @@ func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slackapi.Block {
 		}
 	}
 
-	// 5. Render links if present
-	if len(context.Links) > 0 {
-		linksBlocks, err := s.templateLoader.RenderToBlocks("links.tmpl", context)
-		if err != nil {
-			s.logger.Error("Failed to render links template", zap.Error(err))
-		} else {
-			blocks = append(blocks, linksBlocks...)
-		}
-	}
-
-	// NOTE: Crash info now comes from PodInfoAction enrichments, not templates
-
-	// 6. Deduplicate enrichments BEFORE rendering to prevent duplicates
+	// 4. Deduplicate enrichments before rendering
 	uniqueEnrichments := s.deduplicateEnrichments(issue.Enrichments)
 
-	// 8. Separate file enrichments from other enrichments (single rendering path)
+	// 5. Separate file enrichments from other enrichments
 	var fileEnrichments []issuepkg.Enrichment
 	var otherEnrichments []issuepkg.Enrichment
 
@@ -354,7 +342,7 @@ func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slackapi.Block {
 		}
 	}
 
-	// 9. Render file enrichments with permalinks
+	// 6. Render file enrichments (logs, text files)
 	for _, enrichment := range fileEnrichments {
 		fileBlocks, err := s.templateLoader.RenderToBlocks("file_enrichment.tmpl", enrichment)
 		if err != nil {
@@ -364,16 +352,64 @@ func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slackapi.Block {
 		}
 	}
 
-	// 10. Add other enrichments (tables, markdown, etc.) using existing logic
-	enrichmentBlocks := s.buildEnrichmentBlocks(otherEnrichments)
-	blocks = append(blocks, enrichmentBlocks...)
+	// 7. Render other enrichments (tables, crash info, etc.)
+	// Skip Alert Labels (rendered in attachments), Alert Annotations and Alert Metadata
+	for _, enrichment := range otherEnrichments {
+		if enrichment.Type == issuepkg.EnrichmentTypeAlertLabels ||
+			enrichment.Type == issuepkg.EnrichmentTypeAlertAnnotations ||
+			enrichment.Type == issuepkg.EnrichmentTypeAlertMetadata {
+			continue
+		}
 
-	// 11. Add single divider at end for visual separation
-	if len(enrichmentBlocks) > 0 || len(fileEnrichments) > 0 {
+		templateName := s.selectTemplateForEnrichment(enrichment)
+		enrichmentBlocks, err := s.templateLoader.RenderToBlocks(templateName, enrichment)
+		if err != nil {
+			s.logger.Error("Failed to render enrichment template",
+				zap.String("template", templateName),
+				zap.String("enrichment_type", enrichment.Type.String()),
+				zap.Error(err))
+		} else {
+			blocks = append(blocks, enrichmentBlocks...)
+		}
+	}
+
+	// 8. Render links section (runbook URLs with preview)
+	if len(context.Links) > 0 {
+		linkBlocks, err := s.templateLoader.RenderToBlocks("links.tmpl", context)
+		if err != nil {
+			s.logger.Error("Failed to render links template", zap.Error(err))
+		} else {
+			blocks = append(blocks, linkBlocks...)
+		}
+	}
+
+	// 9. Add divider at the end
+	if len(otherEnrichments) > 0 || len(fileEnrichments) > 0 {
 		blocks = append(blocks, slackapi.NewDividerBlock())
 	}
 
 	return blocks
+}
+
+// selectTemplateForEnrichment returns the appropriate template name for an enrichment type
+func (s *SenderSlack) selectTemplateForEnrichment(enrichment issuepkg.Enrichment) string {
+	switch enrichment.Type {
+	case issuepkg.EnrichmentTypeAlertLabels:
+		return "table_enrichment.tmpl"
+	case issuepkg.EnrichmentTypeAlertAnnotations:
+		return "table_enrichment.tmpl"
+	case issuepkg.EnrichmentTypeAlertMetadata:
+		return "table_enrichment.tmpl"
+	case issuepkg.EnrichmentTypeCrashInfo:
+		return "table_enrichment.tmpl"
+	case issuepkg.EnrichmentTypeTextFile:
+		return "file_enrichment.tmpl"
+	case issuepkg.EnrichmentTypeLogs:
+		return "file_enrichment.tmpl"
+	default:
+		// Default fallback for unknown types
+		return "table_enrichment.tmpl"
+	}
 }
 
 // buildSlackBlocksLegacy is the old implementation (fallback if templates fail)
@@ -480,20 +516,30 @@ func (s *SenderSlack) buildHeaderBlockFallback(issue *issuepkg.Issue) []slackapi
 }
 
 // buildSlackAttachments creates colored attachment with secondary issue details
-func (s *SenderSlack) buildSlackAttachments(issue *issuepkg.Issue) []slackapi.Attachment {
+func (s *SenderSlack) buildSlackAttachments(issue *issuepkg.Issue, enrichments []issuepkg.Enrichment) []slackapi.Attachment {
 	var attachments []slackapi.Attachment
 
-	// Only create attachment if we have secondary information to show
-	var attachmentBlocks []slackapi.Block
+	// 1. Alert Labels attachment with colored border (red=firing, green=resolved)
+	for _, enrichment := range enrichments {
+		if enrichment.Type == issuepkg.EnrichmentTypeAlertLabels {
+			labelsAttachment := s.buildAlertLabelsAttachment(issue, enrichment)
+			if labelsAttachment != nil {
+				attachments = append(attachments, *labelsAttachment)
+			}
+		}
+	}
 
-	// Source information (less critical, keep in attachment)
+	// 2. Source/Cluster/Namespace attachment (yellow border)
+	var metadataBlocks []slackapi.Block
+
+	// Source information
 	if issue.Source != issuepkg.SourceUnknown {
 		sourceText := fmt.Sprintf("📍 *Source:* `%s`", issue.Source.String())
 		sourceBlock := slackapi.NewSectionBlock(
 			slackapi.NewTextBlockObject("mrkdwn", sourceText, false, false),
 			nil, nil,
 		)
-		attachmentBlocks = append(attachmentBlocks, sourceBlock)
+		metadataBlocks = append(metadataBlocks, sourceBlock)
 	}
 
 	// Cluster information
@@ -503,40 +549,88 @@ func (s *SenderSlack) buildSlackAttachments(issue *issuepkg.Issue) []slackapi.At
 			slackapi.NewTextBlockObject("mrkdwn", clusterText, false, false),
 			nil, nil,
 		)
-		attachmentBlocks = append(attachmentBlocks, clusterBlock)
+		metadataBlocks = append(metadataBlocks, clusterBlock)
 	}
 
-	// Add any additional metadata that might be useful but not critical
+	// Namespace
 	if issue.Subject != nil && issue.Subject.Namespace != "" {
 		namespaceText := fmt.Sprintf("🏷️ *Namespace:* `%s`", issue.Subject.Namespace)
 		namespaceBlock := slackapi.NewSectionBlock(
 			slackapi.NewTextBlockObject("mrkdwn", namespaceText, false, false),
 			nil, nil,
 		)
-		attachmentBlocks = append(attachmentBlocks, namespaceBlock)
+		metadataBlocks = append(metadataBlocks, namespaceBlock)
 	}
 
-	// Add timing information if available
+	// Timing information
 	if !issue.StartsAt.IsZero() {
 		timeText := "⏰ *Started:* " + issue.StartsAt.UTC().Format("2006-01-02 15:04:05 UTC")
 		timeBlock := slackapi.NewSectionBlock(
 			slackapi.NewTextBlockObject("mrkdwn", timeText, false, false),
 			nil, nil,
 		)
-		attachmentBlocks = append(attachmentBlocks, timeBlock)
+		metadataBlocks = append(metadataBlocks, timeBlock)
 	}
 
-	// Only create attachment if we have content
-	if len(attachmentBlocks) > 0 {
-		color := s.getSeverityColor(issue.Severity)
-		attachment := slackapi.Attachment{
-			Color:  color,
-			Blocks: slackapi.Blocks{BlockSet: attachmentBlocks},
+	// Create metadata attachment with yellow color
+	if len(metadataBlocks) > 0 {
+		metadataAttachment := slackapi.Attachment{
+			Color:  "#FFCC00", // Yellow
+			Blocks: slackapi.Blocks{BlockSet: metadataBlocks},
 		}
-		attachments = append(attachments, attachment)
+		attachments = append(attachments, metadataAttachment)
 	}
 
 	return attachments
+}
+
+// buildAlertLabelsAttachment creates a colored attachment for Alert Labels
+func (s *SenderSlack) buildAlertLabelsAttachment(issue *issuepkg.Issue, enrichment issuepkg.Enrichment) *slackapi.Attachment {
+	if len(enrichment.Blocks) == 0 {
+		return nil
+	}
+
+	// Determine color based on alert status
+	var color string
+	if issue.Status == issuepkg.StatusResolved {
+		color = "#00B302" // Green for resolved
+	} else {
+		color = "#EF311F" // Red for firing
+	}
+
+	// Build labels text from enrichment blocks
+	var labelsText string
+	if enrichment.Title != "" {
+		labelsText = fmt.Sprintf("*%s*\n", enrichment.Title)
+	}
+
+	for _, block := range enrichment.Blocks {
+		// Type-assert to TableBlock to access Rows field
+		if tableBlock, ok := block.(*issuepkg.TableBlock); ok {
+			for _, row := range tableBlock.Rows {
+				if len(row) >= 2 {
+					labelsText += fmt.Sprintf("• %s: `%s`\n", row[0], row[1])
+				}
+			}
+		}
+	}
+
+	if labelsText == "" {
+		return nil
+	}
+
+	// Create section block with labels
+	labelBlock := slackapi.NewSectionBlock(
+		slackapi.NewTextBlockObject("mrkdwn", labelsText, false, false),
+		nil, nil,
+	)
+
+	attachment := &slackapi.Attachment{
+		Color:  color,
+		Blocks: slackapi.Blocks{BlockSet: []slackapi.Block{labelBlock}},
+	}
+
+	return attachment
 }
 
 // buildEnrichmentBlocks creates blocks for enrichments in the main message

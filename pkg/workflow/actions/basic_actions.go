@@ -402,10 +402,11 @@ func (a *IssueEnrichmentAction) Execute(ctx context.Context, event core_event.Wo
 func (a *IssueEnrichmentAction) createIssueEnrichments(alertEvent *core_event.AlertManagerEvent) []issue.Enrichment {
 	var enrichments []issue.Enrichment
 
-	// Create consolidated "Alert Details" enrichment (labels + annotations + metadata)
-	if a.GetBoolParameter("include_labels", true) || a.GetBoolParameter("include_metadata", true) {
-		detailsEnrichment := a.createConsolidatedDetailsEnrichment(alertEvent)
-		enrichments = append(enrichments, *detailsEnrichment)
+	// Create metadata enrichment if enabled
+	// Note: Labels and Annotations are already added by label_enrichment.go in the converter
+	if a.GetBoolParameter("include_metadata", true) {
+		metadataEnrichment := a.createConsolidatedDetailsEnrichment(alertEvent)
+		enrichments = append(enrichments, *metadataEnrichment)
 	}
 
 	// Add custom title/description if configured
@@ -417,46 +418,14 @@ func (a *IssueEnrichmentAction) createIssueEnrichments(alertEvent *core_event.Al
 	return enrichments
 }
 
-// createConsolidatedDetailsEnrichment creates a single enrichment combining labels, annotations, and metadata
+// createConsolidatedDetailsEnrichment creates enrichment for metadata only
+// Note: Labels and Annotations are already added by label_enrichment.go in the converter
+// This function only adds metadata to avoid duplication
 func (a *IssueEnrichmentAction) createConsolidatedDetailsEnrichment(alertEvent *core_event.AlertManagerEvent) *issue.Enrichment {
-	enrichment := issue.NewEnrichmentWithType(issue.EnrichmentTypeAlertLabels, "Alert Details")
-
-	// Add labels section if enabled and available
-	if a.GetBoolParameter("include_labels", true) && len(alertEvent.Alerts) > 0 {
-		labels := alertEvent.Alerts[0].Labels
-		if len(labels) > 0 {
-			var rows [][]string
-			for key, value := range labels {
-				rows = append(rows, []string{key, value})
-			}
-			tableBlock := issue.NewTableBlock([]string{"Label", "Value"}, rows, "", issue.TableBlockFormatHorizontal)
-			enrichment.AddBlock(tableBlock)
-		}
-	}
-
-	// Add annotations section if available
-	if len(alertEvent.Alerts) > 0 {
-		annotations := alertEvent.Alerts[0].Annotations
-		if len(annotations) > 0 {
-			// Add subheader divider
-			dividerBlock := issue.NewMarkdownBlock("\n*--- Annotations ---*")
-			enrichment.AddBlock(dividerBlock)
-
-			var rows [][]string
-			for key, value := range annotations {
-				rows = append(rows, []string{key, value})
-			}
-			tableBlock := issue.NewTableBlock([]string{"Annotation", "Value"}, rows, "", issue.TableBlockFormatHorizontal)
-			enrichment.AddBlock(tableBlock)
-		}
-	}
+	enrichment := issue.NewEnrichmentWithType(issue.EnrichmentTypeAlertMetadata, "Alert Metadata")
 
 	// Add metadata section if enabled
 	if a.GetBoolParameter("include_metadata", true) {
-		// Add subheader divider
-		dividerBlock := issue.NewMarkdownBlock("\n*--- Metadata ---*")
-		enrichment.AddBlock(dividerBlock)
-
 		var rows [][]string
 		rows = append(rows, []string{"receiver", alertEvent.Receiver})
 		rows = append(rows, []string{"status", alertEvent.Status})

@@ -1,10 +1,18 @@
 {{- /* Header block template - displays alert status, severity, and title */ -}}
 [
   {
+    "type": "header",
+    "text": {
+      "type": "plain_text",
+      "text": "{{.StatusEmoji}} {{.StatusText | jsonEscape}} {{.StatusEmoji}}",
+      "emoji": true
+    }
+  },
+  {
     "type": "section",
     "text": {
       "type": "mrkdwn",
-      "text": "{{.StatusEmoji}} {{.StatusText}} {{.StatusEmoji}}  {{.SeverityEmoji}} {{.Severity}}\n*{{.Title}}*"
+      "text": "{{.SeverityEmoji}} *{{.Severity | jsonEscape}}*\n\n*{{.Title | jsonEscape}}*"
     }
   }
 ]

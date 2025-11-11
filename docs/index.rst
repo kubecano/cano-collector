@@ -176,6 +176,7 @@ Planned
 
    architecture/index
    development_guide
+   local_testing
    api_reference
    implementation_tasks
 

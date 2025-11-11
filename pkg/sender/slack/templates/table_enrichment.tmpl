@@ -1,0 +1,10 @@
+{{- /* Generic table enrichment - for labels, annotations, metadata, etc. */ -}}
+[
+  {
+    "type": "section",
+    "text": {
+      "type": "mrkdwn",
+      "text": "{{- if .Title -}}*{{.Title}}*\n{{- end -}}{{- range .Blocks -}}{{- if eq .Type "TableBlock" -}}{{- range .Rows -}}● {{index . 0}}  `{{index . 1}}`\n{{- end -}}{{- else if eq .Type "MarkdownBlock" -}}{{.Text}}\n{{- end -}}{{- end -}}"
+    }
+  }
+]

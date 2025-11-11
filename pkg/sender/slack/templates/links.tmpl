@@ -1,11 +1,12 @@
 {{- /* Links section - external links (Prometheus, Grafana, etc.) */ -}}
+{{- /* Plain URLs for auto-preview/unfurl */ -}}
 {{- if .Links -}}
 [
   {
     "type": "section",
     "text": {
       "type": "mrkdwn",
-      "text": "*Links*\n{{- range .Links}}\n● <{{.URL}}|{{.Text}}>{{end}}"
+      "text": "*Links*\n{{- range .Links}}\n● {{.Text}}: {{.URL | jsonEscape}}{{end}}"
     }
   }
 ]

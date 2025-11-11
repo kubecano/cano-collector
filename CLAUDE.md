@@ -50,6 +50,36 @@ The system processes notifications through configurable workflows and sends them
 
 ## Development Commands
 
+### Local Development (k3d on macOS)
+
+For rapid local testing using k3d + Makefile automation:
+
+```bash
+# Full local setup (first time)
+make local-dev
+
+# Quick rebuild after code changes
+make local-dev-quick
+
+# Config-only update (values-local.yaml changes)
+make local-dev-config
+
+# Monitor and debug
+make local-logs              # Tail logs
+make local-status            # Pod status
+make local-port-forward      # Port forward to localhost:8080
+make local-test-alert        # Send test alert
+
+# Cleanup
+make local-clean             # Remove deployment
+make local-clean-all         # Full cleanup (cluster + images)
+
+# See all local development commands
+make help
+```
+
+**Documentation**: See `LOCAL_TESTING.md` or `docs/local_testing.rst` for complete guide.
+
 ### Testing
 ```bash
 # Run all tests
@@ -67,23 +97,40 @@ go test ./pkg/alert/...
 # Build binary
 go build -o cano-collector main.go
 
-# Build Docker image
+# Build Docker image (production)
 docker build -t cano-collector .
+
+# Build Docker image (local k3d)
+make local-build-image
 
 # Build test image
 ./build_test_image.sh
 ```
 
 ### Deployment
-```bash
-# Deploy with Helm
-helm install cano-collector ./helm/cano-collector
 
-# Upgrade deployment
-helm upgrade cano-collector ./helm/cano-collector
+**Production (AWS cluster via ArgoCD)**:
+```bash
+# GitOps - changes via ArgoCD repo
+# Path: /Users/tnowodzinski/projekty/sadsharkdev/devops/argocd-k3s-dev-aws/apps/kubecano/cano-collector/values.yaml
 
 # Check deployment status
 kubectl get pods -n kubecano -l app=cano-collector
+```
+
+**Local (k3d cluster)**:
+```bash
+# Deploy with Makefile (recommended)
+make local-dev
+
+# Or manually with Helm
+helm install cano-collector ./helm/cano-collector -f values-local.yaml
+
+# Upgrade deployment
+make local-deploy
+
+# Check deployment status
+make local-status
 ```
 
 ## Testing with Test Pod Suite

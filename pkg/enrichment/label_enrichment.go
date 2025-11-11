@@ -29,18 +29,27 @@ func DefaultLabelEnrichmentConfig() *LabelEnrichmentConfig {
 		EnableLabels:      true,
 		EnableAnnotations: true,
 		ExcludeLabels: []string{
+			// Internal Prometheus labels
 			"__name__",
 			"job",
 			"instance",
+			"endpoint",
+			"prometheus", // Prometheus instance identifier
+			"service",    // kube-state-metrics service name
+			"uid",        // Kubernetes UID (long and not useful in alerts)
+			// Kubernetes internal metadata
 			"__meta_kubernetes_pod_uid",
 			"__meta_kubernetes_pod_container_id",
 		},
 		IncludeLabels:      []string{}, // empty means include all (except excluded)
 		IncludeAnnotations: []string{}, // empty means include all (except excluded)
 		ExcludeAnnotations: []string{
+			// Kubernetes internal annotations
 			"kubectl.kubernetes.io/last-applied-configuration",
 			"deployment.kubernetes.io/revision",
 			"control-plane.alpha.kubernetes.io/leader",
+			// Redundant annotations (already shown elsewhere)
+			"runbook_url", // Already displayed in Links section
 		},
 		DisplayFormat:           "table",
 		AnnotationDisplayFormat: "table",
