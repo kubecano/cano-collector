@@ -16,7 +16,7 @@ CANO_LINT_GOGC?=20
 
 # Local development configuration
 LOCAL_IMAGE_NAME=localhost:5001/cano-collector
-LOCAL_IMAGE_TAG=dev-local
+LOCAL_IMAGE_TAG=latest
 LOCAL_NAMESPACE=kubecano
 LOCAL_RELEASE_NAME=cano-collector
 LOCAL_CLUSTER_NAME=cano-dev
@@ -190,10 +190,11 @@ local-port-forward:
 .PHONY: local-test-alert
 local-test-alert:
 	@echo "🧪 Sending test alert..."
-	@echo "Make sure port-forward is running: make local-port-forward"
-	curl -X POST http://localhost:8080/api/alerts \
+	@echo "Sending alert directly to service in cluster..."
+	kubectl run curl-test --image=curlimages/curl:latest --rm -i --restart=Never -n kubecano -- \
+		curl -X POST http://cano-collector.kubecano.svc.cluster.local:80/api/alerts \
 		-H 'Content-Type: application/json' \
-		-d '[{"status":"firing","labels":{"alertname":"KubePodCrashLooping","pod":"test-pod","namespace":"default","severity":"critical"},"annotations":{"summary":"Test alert from local dev","description":"Testing local k3d setup"}}]'
+		-d '{"receiver":"cano-collector","status":"firing","alerts":[{"status":"firing","labels":{"alertname":"KubePodCrashLooping","container":"busybox","namespace":"test-pods","pod":"busybox-crash-test","severity":"warning","uid":"test-uid-123"},"annotations":{"description":"Pod test-pods/busybox-crash-test (busybox) is in waiting state (reason: CrashLoopBackOff).","summary":"Pod is crash looping.","runbook_url":"https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubepodcrashlooping"},"startsAt":"2025-11-10T19:00:00.000Z","endsAt":"0001-01-01T00:00:00Z","generatorURL":"http://prometheus:9090/graph","fingerprint":"test123456"}],"groupLabels":{"alertname":"KubePodCrashLooping"},"commonLabels":{"alertname":"KubePodCrashLooping","severity":"warning"},"commonAnnotations":{"summary":"Pod is crash looping."},"externalURL":"http://alertmanager:9093","version":"4","groupKey":"{}:{alertname=\"KubePodCrashLooping\"}"}'
 	@echo ""
 	@echo "✅ Alert sent! Check Slack channel and logs."
 

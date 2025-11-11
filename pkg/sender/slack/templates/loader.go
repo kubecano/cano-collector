@@ -32,6 +32,7 @@ func NewTemplateLoader() (*TemplateLoader, error) {
 		"description.tmpl",
 		"links.tmpl",
 		"file_enrichment.tmpl",
+		"table_enrichment.tmpl",
 	}
 
 	for _, file := range files {
