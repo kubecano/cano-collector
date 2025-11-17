@@ -366,15 +366,15 @@ func TestSenderSlack_BuildSlackAttachments(t *testing.T) {
 		Subject:     subject,
 	}
 
-	attachments := slackSender.buildSlackAttachments(issue)
+	attachments := slackSender.buildSlackAttachments(issue, issue.Enrichments)
 
-	// Should have one attachment
+	// Should have one attachment (metadata, since no alert labels enrichment)
 	assert.Len(t, attachments, 1)
 
 	attachment := attachments[0]
 
-	// Should have correct color based on severity
-	assert.Equal(t, "#EF311F", attachment.Color) // High severity = red
+	// Metadata attachment is always yellow
+	assert.Equal(t, "#FFCC00", attachment.Color)
 
 	// Should have blocks with content
 	assert.NotEmpty(t, attachment.Blocks.BlockSet)
@@ -394,7 +394,7 @@ func TestSenderSlack_BuildSlackAttachments_WithClusterName(t *testing.T) {
 		Subject:     issuepkg.NewSubject("test-pod", issuepkg.SubjectTypePod),
 	}
 
-	attachments := slackSender.buildSlackAttachments(issue)
+	attachments := slackSender.buildSlackAttachments(issue, issue.Enrichments)
 
 	// Should have one attachment
 	assert.Len(t, attachments, 1)
@@ -437,7 +437,7 @@ func TestSenderSlack_BuildSlackAttachments_WithTimeFormatting(t *testing.T) {
 		StartsAt:    testTime,
 	}
 
-	attachments := slackSender.buildSlackAttachments(issue)
+	attachments := slackSender.buildSlackAttachments(issue, issue.Enrichments)
 
 	// Should have one attachment with time information
 	assert.Len(t, attachments, 1)
@@ -485,7 +485,7 @@ func TestSenderSlack_BuildSlackAttachments_WithoutTime(t *testing.T) {
 		// StartsAt is zero value - should not be displayed
 	}
 
-	attachments := slackSender.buildSlackAttachments(issue)
+	attachments := slackSender.buildSlackAttachments(issue, issue.Enrichments)
 
 	// Should have one attachment but without time information
 	assert.Len(t, attachments, 1)

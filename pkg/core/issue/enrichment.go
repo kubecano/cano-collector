@@ -52,6 +52,7 @@ type BaseBlock interface {
 
 // FileInfo contains metadata about uploaded files
 type FileInfo struct {
+	ID        string `json:"id,omitempty"`        // Slack file ID (for attaching to messages)
 	Permalink string `json:"permalink"`           // Slack file permalink
 	Filename  string `json:"filename"`            // Original filename
 	Size      int64  `json:"size,omitempty"`      // File size in bytes

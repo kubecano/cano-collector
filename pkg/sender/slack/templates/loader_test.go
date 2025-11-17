@@ -34,11 +34,11 @@ func TestTemplateLoader_RenderToBlocks_HeaderTemplate(t *testing.T) {
 	require.NoError(t, err)
 
 	context := map[string]interface{}{
-		"Emoji":       "🔥",
-		"Status":      "firing",
-		"Severity":    "high",
-		"SeverityStr": "High",
-		"Title":       "Test Alert",
+		"StatusEmoji":   "🔥",
+		"StatusText":    "Alert firing",
+		"SeverityEmoji": "🔴",
+		"Severity":      "High",
+		"Title":         "Test Alert",
 	}
 
 	blocks, err := loader.RenderToBlocks("header.tmpl", context)
@@ -87,8 +87,8 @@ func TestTemplateLoader_RenderToBlocks_LinksTemplate(t *testing.T) {
 
 	context := map[string]interface{}{
 		"Links": []map[string]string{
-			{"text": "Grafana", "url": "https://grafana.example.com"},
-			{"text": "Logs", "url": "https://logs.example.com"},
+			{"Text": "Grafana", "URL": "https://grafana.example.com"},
+			{"Text": "Logs", "URL": "https://logs.example.com"},
 		},
 	}
 

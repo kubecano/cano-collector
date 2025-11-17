@@ -1,11 +1,11 @@
-{{- /* Description block - alert description text */ -}}
+{{- /* Description block - alert description text in code block */ -}}
 {{- if .Description -}}
 [
   {
     "type": "section",
     "text": {
       "type": "mrkdwn",
-      "text": "{{.Description}}"
+      "text": "```{{.Description | jsonEscape}}```"
     }
   }
 ]
