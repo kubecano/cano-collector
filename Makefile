@@ -75,6 +75,9 @@ help:
 	@echo '  local-deploy              -- deploy with Helm using values-local.yaml'
 	@echo '  local-logs                -- tail cano-collector logs'
 	@echo '  local-status              -- show deployment status'
+	@echo '  local-test-alert          -- send basic test alert'
+	@echo '  local-test-alert-with-logs -- send alert that triggers pod logs workflow'
+	@echo '  local-test-alert-resolved -- send resolved alert (test threading)'
 	@echo '  local-clean               -- delete Helm release (keep cluster)'
 
 # ============================================================================
@@ -88,10 +91,11 @@ local-dev: local-check-cluster test local-build-image local-deploy local-status
 	@echo "🎉 Local deployment successful!"
 	@echo ""
 	@echo "Useful commands:"
-	@echo "  make local-logs           -- View logs"
-	@echo "  make local-status         -- Check deployment status"
-	@echo "  make local-test-alert     -- Send test alert"
-	@echo "  make local-clean          -- Remove deployment"
+	@echo "  make local-logs                -- View logs"
+	@echo "  make local-status              -- Check deployment status"
+	@echo "  make local-test-alert          -- Send basic test alert"
+	@echo "  make local-test-alert-with-logs -- Test pod logs workflow (uses live cano-collector pod)"
+	@echo "  make local-clean               -- Remove deployment"
 	@echo ""
 
 # Quick iteration: rebuild + redeploy (skip tests)
@@ -171,13 +175,13 @@ local-deploy: local-create-namespace
 .PHONY: local-status
 local-status:
 	@echo "📊 Deployment status:"
-	@kubectl get pods -n $(LOCAL_NAMESPACE) -l app=cano-collector
+	@kubectl get pods -n $(LOCAL_NAMESPACE) -l app.kubernetes.io/name=cano-collector
 
 # Tail logs
 .PHONY: local-logs
 local-logs:
 	@echo "📋 Tailing logs (Ctrl+C to exit)..."
-	kubectl logs -n $(LOCAL_NAMESPACE) -l app=cano-collector -f
+	kubectl logs -n $(LOCAL_NAMESPACE) -l app.kubernetes.io/name=cano-collector -f
 
 # Port forward for local testing
 .PHONY: local-port-forward
@@ -197,6 +201,48 @@ local-test-alert:
 		-d '{"receiver":"cano-collector","status":"firing","alerts":[{"status":"firing","labels":{"alertname":"KubePodCrashLooping","container":"busybox","namespace":"test-pods","pod":"busybox-crash-test","severity":"warning","uid":"test-uid-123"},"annotations":{"description":"Pod test-pods/busybox-crash-test (busybox) is in waiting state (reason: CrashLoopBackOff).","summary":"Pod is crash looping.","runbook_url":"https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubepodcrashlooping/"},"startsAt":"2025-11-10T19:00:00.000Z","endsAt":"0001-01-01T00:00:00Z","generatorURL":"http://prometheus:9090/graph","fingerprint":"test123456"}],"groupLabels":{"alertname":"KubePodCrashLooping"},"commonLabels":{"alertname":"KubePodCrashLooping","severity":"warning"},"commonAnnotations":{"summary":"Pod is crash looping."},"externalURL":"http://alertmanager:9093","version":"4","groupKey":"{}:{alertname=\"KubePodCrashLooping\"}"}'
 	@echo ""
 	@echo "✅ Alert sent! Check Slack channel and logs."
+
+# Send test alert for cano-collector pod (with logs workflow)
+.PHONY: local-test-alert-with-logs
+local-test-alert-with-logs:
+	@echo "🧪 Sending test alert with pod logs workflow..."
+	@echo "Getting cano-collector pod name..."
+	@POD_NAME=$$(kubectl get pods -n $(LOCAL_NAMESPACE) -l app.kubernetes.io/name=cano-collector -o jsonpath='{.items[0].metadata.name}' 2>/dev/null); \
+	if [ -z "$$POD_NAME" ]; then \
+		echo "❌ Error: No cano-collector pod found in namespace $(LOCAL_NAMESPACE)"; \
+		echo "Run 'make local-deploy' first to create the pod."; \
+		exit 1; \
+	fi; \
+	echo "📦 Found pod: $$POD_NAME"; \
+	echo ""; \
+	echo "Sending KubePodCrashLooping alert for cano-collector pod..."; \
+	kubectl run curl-test --image=curlimages/curl:latest --rm -i --restart=Never -n $(LOCAL_NAMESPACE) -- \
+		curl -X POST http://cano-collector.$(LOCAL_NAMESPACE).svc.cluster.local:80/api/alerts \
+		-H 'Content-Type: application/json' \
+		-d "{\"receiver\":\"cano-collector\",\"status\":\"firing\",\"alerts\":[{\"status\":\"firing\",\"labels\":{\"alertname\":\"KubePodCrashLooping\",\"container\":\"cano-collector\",\"namespace\":\"$(LOCAL_NAMESPACE)\",\"pod\":\"$$POD_NAME\",\"severity\":\"warning\",\"uid\":\"test-uid-collector-123\"},\"annotations\":{\"description\":\"Pod $(LOCAL_NAMESPACE)/$$POD_NAME (cano-collector) is being tested for log collection.\",\"summary\":\"Testing pod log collection workflow.\",\"runbook_url\":\"https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubepodcrashlooping/\"},\"startsAt\":\"$$(date -u +%Y-%m-%dT%H:%M:%S.000Z)\",\"endsAt\":\"0001-01-01T00:00:00Z\",\"generatorURL\":\"http://prometheus:9090/graph\",\"fingerprint\":\"test-collector-logs-$$(date +%s)\"}],\"groupLabels\":{\"alertname\":\"KubePodCrashLooping\"},\"commonLabels\":{\"alertname\":\"KubePodCrashLooping\",\"severity\":\"warning\"},\"commonAnnotations\":{\"summary\":\"Testing pod log collection workflow.\"},\"externalURL\":\"http://alertmanager:9093\",\"version\":\"4\",\"groupKey\":\"{}:{alertname=\\\"KubePodCrashLooping\\\"}\"}"
+	@echo ""
+	@echo "✅ Alert sent! This will trigger pod_logs workflow."
+	@echo ""
+	@echo "Expected workflow actions:"
+	@echo "  1. pod_logs action will fetch logs from cano-collector pod"
+	@echo "  2. Logs will be uploaded to Slack as file attachment"
+	@echo "  3. Check Slack channel for message with log file"
+	@echo ""
+	@echo "To verify workflow execution, check logs:"
+	@echo "  make local-logs | grep -E 'pod_logs|upload'"
+
+# Send resolved test alert (for testing threading)
+.PHONY: local-test-alert-resolved
+local-test-alert-resolved:
+	@echo "🧪 Sending resolved test alert (for threading test)..."
+	@echo "Sending alert directly to service in cluster..."
+	@END_TIME=$$(date -u +%Y-%m-%dT%H:%M:%S.000Z); \
+	kubectl run curl-test --image=curlimages/curl:latest --rm -i --restart=Never -n kubecano -- \
+		curl -X POST http://cano-collector.kubecano.svc.cluster.local:80/api/alerts \
+		-H 'Content-Type: application/json' \
+		-d "{\"receiver\":\"cano-collector\",\"status\":\"resolved\",\"alerts\":[{\"status\":\"resolved\",\"labels\":{\"alertname\":\"KubePodCrashLooping\",\"container\":\"busybox\",\"namespace\":\"test-pods\",\"pod\":\"busybox-crash-test\",\"severity\":\"warning\",\"uid\":\"test-uid-123\"},\"annotations\":{\"description\":\"Pod test-pods/busybox-crash-test (busybox) is no longer crash looping.\",\"summary\":\"Pod is crash looping.\",\"runbook_url\":\"https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubepodcrashlooping/\"},\"startsAt\":\"2025-11-10T19:00:00.000Z\",\"endsAt\":\"$$END_TIME\",\"generatorURL\":\"http://prometheus:9090/graph\",\"fingerprint\":\"test123456\"}],\"groupLabels\":{\"alertname\":\"KubePodCrashLooping\"},\"commonLabels\":{\"alertname\":\"KubePodCrashLooping\",\"severity\":\"warning\"},\"commonAnnotations\":{\"summary\":\"Pod is crash looping.\"},\"externalURL\":\"http://alertmanager:9093\",\"version\":\"4\",\"groupKey\":\"{}:{alertname=\\\"KubePodCrashLooping\\\"}\"}"
+	@echo ""
+	@echo "✅ Resolved alert sent! Should reply in thread of firing alert."
 
 # Delete Helm release (keep cluster)
 .PHONY: local-clean

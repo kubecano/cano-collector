@@ -142,6 +142,18 @@ func (s *SenderSlack) Send(ctx context.Context, issue *issuepkg.Issue) error {
 	// Preprocess enrichments: upload files and set FileInfo
 	s.preprocessEnrichments(issue)
 
+	// Collect file IDs from enrichments to attach to message
+	var fileIDs []string
+	for _, enrichment := range issue.Enrichments {
+		if enrichment.FileInfo != nil && enrichment.FileInfo.ID != "" {
+			fileIDs = append(fileIDs, enrichment.FileInfo.ID)
+			s.logger.Debug("Adding file to message",
+				zap.String("file_id", enrichment.FileInfo.ID),
+				zap.String("filename", enrichment.FileInfo.Filename),
+			)
+		}
+	}
+
 	// Create formatted blocks
 	blocks := s.buildSlackBlocks(issue)
 	attachments := s.buildSlackAttachments(issue, issue.Enrichments)
@@ -149,9 +161,24 @@ func (s *SenderSlack) Send(ctx context.Context, issue *issuepkg.Issue) error {
 	// Fallback text for notifications
 	fallbackText := s.formatIssueToString(issue)
 
+	// Add file permalinks to fallback text for Slack unfurling
+	for _, enrichment := range issue.Enrichments {
+		if enrichment.FileInfo != nil && enrichment.FileInfo.Permalink != "" {
+			fallbackText = fmt.Sprintf("%s\n* <%s | %s>", fallbackText, enrichment.FileInfo.Permalink, enrichment.FileInfo.Filename)
+		}
+	}
+
 	params := slackapi.PostMessageParameters{
 		UnfurlLinks: s.unfurlLinks,
 		UnfurlMedia: s.unfurlLinks,
+		FileIDs:     fileIDs,
+	}
+
+	if len(fileIDs) > 0 {
+		s.logger.Info("Attaching files to Slack message",
+			zap.Int("file_count", len(fileIDs)),
+			zap.Strings("file_ids", fileIDs),
+		)
 	}
 
 	var msgOptions []slackapi.MsgOption
@@ -342,22 +369,22 @@ func (s *SenderSlack) buildSlackBlocks(issue *issuepkg.Issue) []slackapi.Block {
 		}
 	}
 
-	// 6. Render file enrichments (logs, text files)
-	for _, enrichment := range fileEnrichments {
-		fileBlocks, err := s.templateLoader.RenderToBlocks("file_enrichment.tmpl", enrichment)
-		if err != nil {
-			s.logger.Error("Failed to render file enrichment template", zap.Error(err))
-		} else {
-			blocks = append(blocks, fileBlocks...)
-		}
-	}
+	// File enrichments are attached via FileIDs and rendered by Slack automatically
 
-	// 7. Render other enrichments (tables, crash info, etc.)
-	// Skip Alert Labels (rendered in attachments), Alert Annotations and Alert Metadata
+	// Render other enrichments (skip labels/annotations/metadata - shown in attachments)
 	for _, enrichment := range otherEnrichments {
 		if enrichment.Type == issuepkg.EnrichmentTypeAlertLabels ||
 			enrichment.Type == issuepkg.EnrichmentTypeAlertAnnotations ||
 			enrichment.Type == issuepkg.EnrichmentTypeAlertMetadata {
+			continue
+		}
+
+		// Skip file enrichments where upload failed
+		if (enrichment.Type == issuepkg.EnrichmentTypeLogs || enrichment.Type == issuepkg.EnrichmentTypeTextFile) &&
+			(enrichment.FileInfo == nil || enrichment.FileInfo.Permalink == "") {
+			s.logger.Warn("Skipping file enrichment - upload failed or FileInfo missing",
+				zap.String("enrichment_type", enrichment.Type.String()),
+				zap.String("title", enrichment.Title))
 			continue
 		}
 
@@ -402,12 +429,12 @@ func (s *SenderSlack) selectTemplateForEnrichment(enrichment issuepkg.Enrichment
 		return "table_enrichment.tmpl"
 	case issuepkg.EnrichmentTypeCrashInfo:
 		return "table_enrichment.tmpl"
-	case issuepkg.EnrichmentTypeTextFile:
-		return "file_enrichment.tmpl"
-	case issuepkg.EnrichmentTypeLogs:
-		return "file_enrichment.tmpl"
+	case issuepkg.EnrichmentTypeTextFile, issuepkg.EnrichmentTypeLogs:
+		if enrichment.FileInfo != nil && enrichment.FileInfo.Permalink != "" {
+			return "file_enrichment.tmpl"
+		}
+		return "table_enrichment.tmpl"
 	default:
-		// Default fallback for unknown types
 		return "table_enrichment.tmpl"
 	}
 }
@@ -570,6 +597,16 @@ func (s *SenderSlack) buildSlackAttachments(issue *issuepkg.Issue, enrichments [
 			nil, nil,
 		)
 		metadataBlocks = append(metadataBlocks, timeBlock)
+	}
+
+	// Show end time for resolved alerts
+	if issue.Status == issuepkg.StatusResolved && !issue.EndsAt.IsZero() {
+		endText := "✅ *Ended:* " + issue.EndsAt.UTC().Format("2006-01-02 15:04:05 UTC")
+		endBlock := slackapi.NewSectionBlock(
+			slackapi.NewTextBlockObject("mrkdwn", endText, false, false),
+			nil, nil,
+		)
+		metadataBlocks = append(metadataBlocks, endBlock)
 	}
 
 	// Create metadata attachment with yellow color
@@ -892,7 +929,7 @@ func (s *SenderSlack) convertLargeTableToFileBlock(table *issuepkg.TableBlock) s
 
 	// Upload CSV file to Slack workspace storage
 	csvBytes := []byte(csvContent)
-	permalink, err := s.uploadFileToSlack(filename, csvBytes)
+	_, permalink, err := s.uploadFileToSlack(filename, csvBytes)
 	if err != nil {
 		s.logger.Warn("Table file upload failed, falling back to inline display",
 			zap.Error(err),
@@ -1109,7 +1146,7 @@ func (s *SenderSlack) preprocessEnrichments(issue *issuepkg.Issue) {
 		for _, block := range enrichment.Blocks {
 			if fileBlock, ok := block.(*issuepkg.FileBlock); ok {
 				// Upload file to Slack
-				permalink, err := s.uploadFileToSlack(fileBlock.Filename, fileBlock.Contents)
+				fileID, permalink, err := s.uploadFileToSlack(fileBlock.Filename, fileBlock.Contents)
 				if err != nil {
 					s.logger.Warn("Failed to upload file for enrichment, skipping FileInfo",
 						zap.Error(err),
@@ -1119,18 +1156,20 @@ func (s *SenderSlack) preprocessEnrichments(issue *issuepkg.Issue) {
 					continue
 				}
 
-				// Set FileInfo with permalink
+				// Set FileInfo with file ID and permalink
 				enrichment.FileInfo = &issuepkg.FileInfo{
+					ID:        fileID,
 					Permalink: permalink,
 					Filename:  fileBlock.Filename,
 					Size:      fileBlock.Size,
 					MimeType:  fileBlock.MimeType,
 				}
 
-				// Set Content to file contents as string (for inline display if needed)
-				enrichment.Content = string(fileBlock.Contents)
+				// Store log snippet for inline display (last 50 lines, max 2500 chars)
+				enrichment.Content = s.createLogSnippet(fileBlock.Contents, 50, 2500)
 
 				s.logger.Debug("File uploaded and FileInfo set for enrichment",
+					zap.String("file_id", fileID),
 					zap.String("filename", fileBlock.Filename),
 					zap.String("permalink", permalink),
 					zap.String("enrichment_title", enrichment.Title),
@@ -1143,39 +1182,33 @@ func (s *SenderSlack) preprocessEnrichments(issue *issuepkg.Issue) {
 	}
 }
 
-// uploadFileToSlack uploads a file to Slack workspace storage using files_upload_v2 API
-// Returns the permalink to the uploaded file, which can be included in any message
-func (s *SenderSlack) uploadFileToSlack(filename string, content []byte) (string, error) {
-	// Skip empty files (Slack throws error on empty files)
+// uploadFileToSlack uploads a file to Slack workspace and returns file ID and permalink
+func (s *SenderSlack) uploadFileToSlack(filename string, content []byte) (fileID string, permalink string, err error) {
 	if len(content) == 0 {
-		s.logger.Warn("Skipping empty file upload",
-			zap.String("filename", filename),
-		)
-		return "", fmt.Errorf("file is empty")
+		s.logger.Warn("Skipping empty file upload", zap.String("filename", filename))
+		return "", "", fmt.Errorf("file is empty")
 	}
 
-	// Determine file type for metrics
 	fileType := "log"
 	if strings.HasSuffix(filename, ".csv") {
 		fileType = "csv"
 	}
 
-	// Observe file size (if metrics are initialized)
 	if s.fileUploadSizeBytes != nil {
 		s.fileUploadSizeBytes.WithLabelValues(s.channel, fileType).Observe(float64(len(content)))
 	}
 
-	// Try direct upload with bytes.Reader
-	permalink, err := s.tryUploadDirect(filename, content)
+	fileID, permalink, err = s.tryUploadDirect(filename, content)
 	if err == nil {
 		s.recordFileUploadSuccess()
 		s.logger.Info("File uploaded successfully",
 			zap.String("method", "direct"),
+			zap.String("file_id", fileID),
 			zap.String("filename", filename),
 			zap.String("permalink", permalink),
 			zap.Int("size", len(content)),
 		)
-		return permalink, nil
+		return fileID, permalink, nil
 	}
 
 	s.logger.Warn("Direct upload failed, trying temp file fallback",
@@ -1183,8 +1216,7 @@ func (s *SenderSlack) uploadFileToSlack(filename string, content []byte) (string
 		zap.String("filename", filename),
 	)
 
-	// Fallback: Upload via temporary file
-	permalink, err = s.tryUploadViaTempFile(filename, content)
+	fileID, permalink, err = s.tryUploadViaTempFile(filename, content)
 	if err != nil {
 		s.recordFileUploadFailure()
 		s.logger.Error("All upload strategies failed",
@@ -1192,84 +1224,129 @@ func (s *SenderSlack) uploadFileToSlack(filename string, content []byte) (string
 			zap.String("filename", filename),
 			zap.Int("size", len(content)),
 		)
-		return "", fmt.Errorf("file upload failed: %w", err)
+		return "", "", fmt.Errorf("file upload failed: %w", err)
 	}
 
 	s.recordFileUploadSuccess()
 	s.logger.Info("File uploaded successfully",
 		zap.String("method", "tempfile"),
+		zap.String("file_id", fileID),
 		zap.String("filename", filename),
 		zap.String("permalink", permalink),
 		zap.Int("size", len(content)),
 	)
 
-	return permalink, nil
+	return fileID, permalink, nil
 }
 
-// tryUploadDirect attempts direct upload using bytes.Reader
-func (s *SenderSlack) tryUploadDirect(filename string, content []byte) (string, error) {
-	// Resolve channel name to ID (Slack API requires ID, not name)
-	channelID, err := s.resolveChannelID()
-	if err != nil {
-		return "", fmt.Errorf("resolve channel: %w", err)
-	}
-
+// tryUploadDirect attempts upload using bytes.Reader (no channel = unfurled in message)
+func (s *SenderSlack) tryUploadDirect(filename string, content []byte) (fileID string, permalink string, err error) {
 	params := slackapi.UploadFileV2Parameters{
 		Filename: filename,
 		FileSize: len(content),
 		Reader:   bytes.NewReader(content),
-		Channel:  channelID, // Use channel ID, not name
 	}
 
 	return s.executeUpload(params)
 }
 
-// tryUploadViaTempFile attempts upload using temporary file as fallback strategy
-func (s *SenderSlack) tryUploadViaTempFile(filename string, content []byte) (string, error) {
-	// Resolve channel name to ID (Slack API requires ID, not name)
-	channelID, err := s.resolveChannelID()
-	if err != nil {
-		return "", fmt.Errorf("resolve channel: %w", err)
-	}
-
+// tryUploadViaTempFile attempts upload via temporary file (no channel = unfurled in message)
+func (s *SenderSlack) tryUploadViaTempFile(filename string, content []byte) (fileID string, permalink string, err error) {
 	tmpFile, err := os.CreateTemp("", "slack-upload-*")
 	if err != nil {
-		return "", fmt.Errorf("create temp file: %w", err)
+		return "", "", fmt.Errorf("create temp file: %w", err)
 	}
 	defer os.Remove(tmpFile.Name())
 	defer tmpFile.Close()
 
 	if _, err = tmpFile.Write(content); err != nil {
-		return "", fmt.Errorf("write temp file: %w", err)
+		return "", "", fmt.Errorf("write temp file: %w", err)
 	}
 
 	if _, err = tmpFile.Seek(0, 0); err != nil {
-		return "", fmt.Errorf("seek temp file: %w", err)
+		return "", "", fmt.Errorf("seek temp file: %w", err)
 	}
 
 	params := slackapi.UploadFileV2Parameters{
 		Filename: filename,
 		FileSize: len(content),
 		Reader:   tmpFile,
-		Channel:  channelID, // Use channel ID, not name
 	}
 
 	return s.executeUpload(params)
 }
 
-// executeUpload performs the actual upload and retrieves permalink
-func (s *SenderSlack) executeUpload(params slackapi.UploadFileV2Parameters) (string, error) {
+// executeUpload performs the upload and retrieves file ID and permalink
+func (s *SenderSlack) executeUpload(params slackapi.UploadFileV2Parameters) (fileID string, permalink string, err error) {
 	fileSummary, err := s.slackClient.UploadFileV2(params)
 	if err != nil {
-		return "", fmt.Errorf("upload: %w", err)
+		return "", "", fmt.Errorf("upload: %w", err)
 	}
 
 	fileInfo, _, _, err := s.slackClient.GetFileInfo(fileSummary.ID, 0, 0)
 	if err != nil {
-		return "", fmt.Errorf("get file info: %w", err)
+		return "", "", fmt.Errorf("get file info: %w", err)
 	}
 
-	return fileInfo.Permalink, nil
+	return fileSummary.ID, fileInfo.Permalink, nil
+}
+
+// createLogSnippet creates truncated log snippet (last N complete lines up to maxChars)
+func (s *SenderSlack) createLogSnippet(content []byte, maxLines int, maxChars int) string {
+	if len(content) == 0 {
+		return ""
+	}
+
+	lines := strings.Split(string(content), "\n")
+	totalLines := len(lines)
+
+	startIdx := 0
+	if totalLines > maxLines {
+		startIdx = totalLines - maxLines
+	}
+	recentLines := lines[startIdx:]
+	snippet := strings.Join(recentLines, "\n")
+
+	linesShown := len(recentLines)
+	if len(snippet) > maxChars {
+		truncated := ""
+		for i := len(recentLines) - 1; i >= 0; i-- {
+			testSnippet := strings.Join(recentLines[i:], "\n")
+			if len(testSnippet) <= maxChars {
+				truncated = testSnippet
+				linesShown = len(recentLines[i:])
+				break
+			}
+		}
+
+		if truncated != "" {
+			snippet = truncated
+		} else {
+			// Edge case: even single line is too long, truncate it
+			snippet = recentLines[len(recentLines)-1]
+			if len(snippet) > maxChars {
+				snippet = snippet[len(snippet)-maxChars:]
+			}
+			linesShown = 1
+		}
+	}
+
+	if linesShown < len(recentLines) || totalLines > maxLines {
+		prefix := fmt.Sprintf("[... showing last %d lines of %d total ...]\n\n", linesShown, totalLines)
+		for len(prefix)+len(snippet) > maxChars {
+			snippetLines := strings.Split(snippet, "\n")
+			if len(snippetLines) <= 1 {
+				// Can't remove more lines, truncate the prefix instead
+				break
+			}
+			snippet = strings.Join(snippetLines[1:], "\n")
+			linesShown--
+			prefix = fmt.Sprintf("[... showing last %d lines of %d total ...]\n\n", linesShown, totalLines)
+		}
+		snippet = prefix + snippet
+	}
+
+	return snippet
 }
 
 // recordFileUploadSuccess records successful file upload metric
@@ -1288,8 +1365,7 @@ func (s *SenderSlack) recordFileUploadFailure() {
 
 // convertFileBlockToSlack converts a file block to Slack section block with actual file upload
 func (s *SenderSlack) convertFileBlockToSlack(file *issuepkg.FileBlock) slackapi.Block {
-	// Attempt to upload file to Slack workspace storage
-	permalink, err := s.uploadFileToSlack(file.Filename, file.Contents)
+	_, permalink, err := s.uploadFileToSlack(file.Filename, file.Contents)
 	if err != nil {
 		s.logger.Warn("File upload failed, falling back to text display",
 			zap.Error(err),
@@ -1298,7 +1374,6 @@ func (s *SenderSlack) convertFileBlockToSlack(file *issuepkg.FileBlock) slackapi
 		return s.createFileErrorBlock(file, err)
 	}
 
-	// Create block with successful file upload using permalink
 	sizeKB := file.GetSizeKB()
 	sizeText := fmt.Sprintf("%.1f KB", sizeKB)
 	if sizeKB > 1024 {
@@ -1335,7 +1410,6 @@ func (s *SenderSlack) createFileErrorBlock(file *issuepkg.FileBlock, err error) 
 	}
 	textBuilder.WriteString("\nError: " + err.Error())
 
-	// Show preview of content if it's text and not too large
 	if strings.HasPrefix(file.MimeType, "text/") && len(file.Contents) < 2000 {
 		preview := string(file.Contents)
 		if len(preview) > 500 {
@@ -1359,7 +1433,6 @@ func (s *SenderSlack) formatHeader(issue *issuepkg.Issue) string {
 		statusText = "Alert resolved"
 		statusEmoji = "✅"
 	} else {
-		// Source-based emoji and status text
 		switch issue.Source {
 		case issuepkg.SourcePrometheus:
 			statusEmoji = "🔥"
@@ -1374,8 +1447,6 @@ func (s *SenderSlack) formatHeader(issue *issuepkg.Issue) string {
 	}
 
 	severityText := s.getSeverityText(issue.Severity)
-
-	// Simple, clean format
 	return fmt.Sprintf("%s %s %s\n%s",
 		statusEmoji, statusText, severityText, issue.Title)
 }
@@ -1398,12 +1469,10 @@ func (s *SenderSlack) buildLinkButtons(links []issuepkg.Link) []slackapi.BlockEl
 	var buttons []slackapi.BlockElement
 
 	for i, link := range links {
-		// Limit to first 5 links to avoid Slack limits
 		if i >= 5 {
 			break
 		}
 
-		// Add emoji based on link type
 		emoji := s.getLinkEmoji(link.Type)
 		buttonText := fmt.Sprintf("%s %s", emoji, link.Text)
 
@@ -1413,8 +1482,6 @@ func (s *SenderSlack) buildLinkButtons(links []issuepkg.Link) []slackapi.BlockEl
 			slackapi.NewTextBlockObject("plain_text", buttonText, false, false),
 		)
 		button.URL = link.URL
-
-		// Add styling based on link type
 		button.Style = s.getLinkButtonStyle(link.Type)
 
 		buttons = append(buttons, button)
@@ -1427,15 +1494,15 @@ func (s *SenderSlack) buildLinkButtons(links []issuepkg.Link) []slackapi.BlockEl
 func (s *SenderSlack) getLinkEmoji(linkType issuepkg.LinkType) string {
 	switch linkType {
 	case issuepkg.LinkTypeInvestigate:
-		return "🔍" // Investigate
+		return "🔍"
 	case issuepkg.LinkTypeSilence:
-		return "🔕" // Silence
+		return "🔕"
 	case issuepkg.LinkTypePrometheusGenerator:
-		return "📊" // Prometheus/Graphs
+		return "📊"
 	case issuepkg.LinkTypeGeneral:
-		return "🔗" // General link
+		return "🔗"
 	default:
-		return "🔗" // Default
+		return "🔗"
 	}
 }
 
@@ -1443,11 +1510,11 @@ func (s *SenderSlack) getLinkEmoji(linkType issuepkg.LinkType) string {
 func (s *SenderSlack) getLinkButtonStyle(linkType issuepkg.LinkType) slackapi.Style {
 	switch linkType {
 	case issuepkg.LinkTypeInvestigate:
-		return slackapi.StylePrimary // Blue button for investigate
+		return slackapi.StylePrimary
 	case issuepkg.LinkTypeSilence:
-		return slackapi.StyleDanger // Red button for silence
+		return slackapi.StyleDanger
 	default:
-		return slackapi.StyleDefault // No special styling
+		return slackapi.StyleDefault
 	}
 }
 
@@ -1526,7 +1593,6 @@ func (s *SenderSlack) buildMessageContext(issue *issuepkg.Issue) *MessageContext
 		Source:      issue.Source.String(),
 	}
 
-	// Status
 	if issue.IsResolved() {
 		context.Status = "resolved"
 		context.StatusEmoji = "✅"
@@ -1537,11 +1603,9 @@ func (s *SenderSlack) buildMessageContext(issue *issuepkg.Issue) *MessageContext
 		context.StatusText = "Alert firing"
 	}
 
-	// Severity
 	context.Severity = s.getSeverityName(issue.Severity)
 	context.SeverityEmoji = s.getSeverityEmoji(issue.Severity)
 
-	// Alert type
 	switch issue.Source {
 	case issuepkg.SourcePrometheus:
 		context.AlertType = "Prometheus Alert"
@@ -1554,11 +1618,6 @@ func (s *SenderSlack) buildMessageContext(issue *issuepkg.Issue) *MessageContext
 		context.AlertTypeEmoji = "📬"
 	}
 
-	// Note: CrashInfo is populated by PodInfoAction enrichments from Kubernetes API
-	// Do not extract from alert labels as "restarts" and "status" don't exist in Prometheus labels
-	// The template will show crash info if it's present in enrichments
-
-	// Links
 	for _, link := range issue.Links {
 		context.Links = append(context.Links, Link{
 			Text: link.Text,
@@ -1566,7 +1625,6 @@ func (s *SenderSlack) buildMessageContext(issue *issuepkg.Issue) *MessageContext
 		})
 	}
 
-	// Enrichments
 	for _, enrichment := range issue.Enrichments {
 		enrichData := EnrichmentData{
 			Type:    enrichment.Type.String(),
@@ -1574,7 +1632,6 @@ func (s *SenderSlack) buildMessageContext(issue *issuepkg.Issue) *MessageContext
 			Content: enrichment.Content,
 		}
 
-		// Add file permalink if available
 		if enrichment.FileInfo != nil && enrichment.FileInfo.Permalink != "" {
 			enrichData.FileLink = enrichment.FileInfo.Permalink
 		}
@@ -1667,27 +1724,20 @@ func (s *SenderSlack) EnableThreading(cacheTTL time.Duration, searchLimit int, s
 
 // generateFingerprint creates a unique fingerprint for the issue to identify related alerts
 func (s *SenderSlack) generateFingerprint(issue *issuepkg.Issue) string {
-	// Use existing fingerprint if available
 	if issue.Fingerprint != "" {
 		return issue.Fingerprint
 	}
 
-	// Create a stable identifier based on issue characteristics
-	// This allows firing and resolved alerts to be grouped together
-
 	var parts []string
 
-	// Add issue title (normalized)
 	if issue.Title != "" {
 		parts = append(parts, issue.Title)
 	}
 
-	// Add source
 	if issue.Source != issuepkg.SourceUnknown {
 		parts = append(parts, issue.Source.String())
 	}
 
-	// Add subject information if available
 	if issue.Subject != nil {
 		if issue.Subject.Name != "" {
 			parts = append(parts, issue.Subject.Name)
@@ -1700,12 +1750,10 @@ func (s *SenderSlack) generateFingerprint(issue *issuepkg.Issue) string {
 		}
 	}
 
-	// Join all parts with a separator
 	if len(parts) == 0 {
 		return fmt.Sprintf("issue-%d", issue.StartsAt.Unix())
 	}
 
-	// Create a simple but stable fingerprint by hashing the joined parts
 	joinedParts := strings.Join(parts, "|")
 	hash := sha256.Sum256([]byte(joinedParts))
 	fingerprint := "alert:" + hex.EncodeToString(hash[:8]) // Use first 8 bytes for shorter fingerprint
