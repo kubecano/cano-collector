@@ -1,13 +1,11 @@
 package slack
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -1239,38 +1237,25 @@ func (s *SenderSlack) uploadFileToSlack(filename string, content []byte) (fileID
 	return fileID, permalink, nil
 }
 
-// tryUploadDirect attempts upload using bytes.Reader (no channel = unfurled in message)
+// tryUploadDirect attempts upload using content string (no channel = unfurled in message)
 func (s *SenderSlack) tryUploadDirect(filename string, content []byte) (fileID string, permalink string, err error) {
 	params := slackapi.UploadFileV2Parameters{
-		Filename: filename,
-		FileSize: len(content),
-		Reader:   bytes.NewReader(content),
+		Filename:    filename,
+		FileSize:    len(content),
+		Content:     string(content),
+		SnippetType: "text",
 	}
 
 	return s.executeUpload(params)
 }
 
-// tryUploadViaTempFile attempts upload via temporary file (no channel = unfurled in message)
+// tryUploadViaTempFile attempts upload via content string as fallback (no channel = unfurled in message)
 func (s *SenderSlack) tryUploadViaTempFile(filename string, content []byte) (fileID string, permalink string, err error) {
-	tmpFile, err := os.CreateTemp("", "slack-upload-*")
-	if err != nil {
-		return "", "", fmt.Errorf("create temp file: %w", err)
-	}
-	defer os.Remove(tmpFile.Name())
-	defer tmpFile.Close()
-
-	if _, err = tmpFile.Write(content); err != nil {
-		return "", "", fmt.Errorf("write temp file: %w", err)
-	}
-
-	if _, err = tmpFile.Seek(0, 0); err != nil {
-		return "", "", fmt.Errorf("seek temp file: %w", err)
-	}
-
 	params := slackapi.UploadFileV2Parameters{
-		Filename: filename,
-		FileSize: len(content),
-		Reader:   tmpFile,
+		Filename:    filename,
+		FileSize:    len(content),
+		Content:     string(content),
+		SnippetType: "text",
 	}
 
 	return s.executeUpload(params)

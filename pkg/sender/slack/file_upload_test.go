@@ -99,7 +99,9 @@ func TestUploadFileToSlack_DirectSuccess(t *testing.T) {
 	mockClient.On("UploadFileV2", mock.MatchedBy(func(params slackapi.UploadFileV2Parameters) bool {
 		return params.Filename == "test.log" &&
 			params.FileSize == len(content) &&
-			params.Channel == "" // Upload without channel, attachment via unfurl
+			params.Content == string(content) &&
+			params.SnippetType == "text" &&
+			params.Channel == ""
 	})).Return(fileSummary, nil)
 
 	mockClient.On("GetFileInfo", "F12345", 0, 0).Return(fileInfo, []slackapi.Comment{}, &slackapi.Paging{}, nil)
@@ -209,10 +211,10 @@ func TestUploadFileToSlack_ChannelParameterNotSet(t *testing.T) {
 	fileSummary := &slackapi.FileSummary{ID: "F12345", Title: "test.log"}
 	fileInfo := &slackapi.File{ID: "F12345", Permalink: "https://slack.com/files/test/F12345"}
 
-	// Verify that Channel parameter is NOT set
+	// Verify that Channel parameter is NOT set and SnippetType is text
 	// File will be attached via permalink unfurling in message text
 	mockClient.On("UploadFileV2", mock.MatchedBy(func(params slackapi.UploadFileV2Parameters) bool {
-		return params.Channel == ""
+		return params.Channel == "" && params.SnippetType == "text"
 	})).Return(fileSummary, nil)
 
 	mockClient.On("GetFileInfo", "F12345", 0, 0).Return(fileInfo, []slackapi.Comment{}, &slackapi.Paging{}, nil)
@@ -286,9 +288,10 @@ func TestExecuteUpload(t *testing.T) {
 	fileInfo := &slackapi.File{ID: "F12345", Permalink: "https://slack.com/files/test/F12345"}
 
 	params := slackapi.UploadFileV2Parameters{
-		Filename: "test.log",
-		FileSize: 100,
-		Channel:  "test-channel",
+		Filename:    "test.log",
+		FileSize:    100,
+		Content:     "test content",
+		SnippetType: "text",
 	}
 
 	mockClient.On("UploadFileV2", params).Return(fileSummary, nil)
