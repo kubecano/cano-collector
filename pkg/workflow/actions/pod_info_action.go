@@ -38,7 +38,7 @@ type PreviousContainerInfo struct {
 type PodInfoAction struct {
 	*BaseAction
 	config     pod_info_config.PodInfoActionConfig
-	kubeClient KubernetesClient
+	kubeClient actions_interfaces.KubernetesClient
 }
 
 // NewPodInfoAction creates a new PodInfoAction
@@ -46,7 +46,7 @@ func NewPodInfoAction(
 	config pod_info_config.PodInfoActionConfig,
 	logger logger_interfaces.LoggerInterface,
 	metrics metric_interfaces.MetricsInterface,
-	kubeClient KubernetesClient,
+	kubeClient actions_interfaces.KubernetesClient,
 ) *PodInfoAction {
 	baseAction := NewBaseAction(config.ActionConfig, logger, metrics)
 

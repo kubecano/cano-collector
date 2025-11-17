@@ -1,6 +1,9 @@
 Golang Workflows
 ================
 
+
+.. note::
+   **Status**: 🔨 Planned - Not yet implemented
 Golang workflows provide comprehensive debugging and analysis capabilities for Go applications running in Kubernetes pods, including profiling, memory analysis, and debugging tools.
 
 Go Process Inspector

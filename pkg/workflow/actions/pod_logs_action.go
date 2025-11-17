@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"go.uber.org/zap"
-	corev1 "k8s.io/api/core/v1"
 
 	pod_logs_config "github.com/kubecano/cano-collector/config/workflow/actions"
 	"github.com/kubecano/cano-collector/pkg/core/event"
@@ -17,18 +16,11 @@ import (
 	actions_interfaces "github.com/kubecano/cano-collector/pkg/workflow/actions/interfaces"
 )
 
-// KubernetesClient represents a simplified kubernetes client interface for testing
-// In real implementation, this would be replaced with kubernetes.Interface
-type KubernetesClient interface {
-	GetPodLogs(ctx context.Context, namespace, podName string, options map[string]interface{}) (string, error)
-	GetPod(ctx context.Context, namespace, podName string) (*corev1.Pod, error)
-}
-
 // PodLogsAction retrieves pod logs for alerts
 type PodLogsAction struct {
 	*BaseAction
 	config     pod_logs_config.PodLogsActionConfig
-	kubeClient KubernetesClient
+	kubeClient actions_interfaces.KubernetesClient
 }
 
 // NewPodLogsAction creates a new PodLogsAction
@@ -36,7 +28,7 @@ func NewPodLogsAction(
 	config pod_logs_config.PodLogsActionConfig,
 	logger logger_interfaces.LoggerInterface,
 	metrics metric_interfaces.MetricsInterface,
-	kubeClient KubernetesClient,
+	kubeClient actions_interfaces.KubernetesClient,
 ) *PodLogsAction {
 	baseAction := NewBaseAction(config.ActionConfig, logger, metrics)
 

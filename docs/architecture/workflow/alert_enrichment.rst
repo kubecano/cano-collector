@@ -1,6 +1,9 @@
 Alert Enrichment Workflows
 ==========================
 
+
+.. note::
+   **Status**: 🔨 Planned - Not yet implemented
 Alert enrichment workflows enhance Prometheus alerts with additional context, making them more actionable and informative.
 
 Default Alert Enricher

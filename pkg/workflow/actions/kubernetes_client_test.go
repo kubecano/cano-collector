@@ -4,35 +4,44 @@ import (
 	"context"
 	"testing"
 
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/kubecano/cano-collector/mocks"
 	"github.com/kubecano/cano-collector/pkg/logger"
 )
 
-func TestNewMockKubernetesClient(t *testing.T) {
-	logger := logger.NewLogger("debug", "test")
-	client := NewMockKubernetesClient(logger)
-
-	assert.NotNil(t, client)
-	assert.NotNil(t, client.logger)
-}
-
 func TestMockKubernetesClient_GetPodLogs(t *testing.T) {
-	logger := logger.NewLogger("debug", "test")
-	client := NewMockKubernetesClient(logger)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
+	mockClient := mocks.NewMockKubernetesClient(ctrl)
 	ctx := context.Background()
 	options := map[string]interface{}{
 		"container": "test-container",
 		"tailLines": 100,
 	}
 
-	logs, err := client.GetPodLogs(ctx, "test-ns", "test-pod", options)
+	expectedLogs := `[Mock Logs for test-ns/test-pod]
+2025-01-08T10:00:00Z INFO  Starting application...
+2025-01-08T10:00:01Z INFO  Connected to database
+2025-01-08T10:00:02Z WARN  High memory usage detected
+2025-01-08T10:00:03Z ERROR Failed to process request: timeout
+2025-01-08T10:00:04Z INFO  Application running normally`
 
+	// Set expectation
+	mockClient.EXPECT().
+		GetPodLogs(ctx, "test-ns", "test-pod", options).
+		Return(expectedLogs, nil)
+
+	// Execute
+	logs, err := mockClient.GetPodLogs(ctx, "test-ns", "test-pod", options)
+
+	// Verify
 	require.NoError(t, err)
+	assert.Equal(t, expectedLogs, logs)
 	assert.Contains(t, logs, "[Mock Logs for test-ns/test-pod]")
-	assert.Contains(t, logs, "Pod: test-pod, Namespace: test-ns")
 	assert.Contains(t, logs, "Starting application...")
 	assert.Contains(t, logs, "ERROR Failed to process request: timeout")
 }

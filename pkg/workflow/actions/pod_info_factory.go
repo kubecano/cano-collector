@@ -13,14 +13,14 @@ import (
 type PodInfoActionFactory struct {
 	logger     logger_interfaces.LoggerInterface
 	metrics    metric_interfaces.MetricsInterface
-	kubeClient KubernetesClient
+	kubeClient actions_interfaces.KubernetesClient
 }
 
 // NewPodInfoActionFactory creates a new PodInfoActionFactory
 func NewPodInfoActionFactory(
 	logger logger_interfaces.LoggerInterface,
 	metrics metric_interfaces.MetricsInterface,
-	kubeClient KubernetesClient,
+	kubeClient actions_interfaces.KubernetesClient,
 ) *PodInfoActionFactory {
 	return &PodInfoActionFactory{
 		logger:     logger,

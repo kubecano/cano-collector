@@ -1,6 +1,9 @@
 OOM Killer Workflows
 ====================
 
+.. note::
+   **Status**: 🔨 Planned - Not yet implemented
+
 OOM (Out of Memory) killer workflows analyze and provide insights into memory-related issues in Kubernetes clusters, helping identify the root causes of OOM events.
 
 Pod OOM Killer Enricher

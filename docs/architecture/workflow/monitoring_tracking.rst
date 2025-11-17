@@ -1,6 +1,9 @@
 Monitoring and Tracking Workflows
 =================================
 
+
+.. note::
+   **Status**: 🔨 Planned - Not yet implemented
 Monitoring and tracking workflows provide capabilities for tracking changes, monitoring resources, and maintaining audit trails in Kubernetes clusters.
 
 Resource Babysitter

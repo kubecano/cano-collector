@@ -1,6 +1,9 @@
 Pod Troubleshooting Workflows
 =============================
 
+
+.. note::
+   **Status**: 🔨 Planned - Not yet implemented
 Pod troubleshooting workflows provide deep diagnostic capabilities for investigating issues with Kubernetes pods, including process analysis, debugging, and performance profiling.
 
 Python Profiler

@@ -1,6 +1,9 @@
 StatefulSet Workflows
 =====================
 
+
+.. note::
+   **Status**: 🔨 Planned - Not yet implemented
 StatefulSet workflows provide comprehensive monitoring and management capabilities for Kubernetes StatefulSets, including status analysis, scaling monitoring, and troubleshooting.
 
 StatefulSet Replicas Enricher

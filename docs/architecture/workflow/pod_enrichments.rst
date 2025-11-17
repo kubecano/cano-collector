@@ -1,6 +1,9 @@
 Pod Enrichment Workflows
 ========================
 
+.. note::
+   **Status**: 🔨 Planned - Not yet implemented
+
 Pod enrichment workflows provide comprehensive analysis and enrichment capabilities for Kubernetes pods, including status analysis, resource monitoring, and troubleshooting.
 
 Pod Investigator Enricher

@@ -1,6 +1,9 @@
 Event Enrichment Workflows
 ==========================
 
+
+.. note::
+   **Status**: 🔨 Planned - Not yet implemented
 Event enrichment workflows provide comprehensive analysis and enrichment capabilities for Kubernetes events, helping to understand the context and impact of various cluster events.
 
 Event Enrichments

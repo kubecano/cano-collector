@@ -1,6 +1,9 @@
 Java Workflows
 ==============
 
+.. note::
+   **Status**: 🔨 Planned - Not yet implemented
+
 Java workflows provide comprehensive debugging and analysis capabilities for Java applications running in Kubernetes pods, including JVM profiling, memory analysis, and debugging tools.
 
 Java Process Inspector

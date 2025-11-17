@@ -1,6 +1,9 @@
 Prometheus Enrichment Workflows
 ===============================
 
+
+.. note::
+   **Status**: 🔨 Planned - Not yet implemented
 Prometheus enrichment workflows provide advanced capabilities for enriching alerts and events with Prometheus metrics, graphs, and analysis.
 
 Prometheus Enrichments

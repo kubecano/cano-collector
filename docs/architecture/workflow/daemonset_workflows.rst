@@ -1,6 +1,9 @@
 DaemonSet Workflows
 ===================
 
+
+.. note::
+   **Status**: 🔨 Planned - Not yet implemented
 DaemonSet workflows provide comprehensive monitoring and management capabilities for Kubernetes DaemonSets, including status analysis, scheduling monitoring, and troubleshooting.
 
 DaemonSet Status Enricher
