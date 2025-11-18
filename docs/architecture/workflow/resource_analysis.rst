@@ -1,6 +1,9 @@
 Resource Analysis Workflows
 ===========================
 
+
+.. note::
+   **Status**: 🔨 Planned - Not yet implemented
 Resource analysis workflows provide comprehensive analysis of Kubernetes cluster resources, helping optimize resource usage and identify potential issues.
 
 KRR (Kubernetes Resource Recommender) Scan

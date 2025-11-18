@@ -1,6 +1,9 @@
 Python Workflows
 ================
 
+
+.. note::
+   **Status**: 🔨 Planned - Not yet implemented
 Python workflows provide comprehensive debugging and analysis capabilities for Python applications running in Kubernetes pods, including profiling, memory analysis, and debugging tools.
 
 Python Process Inspector

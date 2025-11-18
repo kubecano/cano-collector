@@ -159,6 +159,7 @@ Built-in Workflows
 .. toctree::
    :maxdepth: 2
 
+   pod_logs_action
    alert_enrichment
    custom
    daemonset_workflows
@@ -176,4 +177,11 @@ Built-in Workflows
    prometheus_enrichments
    python_workflows
    resource_analysis
-   statefulset_workflows 
+   statefulset_workflows
+
+Implementation Status
+~~~~~~~~~~~~~~~~~~~~~
+
+✅ **Implemented**: pod_logs_action
+
+🔨 **In Development/Planned**: All other workflows listed above 

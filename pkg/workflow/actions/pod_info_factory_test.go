@@ -3,18 +3,23 @@ package actions
 import (
 	"testing"
 
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/kubecano/cano-collector/mocks"
 	"github.com/kubecano/cano-collector/pkg/logger"
 	"github.com/kubecano/cano-collector/pkg/metric"
 	actions_interfaces "github.com/kubecano/cano-collector/pkg/workflow/actions/interfaces"
 )
 
 func TestNewPodInfoActionFactory(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	testLogger := logger.NewLogger("debug", "test")
 	testMetrics := metric.NewMetricsCollector(testLogger)
-	mockClient := NewMockKubernetesClientForTest()
+	mockClient := mocks.NewMockKubernetesClient(ctrl)
 
 	factory := NewPodInfoActionFactory(testLogger, testMetrics, mockClient)
 
@@ -25,9 +30,12 @@ func TestNewPodInfoActionFactory(t *testing.T) {
 }
 
 func TestPodInfoActionFactory_GetActionType(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	testLogger := logger.NewLogger("debug", "test")
 	testMetrics := metric.NewMetricsCollector(testLogger)
-	mockClient := NewMockKubernetesClientForTest()
+	mockClient := mocks.NewMockKubernetesClient(ctrl)
 
 	factory := NewPodInfoActionFactory(testLogger, testMetrics, mockClient)
 
@@ -35,9 +43,12 @@ func TestPodInfoActionFactory_GetActionType(t *testing.T) {
 }
 
 func TestPodInfoActionFactory_Create_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	testLogger := logger.NewLogger("debug", "test")
 	testMetrics := metric.NewMetricsCollector(testLogger)
-	mockClient := NewMockKubernetesClientForTest()
+	mockClient := mocks.NewMockKubernetesClient(ctrl)
 
 	factory := NewPodInfoActionFactory(testLogger, testMetrics, mockClient)
 
@@ -61,9 +72,12 @@ func TestPodInfoActionFactory_Create_Success(t *testing.T) {
 }
 
 func TestPodInfoActionFactory_Create_WithInvalidType(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	testLogger := logger.NewLogger("debug", "test")
 	testMetrics := metric.NewMetricsCollector(testLogger)
-	mockClient := NewMockKubernetesClientForTest()
+	mockClient := mocks.NewMockKubernetesClient(ctrl)
 
 	factory := NewPodInfoActionFactory(testLogger, testMetrics, mockClient)
 
@@ -80,9 +94,12 @@ func TestPodInfoActionFactory_Create_WithInvalidType(t *testing.T) {
 }
 
 func TestPodInfoActionFactory_Create_WithEmptyConfig(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	testLogger := logger.NewLogger("debug", "test")
 	testMetrics := metric.NewMetricsCollector(testLogger)
-	mockClient := NewMockKubernetesClientForTest()
+	mockClient := mocks.NewMockKubernetesClient(ctrl)
 
 	factory := NewPodInfoActionFactory(testLogger, testMetrics, mockClient)
 
@@ -105,9 +122,12 @@ func TestPodInfoActionFactory_Create_WithEmptyConfig(t *testing.T) {
 }
 
 func TestPodInfoActionFactory_Create_WithAllParameters(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	testLogger := logger.NewLogger("debug", "test")
 	testMetrics := metric.NewMetricsCollector(testLogger)
-	mockClient := NewMockKubernetesClientForTest()
+	mockClient := mocks.NewMockKubernetesClient(ctrl)
 
 	factory := NewPodInfoActionFactory(testLogger, testMetrics, mockClient)
 

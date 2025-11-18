@@ -1,6 +1,9 @@
 Deployment Workflows
 ====================
 
+
+.. note::
+   **Status**: 🔨 Planned - Not yet implemented
 Deployment workflows provide comprehensive monitoring and management capabilities for Kubernetes deployments, including status analysis, rollout monitoring, and troubleshooting.
 
 Deployment Status Enricher

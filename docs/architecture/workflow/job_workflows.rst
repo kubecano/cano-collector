@@ -1,6 +1,9 @@
 Job Workflows
 =============
 
+
+.. note::
+   **Status**: 🔨 Planned - Not yet implemented
 Job workflows provide comprehensive monitoring and management capabilities for Kubernetes jobs, including failure analysis, restart capabilities, and performance monitoring.
 
 Job Failure Reporter

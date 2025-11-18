@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -12,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	pod_info_config "github.com/kubecano/cano-collector/config/workflow/actions"
+	"github.com/kubecano/cano-collector/mocks"
 	"github.com/kubecano/cano-collector/pkg/core/event"
 	"github.com/kubecano/cano-collector/pkg/core/issue"
 	"github.com/kubecano/cano-collector/pkg/logger"
@@ -84,10 +86,11 @@ func createMockCrashingPod(namespace, name string) *corev1.Pod {
 }
 
 func TestPodInfoAction_Execute_Success(t *testing.T) {
-	mockClient := NewMockKubernetesClientForTest()
-	mockClient.SetShouldError(false)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mocks.NewMockKubernetesClient(ctrl)
 
-	// Override GetPod to return crashing pod
+	// Mock should return crashing pod
 	crashingPod := createMockCrashingPod("test-namespace", "crash-test-pod")
 
 	config := pod_info_config.PodInfoActionConfig{
@@ -105,12 +108,10 @@ func TestPodInfoAction_Execute_Success(t *testing.T) {
 
 	action := NewPodInfoAction(config, testLogger, testMetrics, mockClient)
 
-	// Create custom mock that returns our crashing pod
-	customMock := &customPodMock{
-		pod: crashingPod,
-		err: nil,
-	}
-	action.kubeClient = customMock
+	// Set gomock expectation
+	mockClient.EXPECT().
+		GetPod(gomock.Any(), "test-namespace", "crash-test-pod").
+		Return(crashingPod, nil)
 
 	workflowEvent := createPodInfoTestWorkflowEvent()
 	result, err := action.Execute(context.Background(), workflowEvent)
@@ -130,8 +131,9 @@ func TestPodInfoAction_Execute_Success(t *testing.T) {
 }
 
 func TestPodInfoAction_Execute_PodNotFound(t *testing.T) {
-	mockClient := NewMockKubernetesClientForTest()
-	mockClient.SetShouldError(true)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mocks.NewMockKubernetesClient(ctrl)
 
 	config := pod_info_config.PodInfoActionConfig{
 		ActionConfig: actions_interfaces.ActionConfig{
@@ -145,6 +147,12 @@ func TestPodInfoAction_Execute_PodNotFound(t *testing.T) {
 	testMetrics := metric.NewMetricsCollector(testLogger)
 
 	action := NewPodInfoAction(config, testLogger, testMetrics, mockClient)
+
+	// Mock should return error
+	mockClient.EXPECT().
+		GetPod(gomock.Any(), "test-namespace", "crash-test-pod").
+		Return(nil, assert.AnError)
+
 	workflowEvent := createPodInfoTestWorkflowEvent()
 
 	result, err := action.Execute(context.Background(), workflowEvent)
@@ -156,7 +164,9 @@ func TestPodInfoAction_Execute_PodNotFound(t *testing.T) {
 }
 
 func TestPodInfoAction_Execute_NoPodInfo(t *testing.T) {
-	mockClient := NewMockKubernetesClientForTest()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mocks.NewMockKubernetesClient(ctrl)
 
 	config := pod_info_config.PodInfoActionConfig{
 		ActionConfig: actions_interfaces.ActionConfig{
@@ -208,7 +218,9 @@ func TestPodInfoAction_ExtractCrashInfo_WithRestarts(t *testing.T) {
 
 	testLogger := logger.NewLogger("debug", "test")
 	testMetrics := metric.NewMetricsCollector(testLogger)
-	mockClient := NewMockKubernetesClientForTest()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mocks.NewMockKubernetesClient(ctrl)
 
 	action := NewPodInfoAction(config, testLogger, testMetrics, mockClient)
 	pod := createMockCrashingPod("test-namespace", "test-pod")
@@ -236,7 +248,9 @@ func TestPodInfoAction_ExtractCrashInfo_WithMinRestartCount(t *testing.T) {
 
 	testLogger := logger.NewLogger("debug", "test")
 	testMetrics := metric.NewMetricsCollector(testLogger)
-	mockClient := NewMockKubernetesClientForTest()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mocks.NewMockKubernetesClient(ctrl)
 
 	action := NewPodInfoAction(config, testLogger, testMetrics, mockClient)
 	pod := createMockCrashingPod("test-namespace", "test-pod")
@@ -259,7 +273,9 @@ func TestPodInfoAction_ExtractCrashInfo_WithInitContainers(t *testing.T) {
 
 	testLogger := logger.NewLogger("debug", "test")
 	testMetrics := metric.NewMetricsCollector(testLogger)
-	mockClient := NewMockKubernetesClientForTest()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mocks.NewMockKubernetesClient(ctrl)
 
 	action := NewPodInfoAction(config, testLogger, testMetrics, mockClient)
 
@@ -297,7 +313,9 @@ func TestPodInfoAction_ExtractCrashInfo_RunningWithRestarts(t *testing.T) {
 
 	testLogger := logger.NewLogger("debug", "test")
 	testMetrics := metric.NewMetricsCollector(testLogger)
-	mockClient := NewMockKubernetesClientForTest()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mocks.NewMockKubernetesClient(ctrl)
 
 	action := NewPodInfoAction(config, testLogger, testMetrics, mockClient)
 
@@ -334,7 +352,9 @@ func TestPodInfoAction_CreateCrashInfoEnrichment(t *testing.T) {
 
 	testLogger := logger.NewLogger("debug", "test")
 	testMetrics := metric.NewMetricsCollector(testLogger)
-	mockClient := NewMockKubernetesClientForTest()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mocks.NewMockKubernetesClient(ctrl)
 
 	action := NewPodInfoAction(config, testLogger, testMetrics, mockClient)
 
@@ -372,7 +392,9 @@ func TestPodInfoAction_CreateCrashInfoEnrichment_WithError(t *testing.T) {
 
 	testLogger := logger.NewLogger("debug", "test")
 	testMetrics := metric.NewMetricsCollector(testLogger)
-	mockClient := NewMockKubernetesClientForTest()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mocks.NewMockKubernetesClient(ctrl)
 
 	action := NewPodInfoAction(config, testLogger, testMetrics, mockClient)
 
@@ -392,7 +414,9 @@ func TestPodInfoAction_Validate_Success(t *testing.T) {
 
 	testLogger := logger.NewLogger("debug", "test")
 	testMetrics := metric.NewMetricsCollector(testLogger)
-	mockClient := NewMockKubernetesClientForTest()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mocks.NewMockKubernetesClient(ctrl)
 
 	action := NewPodInfoAction(config, testLogger, testMetrics, mockClient)
 
@@ -428,7 +452,9 @@ func TestPodInfoAction_GetActionType(t *testing.T) {
 
 	testLogger := logger.NewLogger("debug", "test")
 	testMetrics := metric.NewMetricsCollector(testLogger)
-	mockClient := NewMockKubernetesClientForTest()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mocks.NewMockKubernetesClient(ctrl)
 
 	action := NewPodInfoAction(config, testLogger, testMetrics, mockClient)
 
@@ -445,7 +471,9 @@ func TestPodInfoAction_ExtractPodInfo_FromPodLabel(t *testing.T) {
 
 	testLogger := logger.NewLogger("debug", "test")
 	testMetrics := metric.NewMetricsCollector(testLogger)
-	mockClient := NewMockKubernetesClientForTest()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mocks.NewMockKubernetesClient(ctrl)
 
 	action := NewPodInfoAction(config, testLogger, testMetrics, mockClient)
 
@@ -466,7 +494,9 @@ func TestPodInfoAction_ExtractPodInfo_FromInstanceLabel(t *testing.T) {
 
 	testLogger := logger.NewLogger("debug", "test")
 	testMetrics := metric.NewMetricsCollector(testLogger)
-	mockClient := NewMockKubernetesClientForTest()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mocks.NewMockKubernetesClient(ctrl)
 
 	action := NewPodInfoAction(config, testLogger, testMetrics, mockClient)
 
@@ -507,7 +537,9 @@ func TestPodInfoAction_ExtractPodInfo_FromConfig(t *testing.T) {
 
 	testLogger := logger.NewLogger("debug", "test")
 	testMetrics := metric.NewMetricsCollector(testLogger)
-	mockClient := NewMockKubernetesClientForTest()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mocks.NewMockKubernetesClient(ctrl)
 
 	action := NewPodInfoAction(config, testLogger, testMetrics, mockClient)
 
@@ -516,18 +548,4 @@ func TestPodInfoAction_ExtractPodInfo_FromConfig(t *testing.T) {
 
 	assert.Equal(t, "config-pod", podName)
 	assert.Equal(t, "test-namespace", namespace)
-}
-
-// Custom mock for testing with specific pod
-type customPodMock struct {
-	pod *corev1.Pod
-	err error
-}
-
-func (m *customPodMock) GetPodLogs(ctx context.Context, namespace, podName string, options map[string]interface{}) (string, error) {
-	return "", nil
-}
-
-func (m *customPodMock) GetPod(ctx context.Context, namespace, podName string) (*corev1.Pod, error) {
-	return m.pod, m.err
 }

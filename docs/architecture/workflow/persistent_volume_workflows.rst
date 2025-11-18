@@ -1,6 +1,9 @@
 Persistent Volume Workflows
 ===========================
 
+
+.. note::
+   **Status**: 🔨 Planned - Not yet implemented
 Persistent volume workflows provide comprehensive monitoring and management capabilities for Kubernetes persistent volumes and persistent volume claims, including backup, analysis, and troubleshooting.
 
 Persistent Volume Actions

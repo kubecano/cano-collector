@@ -72,57 +72,6 @@ workflows:
             custom_title: "{{.alert_name}}"
       stop: false
 
-    # Pod Logs Examples (disabled by default - enable with --set workflows.examples.podLogs.enabled=true)
-    # Basic pod logs collection for any firing alert
-    - name: "pod-logs-basic"
-      enabled: false
-      triggers:
-        - on_alertmanager_alert:
-            status: "firing"
-      actions:
-        - action_type: "pod_logs"
-          data:
-            max_lines: 500
-            tail_lines: 100
-            timestamps: true
-      stop: false
-
-    # Java-specific pod logs with increased limits for stack traces
-    - name: "pod-logs-java"
-      enabled: false
-      triggers:
-        - on_alertmanager_alert:
-            status: "firing"
-            alert_name: "JavaAppError"
-      actions:
-        - action_type: "pod_logs"
-          data:
-            java_specific: true
-            max_lines: 5000
-            tail_lines: 500
-            timestamps: true
-            include_timestamp: true
-            include_container: true
-      stop: false
-
-    # Critical alerts with previous container logs (useful for crash investigations)
-    - name: "pod-logs-critical-crashes"
-      enabled: true
-      triggers:
-        - on_alertmanager_alert:
-            status: "firing"
-            severity: "critical"
-            alert_name: "PodCrashLooping"
-      actions:
-        - action_type: "pod_logs"
-          data:
-            previous: true
-            max_lines: 2000
-            tail_lines: 300
-            timestamps: true
-            include_timestamp: true
-      stop: false
-
     # KubePodCrashLooping alerts with pod logs collection
     - name: "pod-logs-kube-crash-looping"
       enabled: true
@@ -139,32 +88,6 @@ workflows:
             timestamps: true
             include_timestamp: true
             include_container: true
-      stop: false
-
-    # Comprehensive investigation: current + previous logs
-    - name: "pod-logs-comprehensive"
-      enabled: false
-      triggers:
-        - on_alertmanager_alert:
-            status: "firing"
-            severity: "critical"
-      actions:
-        # Get current logs
-        - action_type: "pod_logs"
-          data:
-            max_lines: 1000
-            tail_lines: 200
-            timestamps: true
-            include_timestamp: true
-            include_container: true
-        # Get previous logs for comparison
-        - action_type: "pod_logs"
-          data:
-            previous: true
-            max_lines: 500
-            tail_lines: 100
-            timestamps: true
-            include_timestamp: true
       stop: false
 
 collector:

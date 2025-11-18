@@ -10,9 +10,17 @@ spec:
   containers:
   - name: busybox
     image: busybox:latest
-    command: ["sleep", "1"]
-    # Container will sleep for 1 second, then exit with code 0
+    command: ["/bin/sh", "-c"]
+    args:
+      - |
+        echo "Container starting..."
+        echo "This is a test crash loop scenario"
+        echo "Simulating application crash after short run"
+        sleep 1
+        echo "Container exiting with code 0"
+        exit 0
+    # Container will print logs, sleep for 1 second, then exit with code 0
     # Kubernetes will restart it due to restartPolicy: Always
-    # This creates CrashLoopBackOff after several restarts
+    # This creates CrashLoopBackOff after several restarts with actual logs
   restartPolicy: Always
   # Pod will be restarted indefinitely, creating crash loop

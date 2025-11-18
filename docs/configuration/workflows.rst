@@ -190,7 +190,7 @@ Configuration Structure
      - name: "standard-alert-processing"
        triggers:
          - on_alertmanager_alert:
-             alert_name: "PodCrashLooping"
+             alert_name: "KubePodCrashLooping"
              status: "firing"
              severity: "critical"
              namespace: "production"
@@ -267,12 +267,12 @@ Triggers on custom events from external integrations. These events are converted
 
    triggers:
      - on_alertmanager_alert:
-         alert_name: "PodCrashLooping"     # Optional: exact alert name
-         status: "firing"                  # Optional: "firing" or "resolved"
-         severity: "critical"              # Optional: alert severity
-         namespace: "production"           # Optional: Kubernetes namespace
-         instance: "*.example.com"         # Optional: alert instance (supports wildcards)
-         pod_name: "api-*"                 # Optional: pod name pattern (supports wildcards)
+         alert_name: "KubePodCrashLooping"  # Optional: exact alert name
+         status: "firing"                   # Optional: "firing" or "resolved"
+         severity: "critical"               # Optional: alert severity
+         namespace: "production"            # Optional: Kubernetes namespace
+         instance: "*.example.com"          # Optional: alert instance (supports wildcards)
+         pod_name: "api-*"                  # Optional: pod name pattern (supports wildcards)
 
 All trigger fields are optional. When multiple fields are specified, ALL must match for the trigger to fire.
 
@@ -329,7 +329,7 @@ Actions define what operations to perform when a workflow is triggered.
 Go templates support the following variables from alert data:
 
 **Basic Alert Variables:**
-- `{{.alert_name}}` - Name of the alert (e.g., "PodCrashLooping")
+- `{{.alert_name}}` - Name of the alert (e.g., "KubePodCrashLooping")
 - `{{.severity}}` - Alert severity (e.g., "critical", "warning")
 - `{{.namespace}}` - Kubernetes namespace (e.g., "production")
 - `{{.instance}}` - Prometheus instance (e.g., "prometheus:9090")

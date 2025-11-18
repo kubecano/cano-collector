@@ -20,13 +20,14 @@ import (
 	"github.com/kubecano/cano-collector/pkg/tracer"
 	tracer_interfaces "github.com/kubecano/cano-collector/pkg/tracer/interfaces"
 	"github.com/kubecano/cano-collector/pkg/workflow"
+	"github.com/kubecano/cano-collector/pkg/workflow/actions"
+	actions_interfaces "github.com/kubecano/cano-collector/pkg/workflow/actions/interfaces"
 	workflow_interfaces "github.com/kubecano/cano-collector/pkg/workflow/interfaces"
 
 	"github.com/getsentry/sentry-go"
 
 	config_team "github.com/kubecano/cano-collector/config/team"
 	"github.com/kubecano/cano-collector/pkg/util"
-	"github.com/kubecano/cano-collector/pkg/workflow/actions"
 )
 
 type AppDependencies struct {
@@ -176,7 +177,7 @@ func run(cfg config.Config, deps AppDependencies) error {
 // registerWorkflowActions registers all available workflow actions in the action registry
 func registerWorkflowActions(actionRegistry *actions.DefaultActionRegistry, log logger_interfaces.LoggerInterface, metrics metric_interfaces.MetricsInterface) error {
 	// Create Kubernetes client for pod logs action
-	var kubeClient actions.KubernetesClient
+	var kubeClient actions_interfaces.KubernetesClient
 	realClient, err := actions.NewRealKubernetesClient(log)
 	if err != nil {
 		log.Warnf("Failed to create real Kubernetes client, using placeholder client: %v", err)

@@ -38,7 +38,7 @@ metadata:
 spec:
   containers:
   - name: java-app
-    image: openjdk:11-jdk-slim
+    image: amazoncorretto:25-alpine
     volumeMounts:
     - name: java-code
       mountPath: /app
