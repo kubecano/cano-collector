@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.0.24](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.23...cano-collector-v0.0.24) (2025-11-20)
+
+
+### Features
+
+* CU-869aj0nqy - Implement Slack File Upload and Enhanced Enrichments ([#270](https://github.com/kubecano/cano-collector/issues/270)) ([ac2ceda](https://github.com/kubecano/cano-collector/commit/ac2cedaeb372360447ac8e3f3148f278c520a844))
+* CU-869aj0nqy - Implement Slack File Upload and Enhanced Enrichments ([#274](https://github.com/kubecano/cano-collector/issues/274)) ([ba10e57](https://github.com/kubecano/cano-collector/commit/ba10e574013c8304209d5aefee622051be6054a6))
+* CU-869b6ydyy - Clean up redundant workflows ([#273](https://github.com/kubecano/cano-collector/issues/273)) ([27b6357](https://github.com/kubecano/cano-collector/commit/27b6357a89f63f9602b19f4537a65e2539c0e1a5))
+
+
+### Bug Fixes
+
+* **deps:** update kubernetes packages to v0.34.2 ([#271](https://github.com/kubecano/cano-collector/issues/271)) ([8a3da42](https://github.com/kubecano/cano-collector/commit/8a3da423c676dd01c6b445728a0a4763606b12ec))
+
 ## [0.0.23](https://github.com/kubecano/cano-collector/compare/cano-collector-v0.0.22...cano-collector-v0.0.23) (2025-11-09)
 
 
