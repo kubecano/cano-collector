@@ -12,7 +12,6 @@ import (
 
 	alert_interfaces "github.com/kubecano/cano-collector/pkg/alert/interfaces"
 	"github.com/kubecano/cano-collector/pkg/core/event"
-	"github.com/kubecano/cano-collector/pkg/core/issue"
 	logger_interfaces "github.com/kubecano/cano-collector/pkg/logger/interfaces"
 	metric_interfaces "github.com/kubecano/cano-collector/pkg/metric/interfaces"
 	workflow_interfaces "github.com/kubecano/cano-collector/pkg/workflow/interfaces"
@@ -86,32 +85,6 @@ func (h *AlertHandler) HandleAlert(c *gin.Context) {
 	// Register received alert metric
 	h.metrics.ObserveAlert(alertEvent.Receiver, alertEvent.Status)
 
-	// Process workflows if workflow engine is available
-	var workflowEnrichments []issue.Enrichment
-	if h.workflowEngine != nil {
-		// Convert AlertManagerEvent to WorkflowEvent
-		workflowEvent := event.NewAlertManagerWorkflowEvent(alertEvent)
-
-		matchingWorkflows := h.workflowEngine.SelectWorkflows(workflowEvent)
-		h.logger.Info("Workflow processing",
-			zap.String("alert_name", alertEvent.GetAlertName()),
-			zap.Int("matching_workflows", len(matchingWorkflows)))
-
-		// Execute workflows and collect enrichments
-		enrichments, err := h.workflowEngine.ExecuteWorkflowsWithEnrichments(c.Request.Context(), matchingWorkflows, workflowEvent)
-		if err != nil {
-			h.logger.Error("Failed to execute workflows with enrichments",
-				zap.Error(err),
-				zap.String("alert_name", alertEvent.GetAlertName()))
-			// Continue processing even if workflows fail
-		} else {
-			workflowEnrichments = enrichments
-			h.logger.Info("Collected workflow enrichments",
-				zap.String("alert_name", alertEvent.GetAlertName()),
-				zap.Int("enrichments_count", len(enrichments)))
-		}
-	}
-
 	// Resolve which team should handle this alert
 	team, err := h.teamResolver.ResolveTeam(alertEvent)
 	if err != nil {
@@ -121,7 +94,7 @@ func (h *AlertHandler) HandleAlert(c *gin.Context) {
 		return
 	}
 
-	// Convert AlertManagerEvent to Issues
+	// Convert AlertManagerEvent to Issues FIRST
 	issues, err := h.converter.ConvertAlertManagerEventToIssues(alertEvent)
 	if err != nil {
 		h.logger.Error("Failed to convert alert to issues", zap.Error(err))
@@ -130,17 +103,56 @@ func (h *AlertHandler) HandleAlert(c *gin.Context) {
 		return
 	}
 
-	// Apply workflow enrichments to all issues
-	if len(workflowEnrichments) > 0 {
-		for _, issueItem := range issues {
-			for _, enrichment := range workflowEnrichments {
-				issueItem.AddEnrichment(enrichment)
+	// Process workflows per issue if workflow engine is available
+	if h.workflowEngine != nil {
+		for i, issueItem := range issues {
+			// Create issue-specific workflow event from the corresponding alert
+			if i < len(alertEvent.Alerts) {
+				// Create a single-alert event for this specific issue
+				singleAlertEvent := &event.AlertManagerEvent{
+					BaseEvent: event.BaseEvent{
+						ID:        alertEvent.ID,
+						Timestamp: alertEvent.Timestamp,
+						Source:    alertEvent.Source,
+						Type:      alertEvent.Type,
+					},
+					Receiver:          alertEvent.Receiver,
+					Status:            alertEvent.Status,
+					Alerts:            []event.PrometheusAlert{alertEvent.Alerts[i]},
+					GroupLabels:       alertEvent.GroupLabels,
+					CommonLabels:      alertEvent.CommonLabels,
+					CommonAnnotations: alertEvent.CommonAnnotations,
+					ExternalURL:       alertEvent.ExternalURL,
+				}
+
+				workflowEvent := event.NewAlertManagerWorkflowEvent(singleAlertEvent)
+
+				matchingWorkflows := h.workflowEngine.SelectWorkflows(workflowEvent)
+				h.logger.Info("Workflow processing for issue",
+					zap.String("alert_name", issueItem.AggregationKey),
+					zap.String("pod", issueItem.Subject.Name),
+					zap.Int("matching_workflows", len(matchingWorkflows)))
+
+				// Execute workflows and collect enrichments for THIS specific issue
+				enrichments, err := h.workflowEngine.ExecuteWorkflowsWithEnrichments(c.Request.Context(), matchingWorkflows, workflowEvent)
+				if err != nil {
+					h.logger.Error("Failed to execute workflows with enrichments for issue",
+						zap.Error(err),
+						zap.String("alert_name", issueItem.AggregationKey),
+						zap.String("pod", issueItem.Subject.Name))
+					// Continue processing even if workflows fail for this issue
+				} else {
+					// Add enrichments to THIS specific issue only
+					for _, enrichment := range enrichments {
+						issueItem.AddEnrichment(enrichment)
+					}
+					h.logger.Info("Applied workflow enrichments to issue",
+						zap.String("alert_name", issueItem.AggregationKey),
+						zap.String("pod", issueItem.Subject.Name),
+						zap.Int("enrichments_count", len(enrichments)))
+				}
 			}
 		}
-		h.logger.Info("Applied workflow enrichments to issues",
-			zap.String("alert_name", alertEvent.GetAlertName()),
-			zap.Int("issues_count", len(issues)),
-			zap.Int("enrichments_count", len(workflowEnrichments)))
 	}
 
 	// Dispatch issues to team destinations
