@@ -104,22 +104,37 @@ Cano Collector follows a clean architecture pattern with clear separation of con
 
 ## 🎯 Current Status (MVP)
 
-### ✅ Available Now
+### ✅ Available Now (v0.0.24)
+- **Alertmanager Integration**: Full webhook-based alert processing from Prometheus/Alertmanager
 - **Slack Integration**: Full-featured Slack destination with:
   - Rich message formatting with blocks and attachments
-  - Thread support for related alerts
-  - File uploads for logs and data
+  - Thread support for related alerts with intelligent grouping
+  - File uploads for logs and structured data
   - Color-coded messages based on severity
   - Table formatting for structured data
+  - Message deduplication and fingerprinting
+- **Workflow System**: Extensible alert processing with:
+  - Built-in workflow actions (pod logs, issue enrichment)
+  - Configurable triggers and conditions
+  - Support for custom TypeScript workflows (planned)
+- **Alert Enrichment**: Automatic context gathering from Kubernetes:
+  - Pod logs (current and previous containers)
+  - Resource metadata and labels
+  - Alert annotations and severity mapping
+- **Observability**: Production-ready monitoring with:
+  - Health checks (liveness and readiness)
+  - Prometheus metrics export
+  - OpenTelemetry tracing support
+  - Structured logging
 
-### 🚧 Coming Soon
+### 🔮 Next Releases
+Additional integrations and features will be added in future versions:
 - **MS Teams Integration**: Adaptive Cards support
+- **Direct Kubernetes Event Processing**: Watch and process K8s events (BackOff, CrashLoopBackOff, etc.)
+- **Team-Based Routing**: Multi-team alert distribution
 - **PagerDuty Integration**: Incident lifecycle management
-- **OpsGenie Integration**: Dynamic team routing
 - **Jira Integration**: Ticket creation and management
-- **DataDog Integration**: Event correlation
-- **Kafka Integration**: Data streaming
-- **ServiceNow Integration**: Incident management
+- **Additional Senders**: DataDog, Kafka, ServiceNow, OpsGenie
 
 ---
 
@@ -162,16 +177,39 @@ See the [Configuration Guide](docs/configuration/index.rst) for detailed setup i
 
 ## 📌 Use Cases
 
-### Current (Slack MVP)
-* **OOMKilled Pod**: Get a Slack message with pod logs, resource limits, and memory usage
-* **CrashLoopBackOff**: Receive container logs, restart count, and exit codes
-* **Helm Release Failure**: See release details, failed hooks, and rollback status
+### Current Implementation (v0.0.24)
+Cano Collector currently processes **Prometheus alerts from Alertmanager** and enriches them with Kubernetes context:
 
-### Planned
-* **Multi-channel routing**: Send different alerts to different teams
-* **Incident management**: Create tickets in Jira, incidents in PagerDuty
-* **Data streaming**: Send events to Kafka for downstream processing
-* **AI analysis**: Automated root cause analysis and remediation suggestions
+* **Pod CrashLoopBackOff Alerts**:
+  - Receive `KubePodCrashLooping` alerts in Slack
+  - Automatic pod logs attachment (previous and current container)
+  - Container restart count and exit codes
+  - Resource configuration and limits
+  - Color-coded severity and threaded conversations
+
+* **General Kubernetes Alerts**:
+  - Any Prometheus/Alertmanager alert routed to cano-collector
+  - Rich Slack formatting with alert metadata
+  - Alert annotations and labels as enrichments
+  - Resolved alerts posted as thread replies
+
+* **Custom Alert Enrichment**:
+  - Configurable workflows for different alert types
+  - Pod logs collection for container failures
+  - Kubernetes resource metadata extraction
+  - Extensible action system for custom enrichments
+
+### Planned Features (Future Releases)
+* **Direct Kubernetes Event Processing**: Watch and process K8s events in real-time (BackOff, ImagePull, Eviction, etc.)
+* **Multi-Channel Routing**: Send different alerts to different teams and destinations
+* **Additional Destinations**: MS Teams, PagerDuty, Jira, DataDog, Kafka, ServiceNow
+* **Advanced Enrichments**:
+  - OOMKilled analysis with memory graphs
+  - Resource usage trends
+  - Node health correlations
+  - Deployment history and changes
+* **Team-Based Alert Distribution**: Route alerts based on namespace, labels, and severity to specific teams
+* **Incident Management Integration**: Create tickets in Jira, incidents in PagerDuty with full lifecycle tracking
 
 ---
 
@@ -202,25 +240,49 @@ go test ./...
 
 ## 🔮 Roadmap
 
-### v1.0 (MVP) - Current
-- ✅ Slack destination
-- ✅ Basic alert enrichment
-- ✅ Kubernetes event processing
+### ✅ Phase 1: MVP (Completed - v0.0.24)
+Core alert processing and Slack integration:
+- ✅ Alertmanager webhook integration
+- ✅ Slack destination with full feature set
+- ✅ Workflow system with configurable actions
+- ✅ Basic alert enrichment (pod logs, metadata)
+- ✅ Health checks and metrics
+- ✅ OpenTelemetry tracing
 
-### v1.1 - Q2 2024
-- 🚧 MS Teams destination
-- 🚧 PagerDuty destination
-- 🚧 Enhanced enrichment capabilities
+### 🚧 Phase 2: Core Platform Features (In Progress)
+Expanding destination support and processing capabilities:
+- 🔨 Direct Kubernetes Event Processing (watch K8s API events)
+- 🔨 MS Teams destination
+- 🔨 PagerDuty integration
+- 🔨 Enhanced workflow system
+- 🔨 Team-based routing
 
-### v1.2 - Q3 2024
-- 🚧 Jira integration
-- 🚧 OpsGenie integration
-- 🚧 Kafka streaming
+### 📋 Phase 3: Enterprise Features (Planned)
+Advanced integrations and analysis:
+- 📅 Jira Service Management integration
+- 📅 OpsGenie integration
+- 📅 DataDog event correlation
+- 📅 Kafka streaming
+- 📅 Alert deduplication system
+- 📅 Async processing queue
 
-### v2.0 - Q4 2024
-- 🚧 AI-powered analysis
-- 🚧 Web dashboard
-- 🚧 Advanced routing rules
+### 🌟 Phase 4: Advanced Capabilities (Future)
+Platform ecosystem and intelligence:
+- 🌟 Kubecano CLI tool
+- 🌟 Official Slack App
+- 🌟 Advanced monitoring and observability
+- 🌟 Custom TypeScript workflows (runtime)
+- 🌟 ServiceNow integration
+
+### 🚀 Phase 5: SaaS Platform (Long-term Vision)
+Multi-tenant SaaS offering:
+- 🚀 Web dashboard and SaaS platform
+- 🚀 Multi-cluster management
+- 🚀 AI-powered root cause analysis
+- 🚀 Automated remediation suggestions
+- 🚀 Advanced correlation and anomaly detection
+
+**Note**: This roadmap is subject to change based on community feedback and priorities. Specific release dates are not provided as development is driven by community needs and contributions.
 
 ---
 
