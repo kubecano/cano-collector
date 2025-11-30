@@ -6,7 +6,7 @@ version: 0.0.25
 appVersion: 0.0.24
 dependencies:
   - name: kube-prometheus-stack
-    version: 79.5.0
+    version: 79.9.0
     condition: enablePrometheusStack
     repository: https://prometheus-community.github.io/helm-charts
 # Updated for app release cano-collector-v0.0.24 at 2025-11-20T01:23:36Z
