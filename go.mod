@@ -1,6 +1,6 @@
 module github.com/kubecano/cano-collector
 
-go 1.24.0
+go 1.25
 
 toolchain go1.25.4
 
@@ -14,7 +14,7 @@ require (
 	github.com/hellofresh/health-go/v5 v5.5.5
 	github.com/prometheus/alertmanager v0.28.1
 	github.com/prometheus/client_golang v1.23.2
-	github.com/slack-go/slack v0.17.3
+	github.com/slack-go/slack v0.23.1
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin v0.63.0
 	go.opentelemetry.io/otel v1.38.0
