@@ -11,7 +11,7 @@ COPY pkg/ ./pkg/
 
 RUN CGO_ENABLED=0 go build -o /go/bin/cano-collector
 
-FROM gcr.io/distroless/static-debian12@sha256:87bce11be0af225e4ca761c40babb06d6d559f5767fbf7dc3c47f0f1a466b92c
+FROM gcr.io/distroless/static-debian12@sha256:22fd79fd75eab2372585b44517f8a094349938919dc613aafc37e4bdc9967c82
 
 LABEL author="KubeCano Team"
 LABEL contact="support@kubecano.com"
